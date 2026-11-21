@@ -17,6 +17,7 @@ EvoLab is a browser lab where you watch neural networks learn to play. Pick a co
 | ![Tetris learning](docs/screenshots/07-tetris-learn.png) Tetris: the network scores every possible landing spot. | ![Network view](docs/screenshots/10-network-neat.png) The champion's network, with disabled connections shown. |
 | ![Pong with DQN](docs/screenshots/12-dqn-pong.png) DQN on Pong: loss, epsilon and Q-values. | ![Car with PPO](docs/screenshots/13-ppo-car.png) PPO on the car: policy and value loss, entropy, action means. |
 | ![Champion replay](docs/screenshots/14-replay.png) The hall of fame replays any earlier champion. | ![Generated concept](docs/screenshots/15-generated.png) A concept generated from text, training like a built-in. |
+| ![Gallery on a phone](docs/screenshots/17-mobile-gallery.png) The gallery at 390 px. | ![Learning on a phone](docs/screenshots/18-mobile-learn.png) The Learn step at 390 px: every panel, one column. |
 
 ## Run it
 
