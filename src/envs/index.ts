@@ -4,6 +4,7 @@ import { flappy } from './flappy';
 import { pong } from './pong';
 import { reach1d } from './reach1d';
 import { snake } from './snake';
+import { tetris } from './tetris/tetris';
 
 let registered = false;
 
@@ -16,4 +17,5 @@ export function registerBuiltins(): void {
   registerEnv(snake);
   registerEnv(flappy);
   registerEnv(car);
+  registerEnv(tetris);
 }
