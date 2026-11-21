@@ -50,23 +50,39 @@ export const galleryPage: PageFn = (root) => {
           h('span', { class: 'badge badge-dim' }, def.meta.dims.toUpperCase()),
           ...def.meta.learners.map((l) => h('span', { class: 'badge' }, l.toUpperCase())))));
   });
-  const grid = h('div', { class: 'card-grid' },
-    createNewConceptPanel((id) => { location.hash = formatRoute({ page: 'concept', envId: id, step: 1 }); }), ...cards);
+  const grid = h('div', { class: 'card-grid' }, ...cards);
   const libraryError = h('p', { class: 'errors-line', role: 'alert' });
+  const ownEmpty = h('p', { class: 'own-empty' }, 'Concepts you create or import appear here, next to the built-in ones. They are stored in this browser only.');
+  const ownGrid = h('div', { class: 'card-grid own-grid' },
+    createNewConceptPanel((id) => { location.hash = formatRoute({ page: 'concept', envId: id, step: 1 }); }), ownEmpty);
   let generated: HTMLElement[] = [];
   const refresh = () => library.list().then((list) => {
     if (gone) return;
     for (const el of generated) el.remove();
     generated = list.map((c) => generatedCard(c, refresh));
-    grid.append(...generated);
-  }, () => { libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
+    ownEmpty.hidden = generated.length > 0;
+    ownGrid.append(...generated);
+  }, () => { ownEmpty.hidden = true; libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
   void refresh();
 
+  const steps: [string, string][] = [['Play', 'Try the game yourself.'], ['Rewards', 'Decide what counts as good.'], ['Network', 'Choose how it learns.'], ['Learn', 'Watch it get there.']];
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
       h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
-      h('span', { class: 'topbar-note' }, 'Watch neural networks learn to play, one generation at a time.'),
-      h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
-    h('main', { class: 'gallery' }, h('h1', null, 'Concepts'), libraryError, grid)));
+      h('a', { class: 'btn topbar-end', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
+    h('main', { class: 'gallery' },
+      h('section', { class: 'hero' },
+        h('div', { class: 'hero-text' },
+          h('h1', null, 'Watch a neural network learn to play.'),
+          h('p', { class: 'lede' }, 'EvoLab trains small neural networks live in your browser. Pick a game below and see them go from flailing to competent, one generation at a time.')),
+        h('ol', { class: 'hero-steps', 'aria-label': 'Every concept has four steps' },
+          ...steps.map(([name, what]) => h('li', null, h('b', null, name), h('span', null, what))))),
+      h('section', { class: 'gallery-section' },
+        h('h2', { class: 'section-title' }, 'Pick a concept'),
+        grid),
+      h('section', { class: 'gallery-section' },
+        h('h2', { class: 'section-title' }, 'Make your own'),
+        h('p', { class: 'section-note' }, 'Describe a game in a sentence and a language model writes it. A generated concept is checked in a sandbox, then trains exactly like a built-in.'),
+        libraryError, ownGrid))));
   return () => { gone = true; };
 };
