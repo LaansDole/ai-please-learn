@@ -67,6 +67,7 @@ export const reach1d: EnvDefinition = {
     { name: 'survivalist', description: 'Move as little as possible.', weights: { closeness: 10, arrived: 2, effort: 3 } },
   ],
   human: { hint: 'Arrow keys move the dot.', keys: [{ code: 'ArrowLeft', label: 'left' }, { code: 'ArrowRight', label: 'right' }] },
-  train: { neat: { populationSize: 50, episodesPerGenome: 4 } },
+  // ppo gamma: the observation has no clock, so the value net cannot predict a long-horizon return and the advantages get noisy.
+  train: { neat: { populationSize: 50, episodesPerGenome: 4 }, ppo: { gamma: 0.95 } },
   create,
 };
