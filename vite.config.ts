@@ -20,6 +20,9 @@ export default defineConfig({
   plugins: [llmProxy(), staticCsp()],
   // EVOLAB_BASE: sub-path hosting (GitHub Pages builds use /evolab/).
   base: process.env.EVOLAB_BASE ?? '/',
+  // EVOLAB_STATIC=1: the build goes to a host that only serves files, so the app must not probe for the LLM proxy
+  // (src/gen/settings.ts detectMode). Plain builds keep probing: `vite preview` serves them with the proxy.
+  define: { __EVOLAB_STATIC__: JSON.stringify(process.env.EVOLAB_STATIC === '1') },
   server: { headers: { 'Content-Security-Policy': CSP } },
   preview: { headers: { 'Content-Security-Policy': CSP } },
   worker: { format: 'es' },

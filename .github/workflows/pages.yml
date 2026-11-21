@@ -30,6 +30,7 @@ jobs:
         run: npm run build
         env:
           EVOLAB_BASE: /evolab/
+          EVOLAB_STATIC: '1'
       - name: Add the demo page if present
         run: |
           if [ -d docs/demo/runbook ]; then

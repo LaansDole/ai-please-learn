@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { setStorage } from '../persist/storage';
 import { createChat, listModels } from './llm';
 import type { ChatMessage } from './prompt';
 import type { LlmSettings } from './settings';
@@ -15,6 +16,12 @@ function fakeFetch(status: number, body: unknown) {
   return { calls, impl };
 }
 const ok = { choices: [{ message: { content: 'hello' } }] };
+
+const stored = new Map<string, string>();
+beforeEach(() => {
+  stored.clear();
+  setStorage({ getItem: (k) => stored.get(k) ?? null, setItem: (k, v) => { stored.set(k, v); }, removeItem: (k) => { stored.delete(k); } });
+});
 
 describe('LLM client through the proxy', () => {
   it('posts the chat request to the proxy with the base URL header', async () => {
@@ -83,5 +90,23 @@ describe('LLM client in direct mode (static hosting, no proxy)', () => {
     expect(await chat(messages)).toBe('hello');
     expect(await chat(messages)).toBe('hello');
     expect(bodies.map((b) => 'temperature' in b)).toEqual([true, false, false]);
+  });
+  it('remembers per base URL and model that temperature is unsupported, so later clients never send it', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const impl = (async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      bodies.push(body);
+      return 'temperature' in body
+        ? new Response('{"error":{"message":"Unsupported value: \'temperature\' does not support 0.2 with this model."}}', { status: 400 })
+        : new Response(JSON.stringify(ok));
+    }) as unknown as typeof fetch;
+    await createChat(settings, impl, 'direct')(messages);                 // learns: one rejected request
+    await createChat(settings, impl, 'direct')(messages);                 // a later generation (new client, e.g. after a reload)
+    await createChat({ ...settings, baseUrl: 'http://localhost:11434/v1' }, impl, 'direct')(messages);   // same endpoint, normalised
+    expect(bodies.map((b) => 'temperature' in b)).toEqual([true, false, false, false]);
+    expect(JSON.parse(stored.get('evolab.llm.noTemperature.v1')!)).toEqual(['http://localhost:11434/v1|m1']);
+    bodies.length = 0;
+    await createChat({ ...settings, model: 'm2' }, impl, 'direct')(messages);   // another model still gets the low temperature first
+    expect(bodies.map((b) => 'temperature' in b)).toEqual([true, false]);
   });
 });

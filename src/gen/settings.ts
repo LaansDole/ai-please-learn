@@ -27,11 +27,17 @@ export function validateSettings(s: unknown): LlmSettings | null {
 export function loadSettings(): LlmSettings { return validateSettings(read(KEY)) ?? { ...DEFAULT_LLM }; }
 export function saveSettings(s: LlmSettings): void { write(KEY, s); }
 
+/** Set by vite.config.ts for builds made with EVOLAB_STATIC=1 (GitHub Pages); absent under vitest and the llm-trial script. */
+declare const __EVOLAB_STATIC__: boolean | undefined;
+const STATIC_BUILD = typeof __EVOLAB_STATIC__ !== 'undefined' && __EVOLAB_STATIC__ === true;
+
 /**
- * The proxy answers a request without the x-evolab-base-url header with its own JSON 400. A static host (GitHub Pages)
+ * A static build has no proxy by construction, so it is direct without asking: the probe would only log a 404 in the console.
+ * Otherwise (dev, preview, plain builds) the proxy is probed. The proxy answers a request without the x-evolab-base-url header with its own JSON 400. A static host (GitHub Pages)
  * answers 404, and a dev server without the plugin answers the SPA's index.html: both mean "no proxy, call the endpoint directly".
  */
-export async function detectMode(fetchImpl: typeof fetch = fetch): Promise<ConnectionMode> {
+export async function detectMode(fetchImpl: typeof fetch = fetch, staticBuild = STATIC_BUILD): Promise<ConnectionMode> {
+  if (staticBuild) return 'direct';
   try {
     const r = await fetchImpl('/api/llm/models');
     return r.status === 400 && (r.headers.get('content-type') ?? '').includes('json') ? 'proxy' : 'direct';

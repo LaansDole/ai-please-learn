@@ -57,4 +57,12 @@ describe('connection mode detection', () => {
     expect(await resolveMode({ ...DEFAULT_LLM, mode: 'proxy' }, answering(404, 'text/html'))).toBe('proxy');
     expect(await resolveMode(DEFAULT_LLM, answering(404, 'text/html'))).toBe('direct');
   });
+  it('a static build is direct without any network probe', async () => {
+    let calls = 0;
+    const f = (async () => { calls++; return new Response('{}', { status: 400, headers: { 'content-type': 'application/json' } }); }) as unknown as typeof fetch;
+    expect(await detectMode(f, true)).toBe('direct');
+    expect(calls).toBe(0);
+    expect(await detectMode(f, false)).toBe('proxy');      // dev, preview and plain builds still probe
+    expect(calls).toBe(1);
+  });
 });

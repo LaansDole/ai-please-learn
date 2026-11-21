@@ -16,7 +16,7 @@ let server: http.Server, origin = '';
 
 test.beforeAll(async () => {
   test.setTimeout(180000);
-  execSync(`npx vite build --outDir ${OUT} --emptyOutDir`, { env: { ...process.env, EVOLAB_BASE: '/evolab/' }, stdio: 'pipe' });
+  execSync(`npx vite build --outDir ${OUT} --emptyOutDir`, { env: { ...process.env, EVOLAB_BASE: '/evolab/', EVOLAB_STATIC: '1' }, stdio: 'pipe' });
   server = http.createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url!, 'http://localhost').pathname);
     const file = normalize(join(ROOT, path.endsWith('/') ? `${path}index.html` : path));
@@ -71,6 +71,8 @@ test('static sub-path build: Walker loads three.js on the page and Rapier in the
 
 test('static sub-path build: direct LLM mode and a pasted concept that trains in the sandboxed worker', async ({ page }) => {
   const errors = collectErrors(page), llm = await startFakeLlm([toResponse(GOOD)]);
+  const probes: string[] = [];                               // a static build must not ask for the dev LLM proxy at all
+  page.on('request', (r) => { if (r.url().includes('/api/llm/')) probes.push(r.url()); });
   try {
     await page.goto(`${origin}/evolab/#/settings`);
     await expect(page.getByTestId('settings-mode-active')).toContainText('direct');
@@ -89,5 +91,6 @@ test('static sub-path build: direct LLM mode and a pasted concept that trains in
   await startTraining(page);
   await waitIterations(page, 2);
   await expect(page.getByTestId('error-banner')).toBeHidden();
+  expect(probes).toEqual([]);
   expect(errors).toEqual([]);
 });
