@@ -1,5 +1,7 @@
 import type { EnvSpecMsg } from '../env/types';
 import type { NetworkSnapshot } from '../learner/types';
+import { mlpSnapshot, outputLabels } from '../learner/mlpPolicy';
+import { paramCount } from '../nn/mlp';
 
 export interface Pad { l: number; r: number; t: number; b: number }
 export interface Point { x: number; y: number }
@@ -33,9 +35,9 @@ export function diffSnapshots(prev: NetworkSnapshot | null, next: NetworkSnapsho
   };
 }
 
-/** Sign is carried by the dash as well as the colour. */
-export function edgeStyle(weight: number): { width: number; alpha: number; dashed: boolean } {
-  const m = Math.abs(weight);
+/** Sign is carried by the dash as well as the colour. `scale` multiplies |weight| first: MLP weights are several times smaller than NEAT's. */
+export function edgeStyle(weight: number, scale = 1): { width: number; alpha: number; dashed: boolean } {
+  const m = Math.abs(weight) * scale;
   return { width: 1 + 3 * Math.min(1, m / 4), alpha: 0.25 + 0.6 * Math.min(1, m / 2), dashed: weight < 0 };
 }
 
@@ -46,7 +48,9 @@ export function visibleEdges(net: NetworkSnapshot, cap = 400): Edge[] {
   for (const e of net.edges) { const k = `${depth.get(e.from)}>${depth.get(e.to)}`; const g = groups.get(k) ?? []; groups.set(k, g); g.push(e); }
   if ([...groups.values()].every((g) => g.length <= cap)) return net.edges;
   const keep = new Set<Edge>();
-  for (const g of groups.values()) for (const e of [...g].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)).slice(0, cap)) keep.add(e);
+  // Ties (an untrained net: every weight equal) are broken by a hash of the endpoints so the kept edges spread over the layer instead of clustering at its first neurons.
+  const mix = (e: Edge) => (e.from * 7919 + e.to * 104729) % 1009;
+  for (const g of groups.values()) for (const e of [...g].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight) || mix(a) - mix(b)).slice(0, cap)) keep.add(e);
   return net.edges.filter((e) => keep.has(e));
 }
 
@@ -61,4 +65,10 @@ export function initialNeatSnapshot(spec: Pick<EnvSpecMsg, 'observation' | 'acti
     ],
     edges: ins.flatMap((_, i) => outs.map((_, o) => ({ from: i, to: ins.length + o, weight: 0.5, enabled: true }))),
   };
+}
+
+/** The fixed layered shape DQN and PPO train, with zero weights. Shown before any training. */
+export function initialMlpSnapshot(spec: Pick<EnvSpecMsg, 'observation' | 'action'>, kind: 'dqn' | 'ppo', hidden: number[]): NetworkSnapshot {
+  const outs = outputLabels(spec, kind), sizes = [spec.observation.labels.length, ...hidden, outs.length];
+  return mlpSnapshot(sizes, new Float32Array(paramCount(sizes)), spec.observation.labels, outs);
 }

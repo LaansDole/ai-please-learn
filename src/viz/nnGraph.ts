@@ -7,6 +7,8 @@ export interface NnGraph {
   setNetwork(net: NetworkSnapshot, animate?: boolean): void;
   setActivations(a: Float32Array): void;
   setShowDisabled(on: boolean): void;
+  /** Multiplier on |weight| for edge thickness and opacity: 1 for NEAT; MLP weights are several times smaller. */
+  setWeightScale(k: number): void;
   dispose(): void;
 }
 
@@ -35,7 +37,8 @@ export function createNnGraph(): NnGraph {
   /** Progress 0..1 of an animation `ms` long that started at t0; instant under reduced motion. */
   const prog = (now: number, ms: number) => (motion ? Math.min(1, Math.max(0, now - t0) / ms) : 1);   // rAF time can trail performance.now()
 
-  let net: NetworkSnapshot | null = null, acts: Float32Array | null = null, showDisabled = false;
+  let net: NetworkSnapshot | null = null, acts: Float32Array | null = null, showDisabled = false, weightScale = 1;
+  let shown: NetworkSnapshot['edges'] = [];    // visibleEdges(net), computed once per snapshot rather than once per frame
   let w = 0, h = 0, t0 = 0, raf = 0, hover: number | null = null, caption = '';
   let target = new Map<number, Point>(), from = new Map<number, Point>();
   let addedNodes = new Set<number>(), addedEdges = new Set<string>();
@@ -90,7 +93,7 @@ export function createNnGraph(): NnGraph {
       for (const p of goneNodes) { ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, Math.PI * 2); ctx.fill(); }
     }
     const heat = Math.max(0, 1 - elapsed / HEAT_MS), grow = ease(prog(now, EDGE_MS));
-    for (const e of visibleEdges(net)) {
+    for (const e of shown) {
       if (!e.enabled && !showDisabled) continue;
       const a = at(e.from, now), b = at(e.to, now);
       if (!a || !b) continue;
@@ -98,7 +101,7 @@ export function createNnGraph(): NnGraph {
       const bx = a.x + (b.x - a.x) * t, by = a.y + (b.y - a.y) * t;
       const line = () => { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(bx, by); ctx.stroke(); };
       if (!e.enabled) { ctx.globalAlpha = 0.8; ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); line(); continue; }
-      const s = edgeStyle(e.weight);
+      const s = edgeStyle(e.weight, weightScale);
       ctx.globalAlpha = s.alpha; ctx.strokeStyle = s.dashed ? C.neg : C.pos; ctx.lineWidth = s.width; ctx.setLineDash(s.dashed ? [6, 4] : []);
       line();
       if (e.delta && heat > 0) { ctx.globalAlpha = e.delta * heat; ctx.strokeStyle = C.heat; ctx.setLineDash([]); line(); }
@@ -182,7 +185,7 @@ export function createNnGraph(): NnGraph {
       });
       addedNodes = new Set(d.addedNodes); addedEdges = new Set(d.addedEdges);
       caption = [d.addedNodes.length ? plural(d.addedNodes.length, 'neuron') : '', d.addedEdges.length ? plural(d.addedEdges.length, 'connection') : ''].filter(Boolean).join(', ');
-      net = next; t0 = now;
+      net = next; shown = visibleEdges(next); t0 = now;
       if (acts && acts.length !== next.nodes.length) acts = null;
       relayout();
       // New nodes start where they will sit; survivors tween from where they are now.
@@ -196,6 +199,7 @@ export function createNnGraph(): NnGraph {
       acts = a; schedule();
     },
     setShowDisabled(on) { showDisabled = on; schedule(); },
+    setWeightScale(k) { weightScale = k; schedule(); },
     dispose() {
       cancelAnimationFrame(raf); observer.disconnect();
       el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerleave', onLeave);

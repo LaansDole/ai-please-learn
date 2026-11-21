@@ -11,7 +11,7 @@ const same = (a: Speed, b: Speed) => a.mode === b.mode && (a.mode !== 'live' || 
 const mult = (v: number) => `x${v >= 10 ? Math.round(v) : v.toFixed(1)}`;
 
 /** Run controls of spec section 9. `prefs` is mutated and persisted on every change; `onStart` (re)starts a run from it. */
-export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () => void): { el: HTMLElement; dispose(): void } {
+export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () => void): { el: HTMLElement; refresh(): void; dispose(): void } {
   const { meta } = session.spec;
   const save = () => saveRunPrefs(meta.id, prefs);
   const paused = () => session.speed.mode === 'paused';
@@ -22,7 +22,7 @@ export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () =>
     if (next) setSpeed(next.speed);
   };
 
-  const start = h('button', { class: 'btn-primary', testid: 'btn-start', onclick: onStart }, 'Start evolving');
+  const start = h('button', { class: 'btn-primary', testid: 'btn-start', onclick: onStart });
   const pause = h('button', { testid: 'btn-pause', title: 'Space', onclick: togglePause }, 'Pause');
   const step = h('button', { testid: 'btn-step', title: 'Finish the current iteration, then pause (.)', onclick: () => session.step() }, 'Step');
   const restart = h('button', { testid: 'btn-restart', title: 'Start over with the seed and population shown', onclick: () => { session.stop(); onStart(); } }, 'Restart');
@@ -39,6 +39,7 @@ export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () =>
     if (Number.isFinite(v)) { prefs.population = Math.min(POPULATION_MAX, Math.max(POPULATION_MIN, v)); save(); }
     population.value = String(prefs.population);
   });
+  const populationField = h('label', { class: 'field' }, 'Population', population);
 
   const el = h('section', { class: 'panel speedbar', 'aria-label': 'Run controls' },
     h('div', { class: 'bar-group' }, start, pause, step, restart),
@@ -47,12 +48,14 @@ export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () =>
     actual,
     h('div', { class: 'bar-group bar-end' },
       h('label', { class: 'field' }, 'Seed', seed),
-      prefs.learner === 'neat' && h('label', { class: 'field' }, 'Population', population)));
+      populationField));
 
   let effective = 0;
   const sync = () => {
     const idle = session.state === 'idle';
     start.hidden = !idle; pause.disabled = idle; step.disabled = idle; restart.disabled = idle;
+    start.textContent = prefs.learner === 'neat' ? 'Start evolving' : 'Start learning';
+    populationField.hidden = prefs.learner !== 'neat';             // DQN and PPO train one network
     pause.textContent = !idle && paused() ? 'Resume' : 'Pause';
     speeds.forEach((b, i) => b.setAttribute('aria-pressed', String(same(SPEEDS[i]!.speed, prefs.speed))));
     const target = SPEEDS.find((s) => same(s.speed, prefs.speed))!.label;
@@ -74,5 +77,5 @@ export function createSpeedBar(session: Session, prefs: RunPrefs, onStart: () =>
   window.addEventListener('keydown', onKey);
   session.setGhosts(ghosts.checked);
   sync();
-  return { el, dispose() { offStatus(); offChange(); window.removeEventListener('keydown', onKey); } };
+  return { el, refresh: sync, dispose() { offStatus(); offChange(); window.removeEventListener('keydown', onKey); } };
 }

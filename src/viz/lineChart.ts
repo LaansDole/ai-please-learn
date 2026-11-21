@@ -86,8 +86,11 @@ export function createLineChart(opts: { testid: string; title: string; series: S
         if (pen) ctx.lineTo(xPos(d.xs[i]!), yPos(v)); else ctx.moveTo(xPos(d.xs[i]!), yPos(v));
         pen = true; last = v;
       });
-      ctx.stroke(); ctx.setLineDash([]);
-      if (s.dots || d.xs.length === 1) d.ys.forEach((v, i) => { if (!Number.isNaN(v)) { ctx.beginPath(); ctx.arc(xPos(d.xs[i]!), yPos(v), 2.5, 0, Math.PI * 2); ctx.fill(); } });
+      if (!s.dots) ctx.stroke();
+      ctx.setLineDash([]);
+      // A dots series is a faint scatter (one mark per sample) with no connecting line.
+      if (s.dots) { ctx.globalAlpha = 0.35; d.ys.forEach((v, i) => { if (!Number.isNaN(v)) ctx.fillRect(xPos(d.xs[i]!) - 1.5, yPos(v) - 1.5, 3, 3); }); ctx.globalAlpha = 1; }
+      else if (d.xs.length === 1 && !Number.isNaN(last)) { ctx.beginPath(); ctx.arc(xPos(d.xs[0]!), yPos(last), 2.5, 0, Math.PI * 2); ctx.fill(); }
       if (!Number.isNaN(last)) ends.push({ y: yPos(last), label: s.label, color });
     }
     // Direct labels at the right end, nudged apart so close series stay readable.

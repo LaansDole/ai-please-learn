@@ -6,7 +6,7 @@ import type { DqnConfig } from './config';
 import { concatActivations, mlpSnapshot, outputLabels } from './mlpPolicy';
 import type { IterationStats, Learner, LiveView } from './types';
 
-const NETWORK_EVERY = 250;                    // ticks between refreshed weight snapshots for the NN graph
+const NETWORK_EVERY = 50;                     // ticks between refreshed weight snapshots for the NN graph (5 s of Snake at x1); a refresh copies the parameters, nothing more
 
 /** Best, mean and median of the episode returns finished in an iteration. */
 export function summarise(returns: number[]): { best: number; mean: number; median: number } {

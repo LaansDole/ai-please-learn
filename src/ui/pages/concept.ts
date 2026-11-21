@@ -1,5 +1,7 @@
 import { listEnvs } from '../../env/registry';
 import { iterationLabel } from '../../learner/types';
+import { resolveConfig } from '../../learner/config';
+import { loadRunPrefs, type RunPrefs } from '../../persist/storage';
 import { h } from '../dom';
 import { createPlayPanel } from '../panels/play';
 import { createLearnPanel } from '../panels/learn';
@@ -10,18 +12,20 @@ import { formatRoute, type PageFn, type Step } from '../router';
 import { openSession, type Session } from '../session';
 
 const STEPS: [Step, string][] = [[1, 'Play'], [2, 'Rewards'], [3, 'Network'], [4, 'Learn']];
-interface StepView { side: HTMLElement; lower?: HTMLElement; dispose(): void }
+interface StepView { side: HTMLElement; lower?: HTMLElement; refresh?(): void; dispose(): void }
+/** Shared by steps 3 and 4: the method picker edits `prefs`, the Learn step starts runs from them. */
+interface RunControl { prefs: RunPrefs; start(): void }
 
-function buildStep(step: Step, session: Session): StepView {
+function buildStep(step: Step, session: Session, run: RunControl): StepView {
   if (step === 1) {
     const p = createPlayPanel(session);
     return { side: p.el, dispose: () => { p.dispose(); session.backToLive(); } };   // sends stage/stop
   }
   if (step === 2) { const p = createRewardPanel(session); return { side: p.el, dispose: p.dispose }; }
-  const net = createNetworkPanel(session, { live: step === 4 });
-  if (step === 3) return { side: net.el, dispose: net.dispose };
-  const learn = createLearnPanel(session);
-  return { side: net.el, lower: learn.lower, dispose: () => { net.dispose(); learn.dispose(); } };
+  const net = createNetworkPanel(session, run.prefs, { live: step === 4, restart: () => { session.stop(); run.start(); } });
+  if (step === 3) return { side: net.el, refresh: net.refresh, dispose: net.dispose };
+  const learn = createLearnPanel(session, run.prefs, run.start);
+  return { side: net.el, lower: learn.lower, refresh: () => { net.refresh(); learn.refresh(); }, dispose: () => { net.dispose(); learn.dispose(); } };
 }
 
 export const conceptPage: PageFn = (root, route) => {
@@ -31,7 +35,7 @@ export const conceptPage: PageFn = (root, route) => {
     root.append(h('main', { class: 'page gallery' }, h('h1', null, 'Unknown concept'), h('p', null, h('a', { href: '#/' }, 'Back to the gallery'))));
     return;
   }
-  let step = route.step, session: Session | null = null, gone = false;
+  let step = route.step, session: Session | null = null, run: RunControl | null = null, gone = false;
   const views = new Map<Step, StepView>();
   const stage = createStage();
   const banner = h('div', { class: 'error-banner', testid: 'error-banner', role: 'alert', hidden: true });
@@ -66,11 +70,12 @@ export const conceptPage: PageFn = (root, route) => {
     const play = views.get(1);
     if (play && step !== 1) { play.dispose(); play.side.remove(); views.delete(1); }
     if (!views.has(step)) {
-      const v = buildStep(step, session);
+      const v = buildStep(step, session, run!);
       views.set(step, v); side.append(v.side);
       if (v.lower) lower.append(v.lower);
     }
     for (const [n, v] of views) { v.side.hidden = n !== step; if (v.lower) v.lower.hidden = n !== step; }
+    views.get(step)?.refresh?.();
     syncStage();
   };
   showStep();
@@ -78,6 +83,8 @@ export const conceptPage: PageFn = (root, route) => {
   openSession({ kind: 'builtin', id: def.meta.id }).then((s) => {
     if (gone) { s.dispose(); return; }
     session = s;
+    const prefs = loadRunPrefs(s.spec);
+    run = { prefs, start: () => { s.start(resolveConfig(prefs.learner, s.spec, { populationSize: prefs.population }), prefs.seed); s.setSpeed(prefs.speed); } };
     s.on('frame', (m) => stage.show(m.frame));
     s.on('error', (m) => fail(m.message));
     s.onChange(syncStage);

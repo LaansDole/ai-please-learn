@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NetworkSnapshot } from '../learner/types';
-import { diffSnapshots, edgeStyle, layoutNetwork, visibleEdges } from './nnLayout';
+import { pong } from '../envs/pong';
+import { diffSnapshots, edgeStyle, initialMlpSnapshot, layoutNetwork, visibleEdges } from './nnLayout';
 
 const net: NetworkSnapshot = {
   maxDepth: 2,
@@ -37,5 +38,15 @@ describe('nn layout', () => {
     big.nodes = [...big.edges.map((e) => ({ id: e.from, type: 'input' as const, depth: 0 })), { id: 5000, type: 'output', depth: 1 }];
     const v = visibleEdges(big, 400);
     expect(v.length).toBe(400); expect(Math.min(...v.map((e) => e.weight))).toBeCloseTo(0.6);
+  });
+});
+
+describe('initialMlpSnapshot', () => {
+  it('is the fixed layered shape DQN/PPO train, with labelled outputs', () => {
+    const s = initialMlpSnapshot(pong, 'ppo', [32, 32]);
+    expect(s.nodes.length).toBe(6 + 32 + 32 + 4);
+    expect(s.nodes.filter((n) => n.type === 'output').map((n) => n.label)).toEqual(['up', 'stay', 'down', 'value']);
+    expect(s.maxDepth).toBe(3);
+    expect(initialMlpSnapshot(pong, 'dqn', [32, 32]).nodes.length).toBe(6 + 32 + 32 + 3);
   });
 });

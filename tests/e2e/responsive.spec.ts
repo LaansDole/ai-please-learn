@@ -9,10 +9,13 @@ const thirtyFrames = (page: Page) => page.evaluate(() => new Promise<number>((re
 }));
 
 // Training at MAX must never starve the main thread: frames keep coming and controls keep answering.
-for (const id of ['pong', 'snake']) {
+for (const [env, method] of [['pong', 'neat'], ['snake', 'neat'], ['pong', 'ppo'], ['snake', 'dqn']] as const) {
+  const id = method === 'neat' ? env : `${env} with ${method.toUpperCase()}`;
   test(`${id}: the UI stays responsive after 20 s at MAX`, async ({ page }) => {
     await page.goto('/');
-    await page.getByTestId(`card-${id}`).click();
+    await page.getByTestId(`card-${env}`).click();
+    await page.getByTestId('step-3').click();
+    await page.getByTestId(`method-${method}`).check();
     await page.getByTestId('step-4').click();
     // Headless Chromium does not always deliver 60 frames per second even to an idle page (30 callbacks took 1.1-1.6 s
     // on about:blank where this was written), so the frame budget is the larger of 1500 ms and 1.5x this page's idle time.

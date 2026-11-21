@@ -28,3 +28,31 @@ for (const id of SMOKE_ENVS) {
     await expect(page.getByTestId('error-banner')).toBeHidden();
   });
 }
+
+test('pong with DQN: picker, RL charts, replay', async ({ page }) => {
+  await page.goto('/#/c/pong/3');
+  await page.getByTestId('method-dqn').check();
+  await expect(page.getByTestId('method-explainer')).toContainText('replay buffer');
+  await page.getByTestId('step-4').click();
+  await page.getByTestId('speed-max').click();
+  await page.getByTestId('btn-start').click();
+  await expect.poll(async () => Number(await page.getByTestId('loss-chart').getAttribute('data-points')), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByTestId('explore-chart')).toBeVisible();
+  await expect(page.getByTestId('species-chart')).toBeHidden();
+  await expect(page.getByTestId('outputs-bar')).toBeVisible();
+  await page.getByTestId('btn-pause').click();
+  await page.getByTestId('hof-item').first().click();
+  await expect(page.getByTestId('stage')).toHaveAttribute('data-mode', 'replay');
+  await expect(page.getByTestId('error-banner')).toBeHidden();
+});
+test('car: DQN is disabled with a reason, PPO trains', async ({ page }) => {
+  await page.goto('/#/c/car/3');
+  await expect(page.getByTestId('method-dqn')).toBeDisabled();
+  await expect(page.getByTestId('method-reason-dqn')).toContainText('continuous');
+  await page.getByTestId('method-ppo').check();
+  await page.getByTestId('step-4').click();
+  await page.getByTestId('speed-max').click();
+  await page.getByTestId('btn-start').click();
+  await expect.poll(async () => Number(await page.getByTestId('fitness-chart').getAttribute('data-points')), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByTestId('error-banner')).toBeHidden();
+});
