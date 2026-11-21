@@ -12,7 +12,7 @@ import { prepareEnv } from './registry';
 describe('learnability check', () => {
   it.each([reach1d, pong, snake, flappy, car, tetris, walker].map((d) => [d.meta.id, d] as const))('passes the built-in %s', async (_id, def) => {
     await prepareEnv(def);
-    expect(checkLearnability(def)).toEqual([]);
+    for (const seed of [undefined, 1, 777]) expect(checkLearnability(def, { seed })).toEqual([]);
   });
   it('is deterministic', () => {
     expect(checkLearnability(pong)).toEqual(checkLearnability(pong));

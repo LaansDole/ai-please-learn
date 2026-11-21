@@ -151,42 +151,72 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
   return report;
 }
 
+/** An untrained policy as NEAT's first generation has them: one random linear layer from the observation to the action. */
+function randomNet(def: EnvDefinition, rng: Rng): (env: Env) => Action {
+  const a = def.action, nObs = def.observation.labels.length, nOut = a.type === 'candidates' ? 1 : a.labels.length;
+  const w = Array.from({ length: nOut }, () => Array.from({ length: nObs + 1 }, () => rng.gaussian()));
+  const out = (o: ArrayLike<number>, k: number) => { let s = w[k]![nObs]!; for (let i = 0; i < nObs; i++) s += w[k]![i]! * o[i]!; return s; };
+  const argmax = (n: number, score: (k: number) => number) => { let b = 0; for (let k = 1; k < n; k++) if (score(k) > score(b)) b = k; return b; };
+  if (a.type === 'continuous') return (env) => { const o = env.observe(); return Float32Array.from(w, (_, k) => Math.tanh(out(o, k))); };
+  if (a.type === 'discrete') return (env) => { const o = env.observe(); return argmax(nOut, (k) => out(o, k)); };
+  return (env) => { const c = env.candidates!(); return argmax(c.length, (k) => out(c[k]!, 0)); };
+}
+
+const NET_EPISODES = 32, NET_SURVIVORS = 4;
+/** One batch of rollouts: `full` episodes lasted to maxSteps; `bestIsFull` when one of those has the best fitness. */
+interface Rollouts { fits: number[]; n: number; best: number; full: number; bestIsFull: boolean }
+
 /**
- * Can anything be learned here? Plays seeded random-policy episodes (each at most maxSteps long) under the default weights and
- * returns one repair sentence per problem:
- *  - every episode scored the same fitness: the reward carries no signal;
- *  - failure is possible, yet a random episode lasted to maxSteps and took the top score: random play is already at the
- *    ceiling, so the best fitness cannot improve (the "Dodge Falling Rocks" case: best 11.9 from generation 1 to 418).
- * Up to 64 episodes, because the lucky survivor is rare: 1 random episode in 20 for that module, which 12 or 16 episodes
- * missed on most seeds, while a NEAT population of 150 finds it in generation 1. Bounded by `maxTotalSteps` (no new episode
- * starts past it); the expensive case, long surviving episodes, is the one the check is looking for.
- * Deterministic. The env must be prepared (prepareEnv) and conformant.
- * ponytail: random policy only. A fixed-length episode has no observable ceiling, and a constant policy that survives is not
- * caught; add constant-action rollouts if such concepts turn up.
+ * Can anything be learned here? Plays seeded episodes (each at most maxSteps long) under the default weights, up to 64 with
+ * random actions and 32 with random one-layer networks, and returns one repair sentence for the first problem:
+ *  - every random-action episode scored the same fitness: the reward carries no signal;
+ *  - failure is possible, yet an untrained policy lasted to maxSteps and took the top score, so the best fitness is at its
+ *    ceiling from the first generation (the "Dodge Falling Rocks" case: best 11.9 from generation 1 to 418). Either one
+ *    random-action episode does it, or at least NET_SURVIVORS of the 32 networks do.
+ * Measured on that module: 1 random-action episode in 20 survives (12 or 16 episodes missed it on most seeds, hence 64) and
+ * 7 to 11 networks of 32 do. The network rule needs 4 because one lucky network in 32 also survives in pong, tetris and
+ * walker, where surviving is far from the best score a learner reaches.
+ * Bounded by `maxTotalSteps` per batch (no new episode starts past it); the expensive case, long surviving episodes, is the
+ * one the check is looking for. Deterministic. The env must be prepared (prepareEnv) and conformant.
+ * ponytail: an episode of fixed length (no failure) has no observable ceiling and always passes the second rule.
  */
-export function checkLearnability(def: EnvDefinition, opts: { episodes?: number; maxTotalSteps?: number; seed?: number } = {}): string[] {
+export function checkLearnability(def: EnvDefinition, opts: { maxTotalSteps?: number; seed?: number } = {}): string[] {
   const seed = opts.seed ?? 4242, budget = opts.maxTotalSteps ?? 60000, maxSteps = def.meta.maxSteps;
   const signed = signedWeights(def, defaultReward(def)), rng = new Rng(seed), env = def.create();
-  const fits: number[] = [], lengths: number[] = [];
-  try {
-    for (let e = 0, total = 0; e < (opts.episodes ?? 64) && total < budget; e++) {
+  /** Fitness and length of each episode; `policy` is drawn afresh per episode. */
+  const play = (episodes: number, policy: () => (env: Env) => Action): Rollouts => {
+    const fits: number[] = [], lengths: number[] = [];
+    for (let e = 0, total = 0; e < episodes && total < budget; e++) {
+      const act = policy();
       env.reset(seed + e);
       let n = 0;
-      while (!env.done && n < maxSteps) { env.step(randomAction(def, env, rng)); n++; }
+      while (!env.done && n < maxSteps) { env.step(act(env)); n++; }
       fits.push(fitness(env.terms, signed)); lengths.push(n); total += n;
     }
+    const best = Math.max(...fits), full = lengths.filter((l) => l >= maxSteps).length;
+    return { fits, n: fits.length, best, full, bestIsFull: fits.some((f, i) => f === best && lengths[i]! >= maxSteps) };
+  };
+  let random: Rollouts, nets: Rollouts;
+  try {
+    random = play(64, () => (e) => randomAction(def, e, rng));
+    nets = play(NET_EPISODES, () => randomNet(def, rng));
   } finally { env.dispose?.(); }
-  const episodes = fits.length;
-  const best = Math.max(...fits), fmt = (v: number) => String(Math.round(v * 100) / 100);
-  if (best - Math.min(...fits) < 1e-9) {
-    return [`all ${episodes} random-play episodes scored exactly the same fitness (${fmt(best)}), so there is no signal to learn from; `
+
+  const fmt = (v: number) => String(Math.round(v * 100) / 100);
+  if (random.best - Math.min(...random.fits) < 1e-9) {
+    return [`all ${random.n} random-play episodes scored exactly the same fitness (${fmt(random.best)}), so there is no signal to learn from; `
       + 'at least one reward term must depend on how well the agent plays (progress, accuracy or time survived).'];
   }
-  const full = lengths.filter((l) => l >= maxSteps).length;
-  if (full > 0 && full < episodes && fits.some((f, i) => f === best && lengths[i]! >= maxSteps)) {
-    return [`random play already survives the whole episode: ${full} of ${episodes} random episodes lasted to maxSteps (${maxSteps}) and one of them took the best `
-      + `fitness (${fmt(best)}), so a learner has nothing to improve. Make it harder: ramp the difficulty up over time (faster, denser or narrower) `
-      + 'until random actions always fail well before maxSteps, and keep paying a reward per step survived so skilled play scores clearly higher.'];
+  const canFail = random.full < random.n || nets.full < nets.n;
+  const harder = 'Make it harder: ramp the difficulty up over time (faster, denser or narrower) until untrained play always fails well before maxSteps, '
+    + 'and keep paying a reward per step survived so skilled play scores clearly higher.';
+  if (canFail && random.full > 0 && random.bestIsFull) {
+    return [`random play already survives the whole episode: ${random.full} of ${random.n} random episodes lasted to maxSteps (${maxSteps}) and one of them took the best `
+      + `fitness (${fmt(random.best)}), so a learner has nothing to improve. ${harder}`];
+  }
+  if (canFail && nets.full >= NET_SURVIVORS && nets.bestIsFull) {
+    return [`an untrained network already survives the whole episode: ${nets.full} of ${nets.n} random one-layer networks lasted to maxSteps (${maxSteps}) and one of them took the best `
+      + `fitness (${fmt(nets.best)}), so a learner has nothing to improve. ${harder}`];
   }
   return [];
 }

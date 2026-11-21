@@ -1,8 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { checkLearnability } from '../env/conformance';
 import * as F from './fixtures';
+import { toDefinition } from './generatedEnv';
+import type { GeneratedMeta } from './meta';
 import { parseResponse } from './parse';
 import { SYSTEM_PROMPT } from './prompt';
+import { compileGenerated } from './sandbox';
 import { validateModule } from './validator';
 
 const run = (f: { meta: unknown; source: string }) => validateModule(f.source, f.meta);
@@ -62,6 +66,11 @@ describe('validator', () => {
     const r = run(concept('src/gen/testdata/unlearnable-dodge.evolab-concept.json'));
     expect(r.ok).toBe(false);
     expect(r.errors.join('\n')).toMatch(/random play already survives the whole episode.*maxSteps \(900\)/);
+  });
+  it('rejects it on other seeds too: untrained networks survive it far more often than random actions do', () => {
+    const c = concept('src/gen/testdata/unlearnable-dodge.evolab-concept.json');
+    const def = toDefinition('gen-dodge', c.meta as GeneratedMeta, compileGenerated(c.source));
+    for (const seed of [1, 2, 3, 777, 31337]) expect(checkLearnability(def, { seed }).join('\n')).toMatch(/already survives the whole episode/);
   });
   it('accepts every committed llm-trial concept', () => {
     const files = readdirSync('docs/llm-trial').filter((f) => f.endsWith('.evolab-concept.json'));
