@@ -91,12 +91,15 @@ EvoLab is an experimental project and the sandbox this code runs in is best-effo
 
 - Ollama: `OLLAMA_ORIGINS=https://laansdole.github.io ollama serve`
 - LM Studio: Developer > Local Server > enable CORS
+- OpenAI (`https://api.openai.com/v1`): works as is. The API allows browser requests from any origin, so direct mode needs no setup beyond your own API key, which is stored only in your browser and sent only to OpenAI.
 
 **No LLM server at all?** Use "Paste a response": copy the prompt, paste it into any chat model, and paste the answer back. It goes through the same validator. This works everywhere, including the live site.
 
 **Where concepts live.** Generated concepts are stored in your browser's IndexedDB, not on any server. Each card has View source, Export (a `.evolab-concept.json` file you can import elsewhere) and Delete.
 
 Generated concepts are 2D with button or continuous actions; they can be trained with NEAT and PPO, and with DQN when they use buttons.
+
+**Tested with** OpenAI `gpt-6-luna`: 5 of 5 concepts passed the validator on the first answer, with no repairs. The numbers, the history of runs and the generated modules (importable `.evolab-concept.json` files) are in [docs/llm-trial/RESULTS.md](docs/llm-trial/RESULTS.md); `npm run llm-trial` repeats the trial with your own key.
 
 ## Sandbox and its limits
 
