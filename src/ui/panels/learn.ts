@@ -8,6 +8,7 @@ import { stackShares } from '../../viz/scale';
 import { createStackedArea } from '../../viz/stackedArea';
 import { h } from '../dom';
 import type { Session } from '../session';
+import { createHallOfFame } from './hallOfFame';
 import { createSpeedBar } from './speedBar';
 import { createStatsStrip } from './statsStrip';
 
@@ -36,7 +37,8 @@ export function createLearnPanel(session: Session): { lower: HTMLElement; dispos
   const species = createStackedArea({ testid: 'species-chart', title: 'Species (share of population)' });
   const discrete = spec.action.type === 'discrete';
   const outputs = createOutputsBar(spec.action.type === 'candidates' ? [spec.action.scoreLabel] : spec.action.labels);
-  const bottom = h('div', { class: 'learn-row' }, h('section', { class: 'panel' }, h('h3', null, 'Outputs'), outputs.el));
+  const hof = createHallOfFame(session);
+  const bottom = h('div', { class: 'learn-row' }, hof.el, h('section', { class: 'panel' }, h('h3', null, 'Outputs'), outputs.el));
   const lower = h('div', { class: 'learn' }, speedBar.el, stats.el, h('div', { class: 'learn-row' }, fitness.el, species.el), bottom);
 
   // Marker labels: the reward in force when a marker first shows up, against the one before it.
@@ -61,6 +63,6 @@ export function createLearnPanel(session: Session): { lower: HTMLElement; dispos
 
   return {
     lower,
-    dispose() { cancelAnimationFrame(raf); offChange(); offFrame(); speedBar.dispose(); stats.dispose(); },
+    dispose() { cancelAnimationFrame(raf); offChange(); offFrame(); speedBar.dispose(); stats.dispose(); hof.dispose(); },
   };
 }
