@@ -46,4 +46,12 @@ describe('losses: analytic gradients match finite differences through the networ
     loss();
     expect(gradCheck(loss, logStd, Float64Array.from(dLogStd), rng)).toBeLessThan(1e-5);
   });
+  it('C1: an extreme probability ratio stays finite (log-ratio clamped)', () => {
+    const C = { clipEps: 0.2, valueCoef: 0.5, entropyCoef: 0.01 }, adv = Float32Array.from([-1]), ret = new Float32Array(1), old = Float32Array.from([-1000]);
+    const dD = new Float32Array(3), d = ppoDiscrete(new Float32Array(3), Int32Array.from([0]), old, adv, ret, 2, 1, C, dD);
+    expect(Number.isFinite(d.loss)).toBe(true); expect(dD.every(Number.isFinite)).toBe(true);
+    const dG = new Float32Array(2), dStd = new Float32Array(1);
+    const g = ppoGaussian(new Float32Array(2), new Float32Array(1), Float32Array.from([0.5]), old, adv, ret, 1, 1, C, dG, dStd);
+    expect(Number.isFinite(g.loss)).toBe(true); expect(dG.every(Number.isFinite)).toBe(true); expect(dStd.every(Number.isFinite)).toBe(true);
+  });
 });

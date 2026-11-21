@@ -10,6 +10,10 @@ export class Adam {
   }
   step(grads: FloatArray): void {
     const { params: p, m, v, beta1: b1, beta2: b2 } = this;
+    // One NaN or infinite gradient would poison m, v and every parameter for good: such a step is skipped whole.
+    let sum = 0;
+    for (let i = 0; i < p.length; i++) sum += Math.abs(grads[i]!);
+    if (!Number.isFinite(sum)) return;
     this.t++;
     const alpha = (this.lr * Math.sqrt(1 - b2 ** this.t)) / (1 - b1 ** this.t);   // bias corrections folded into the step size
     for (let i = 0; i < p.length; i++) {

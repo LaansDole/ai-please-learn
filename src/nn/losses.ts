@@ -27,6 +27,8 @@ export function logSoftmaxRow(out: FloatArray, row: number, nA: number, stride: 
 }
 
 const HALF_LOG_2PI = 0.9189385332046727;
+/** exp of a log-ratio clamped to +/-20, so a policy that moved far from the rollout's cannot overflow the surrogate to Infinity. */
+const ratioOf = (logRatio: number) => Math.exp(Math.min(20, Math.max(-20, logRatio)));
 
 export function gaussianLogp(mean: FloatArray, meanOff: number, logStd: FloatArray, action: FloatArray, actOff: number, nD: number): number {
   let lp = 0;
@@ -48,7 +50,7 @@ export function ppoDiscrete(
     const o = b * stride;
     logSoftmaxRow(out, b, nA, stride, logp);
     let H = 0; for (let k = 0; k < nA; k++) H -= Math.exp(logp[k]!) * logp[k]!;
-    const a = actions[b]!, ratio = Math.exp(logp[a]! - oldLogp[b]!), A = adv[b]!;
+    const a = actions[b]!, ratio = ratioOf(logp[a]! - oldLogp[b]!), A = adv[b]!;
     const s1 = ratio * A, s2 = Math.min(Math.max(ratio, 1 - c.clipEps), 1 + c.clipEps) * A;
     pl -= Math.min(s1, s2);
     const dLogpA = s1 <= s2 ? -A * ratio : 0;                        // d(policy loss)/d(logp of the taken action)
@@ -76,7 +78,7 @@ export function ppoGaussian(
   for (let b = 0; b < batch; b++) {
     const o = b * stride;
     const lp = gaussianLogp(out, o, logStd, actions, b * nD, nD);
-    const ratio = Math.exp(lp - oldLogp[b]!), A = adv[b]!;
+    const ratio = ratioOf(lp - oldLogp[b]!), A = adv[b]!;
     const s1 = ratio * A, s2 = Math.min(Math.max(ratio, 1 - c.clipEps), 1 + c.clipEps) * A;
     pl -= Math.min(s1, s2);
     const dLogp = s1 <= s2 ? -A * ratio : 0;

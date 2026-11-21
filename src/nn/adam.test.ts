@@ -22,4 +22,13 @@ describe('Adam', () => {
     expect(clipGradNorm(h, 1)).toBeCloseTo(0.5, 12);
     expect(Array.from(h)).toEqual([0.3, 0.4]);
   });
+  it('C1: a non-finite gradient skips the step and does not poison later ones', () => {
+    for (const bad of [NaN, Infinity]) {
+      const p = new Float64Array(2), adam = new Adam(p, 0.1);
+      adam.step(Float64Array.from([bad, 4]));
+      expect(Array.from(p)).toEqual([0, 0]);
+      adam.step(Float64Array.from([-6, 4]));
+      expect(p[0]).toBeCloseTo(0.1, 6); expect(p[1]).toBeCloseTo(-0.1, 6);
+    }
+  });
 });
