@@ -3,7 +3,10 @@ import { GOOD, INFINITE_LOOP, WRONG_SIZE, toResponse } from '../../src/gen/fixtu
 import { startFakeLlm } from './fakeLlm';
 
 test('concept from text: repair once, then play, train, and find it in the gallery', async ({ page }) => {
-  const llm = await startFakeLlm([toResponse(WRONG_SIZE), toResponse(GOOD)]);
+  // The repaired answer is held back until the log shows the repair round: unheld, validate -> repair -> save -> navigate
+  // finishes between two polls and the log is gone before the assertion can see it.
+  const hold = Promise.withResolvers<void>();
+  const llm = await startFakeLlm([toResponse(WRONG_SIZE), toResponse(GOOD)], hold.promise);
   try {
     await page.goto('/#/settings');
     await page.getByTestId('settings-base-url').fill(llm.baseUrl);
@@ -16,6 +19,7 @@ test('concept from text: repair once, then play, train, and find it in the galle
     await page.getByTestId('new-concept-input').fill('slide a dot onto a target');
     await page.getByTestId('new-concept-submit').click();
     await expect(page.getByTestId('new-concept-log')).toContainText('repairing 1/3', { timeout: 30000 });
+    hold.resolve();
     await expect(page).toHaveURL(/#\/c\/gen-reach-the-target-[0-9a-f]{4}/, { timeout: 30000 });
     const stage = page.getByTestId('stage');
     await expect.poll(async () => Number(await stage.getAttribute('data-frames'))).toBeGreaterThan(10);
