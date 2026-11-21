@@ -23,7 +23,7 @@ export function createStage(): Stage {
   const hud = h('div', { class: 'stage-hud', hidden: true }, h('span', { class: 'hud-label' }, 'Distance'), distance, caption);
   const header = h('span', { class: 'stage-header', testid: 'stage-header' }, 'Loading');
   const el = h('section', { class: 'panel stage', testid: 'stage', dataset: { mode: 'live', frames: '0' } },
-    h('div', { class: 'stage-bar' }, header),
+    h('div', { class: 'stage-bar' }, h('span', { class: 'stage-dot', 'aria-hidden': 'true' }), header),
     h('div', { class: 'stage-view' }, canvas, canvas3d, hud));
   let frames = 0, three: ThreeStage | null = null, loading = false, pending: Body3D[] | null = null, gone = false;
 

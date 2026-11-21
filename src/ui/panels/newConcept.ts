@@ -54,9 +54,9 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
   /** Runs one creation path with the controls locked. */
   const busy = async (fn: () => Promise<void>) => {
     if (running) return;
-    running = true; sync(); errors.replaceChildren(); log.replaceChildren();
+    running = true; sync(); errors.replaceChildren(); log.replaceChildren(); log.dataset.busy = '';
     try { await fn(); } catch (e) { showErrors('Could not add the concept.', [message(e)]); }
-    running = false; sync();
+    running = false; sync(); delete log.dataset.busy;
   };
   const save = async (meta: GeneratedMeta, source: string, prompt: string, model: string, createdAt = Date.now()) => {
     let id = slugId(meta.name, Math.random);
@@ -116,7 +116,7 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
   });
 
   const el = h('section', { class: 'card new-concept', testid: 'new-concept' },
-    h('h2', null, 'New concept'),
+    h('h3', null, 'New concept'),
     form,
     h('p', { class: 'field-help' }, 'Uses ', endpoint, '. ', h('a', { href: '#/settings' }, 'Settings')),
     log, errors,

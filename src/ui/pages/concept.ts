@@ -34,7 +34,13 @@ function buildStep(step: Step, session: Session, run: RunControl): StepView {
 type Unmount = (() => void) & { onStep(step: Step): void };
 
 function unknownConcept(root: HTMLElement): void {
-  root.append(h('main', { class: 'page gallery' }, h('h1', null, 'Unknown concept'), h('p', null, h('a', { href: '#/' }, 'Back to the gallery'))));
+  root.append(h('div', { class: 'page' },
+    h('header', { class: 'topbar' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab')),
+    h('main', { class: 'gallery' },
+      h('div', { class: 'empty-state' },
+        h('h1', null, 'This concept does not exist'),
+        h('p', null, 'It may have been deleted, or it was generated in another browser. Generated concepts live only in the browser that made them.'),
+        h('p', null, h('a', { class: 'btn btn-primary', href: '#/' }, 'Back to the gallery'))))));
 }
 
 export const conceptPage: PageFn = (root, route) => {
@@ -60,15 +66,18 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
   const views = new Map<Step, StepView>();
   const stage = createStage();
   const banner = h('div', { class: 'error-banner', testid: 'error-banner', role: 'alert', hidden: true });
-  const side = h('div', { class: 'side' }), lower = h('div', { class: 'lower' });
+  const NEXT: Partial<Record<Step, string>> = { 1: 'Continue: set the rewards', 2: 'Continue: choose how it learns', 3: 'Continue: watch it learn' };
+  const next = h('a', { class: 'btn btn-primary', testid: 'step-next' });
+  const stepNav = h('div', { class: 'step-nav' }, next);
+  const side = h('div', { class: 'side' }, stepNav), lower = h('div', { class: 'lower' });
   const buttons = STEPS.map(([n, label]) => h('button', {
     class: 'step', testid: `step-${n}`, onclick: () => { location.hash = formatRoute({ page: 'concept', envId: ref.id, step: n }); },
-  }, h('span', { class: 'step-mark', 'aria-hidden': 'true' }), `${n} ${label}`));
+  }, h('span', { class: 'step-num num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'step-label' }, label)));
   root.append(h('div', { class: 'page' },
     h('header', { class: 'topbar' },
       h('div', { class: 'crumb' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, name),
         concept && h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated')),
-      h('nav', { class: 'stepper', 'aria-label': 'Steps' }, ...buttons),
+      h('nav', { class: 'stepper', 'aria-label': 'Steps' }, h('ol', null, ...buttons.map((b) => h('li', null, b)))),
       concept && h('button', { type: 'button', testid: 'view-source', onclick: () => showSource(concept) }, 'View source'),
       h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
     banner,
@@ -79,6 +88,9 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
     if (!session) return;
     const v = session.viewing, label = iterationLabel(session.run?.learner.kind ?? session.spec.meta.learners[0]!).toLowerCase();
     stage.setMode(v.kind);
+    // What the status dot in the stage bar shows; follows the header text below, not the raw mode (MAX replays champions while live).
+    stage.el.dataset.status = v.kind === 'play' ? 'play' : v.kind === 'replay' || session.autoReplay !== null ? 'replay'
+      : session.state === 'running' ? 'live' : session.state;
     stage.setHeader(
       v.kind === 'play' ? 'You are playing'
         : v.kind === 'replay' ? (v.iteration === 'imported' ? 'Replay: imported champion' : `Replay: ${label} ${v.iteration} champion`)
@@ -87,14 +99,19 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
               : session.state === 'running' ? `Live: ${label} ${session.history.length + 1}` : 'No run yet');
   };
   const showStep = () => {
-    buttons.forEach((b, i) => { if (i + 1 === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    buttons.forEach((b, i) => {
+      if (i + 1 === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      b.dataset.state = i + 1 < step ? 'done' : i + 1 === step ? 'current' : 'todo';
+    });
+    stepNav.hidden = !session || step === 4;
+    if (step < 4) { next.href = formatRoute({ page: 'concept', envId: ref.id, step: (step + 1) as Step }); next.textContent = NEXT[step]!; }
     if (!session) return;
     // The play panel owns window key listeners and the stage worker, so it lives only while step 1 is open; the others keep their state.
     const play = views.get(1);
     if (play && step !== 1) { play.dispose(); play.side.remove(); views.delete(1); }
     if (!views.has(step)) {
       const v = buildStep(step, session, run!);
-      views.set(step, v); side.append(v.side);
+      views.set(step, v); side.insertBefore(v.side, stepNav);
       if (v.lower) lower.append(v.lower);
     }
     for (const [n, v] of views) { v.side.hidden = n !== step; if (v.lower) v.lower.hidden = n !== step; }

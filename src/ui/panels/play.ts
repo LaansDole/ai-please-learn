@@ -15,7 +15,8 @@ export function createPlayPanel(session: Session): { el: HTMLElement; dispose():
   const rows = spec.rewardTerms.map((t) => {
     const raw = h('td', { class: 'num' }, '0.00'), contrib = h('td', { class: 'num' }, '+0.00');
     const tr = h('tr', { testid: `term-${t.key}` },
-      h('th', { scope: 'row' }, h('span', { class: 'mono' }, t.key), h('span', { class: 'term-kind' }, t.kind)),
+      // The description is repeated under the key for narrow screens, where the "What it counts" column is hidden.
+      h('th', { scope: 'row' }, h('span', { class: 'mono' }, t.key), h('span', { class: 'term-kind' }, t.kind), h('span', { class: 'term-desc term-desc-narrow' }, t.description)),
       h('td', { class: 'term-desc' }, t.description), raw, contrib);
     return { tr, raw, contrib };
   });
