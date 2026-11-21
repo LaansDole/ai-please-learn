@@ -88,5 +88,6 @@ export const conceptPage: PageFn = (root, route) => {
     gone = true;
     for (const v of views.values()) v.dispose();
     session?.dispose();
+    stage.dispose();
   }, { onStep(next: Step) { step = next; showStep(); } });
 };

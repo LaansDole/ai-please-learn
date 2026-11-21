@@ -7,6 +7,7 @@ for (const id of SMOKE_ENVS) {
     await page.getByTestId(`card-${id}`).click();
     const stage = page.getByTestId('stage');
     await expect(stage).toHaveAttribute('data-mode', 'play');
+    if (id === 'walker') await expect(page.locator('[data-testid="stage"] canvas[data-kind="3d"]')).toBeVisible();
     // Deviation from the plan: an unsteered Snake hits the wall after 6 ticks and the episode (and its frames) ends,
     // so restart the episode whenever it is over; `data-frames` counts every frame the stage has shown.
     await expect.poll(async () => {

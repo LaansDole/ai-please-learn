@@ -93,7 +93,10 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
 .stage-header { font-family: var(--font-mono); font-size: 13px; }
 .stage-view { position: relative; background: #0d121b; }
 .stage-canvas { display: block; width: 100%; aspect-ratio: 800 / 500; }
-.stage-note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+.stage-hud { position: absolute; top: 12px; left: 14px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; text-shadow: 0 1px 3px #0a0e14; }
+.hud-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hud-distance { font-size: 30px; font-weight: 600; line-height: 1.1; color: var(--text); }
+.hud-caption { font: 12px var(--font-mono); color: var(--accent); }
 
 /* Play */
 .play { display: flex; flex-direction: column; gap: 12px; }

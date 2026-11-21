@@ -4,7 +4,7 @@ import { JOINTS, LIMITS, WALKER, createWalkerSim, initRapier, mapFromLimits, map
 
 const DT = WALKER.dt, CLOCK_PERIOD = 0.8, OBS_BOUND = 5;
 const DISTANCE = 0, UPRIGHT = 1, ENERGY = 2, FALL = 3;
-const TORSO = '#4de1c1', LEFT = '#7aa2ff', RIGHT = '#c792ea';
+const TORSO = '#4de1c1', LEFT = '#7aa2ff', RIGHT = '#c792ea', HEAD_R = 0.1, HEAD_UP = 0.37;
 /** [joint index, key that drives it to +1, key that drives it to -1]; ankles hold 0. */
 const HUMAN_KEYS: [number, string, string][] = [[0, 'KeyQ', 'KeyA'], [1, 'KeyW', 'KeyS'], [3, 'KeyE', 'KeyD'], [4, 'KeyR', 'KeyF']];
 
@@ -49,6 +49,9 @@ function create(): Env {
     render(view: RenderView) {
       if (view.kind !== '3d' || !sim) return;
       for (const b of sim.bodies) view.scene.body(b.id, b.shape, b.size, b.pos(), b.quat(), b.id === 'torso' ? TORSO : b.id.endsWith('L') ? LEFT : RIGHT);
+      // A head (drawn only, no physics) makes the box and capsules read as a figure.
+      const torso = sim.bodies[0]!, [x, y, z] = torso.pos(), pitch = sim.torso().pitch;
+      view.scene.body('head', 'sphere', [HEAD_R, 0, 0], [x - Math.sin(pitch) * HEAD_UP, y + Math.cos(pitch) * HEAD_UP, z], torso.quat(), TORSO);
     },
     humanAct(input: HumanInput) {
       human.fill(0);
