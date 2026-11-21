@@ -1,4 +1,5 @@
 import { registerEnv } from '../env/registry';
+import { pong } from './pong';
 import { reach1d } from './reach1d';
 
 let registered = false;
@@ -8,4 +9,5 @@ export function registerBuiltins(): void {
   if (registered) return;
   registered = true;
   registerEnv(reach1d);
+  registerEnv(pong);
 }
