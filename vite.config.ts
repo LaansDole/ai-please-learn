@@ -10,4 +10,6 @@ export default defineConfig({
   server: { headers: { 'Content-Security-Policy': CSP } },
   preview: { headers: { 'Content-Security-Policy': CSP } },
   worker: { format: 'es' },
+  // Rapier ships its WASM inlined as base64; pre-bundling it for a module worker is slow and unnecessary (spec section 16).
+  optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
 });
