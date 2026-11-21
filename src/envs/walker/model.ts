@@ -8,8 +8,9 @@ export const LIMITS: [number, number][] = [[-0.8, 1.1], [-1.9, 0], [-0.6, 0.6], 
 /**
  * Tuning knobs, kept in one place. Motors are force-based (N m per rad), so 400 could not hold ~45 kg upright: raised to 800
  * with damping = 1.4 * sqrt(stiffness). solverIterations 8 (Rapier default 4) keeps the six-joint chain stiff enough to stand.
+ * maxTorque (N m) caps every motor: unlimited motors let evolution find a pogo gait that jumped 0.9 m high instead of walking.
  */
-export const WALKER = { stiffness: 800, damping: 40, smoothing: 0.35, dt: 1 / 60, solverIterations: 8 };
+export const WALKER = { stiffness: 800, damping: 40, smoothing: 0.35, dt: 1 / 60, solverIterations: 8, maxTorque: 150 };
 
 type Rapier = typeof RAPIER_NS;
 let R: Rapier | null = null;
@@ -78,7 +79,7 @@ export function createWalkerSim(): WalkerSim {
     const rev = (parent: RigidBody, child: RigidBody, pa: [number, number, number], pb: [number, number, number]) => {
       const joint = world.createImpulseJoint(RAPIER.JointData.revolute({ x: pa[0], y: pa[1], z: pa[2] }, { x: pb[0], y: pb[1], z: pb[2] }, axis), parent, child, true) as RevoluteImpulseJoint;
       const [lo, hi] = LIMITS[joints.length]!;
-      joint.setLimits(lo, hi); joint.configureMotorModel(RAPIER.MotorModel.ForceBased);
+      joint.setLimits(lo, hi); joint.configureMotorModel(RAPIER.MotorModel.ForceBased); joint.setMotorMaxForce(WALKER.maxTorque);
       joints.push({ joint, parent, child });
     };
     rev(torso, thigh, [0, -0.25, z], [0, 0.22, 0]);      // hip at world y 0.95
