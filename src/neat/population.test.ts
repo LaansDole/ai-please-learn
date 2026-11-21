@@ -44,4 +44,19 @@ describe('population', () => {
     }
     expect(solved).toBeGreaterThanOrEqual(2);
   });
+  it('B1: non-finite fitness never wins: the elite is the best finite genome and the population stays whole', () => {
+    for (const bad of [NaN, Infinity, -Infinity]) {
+      const pop = new Population(3, 2, 'tanh', { ...DEFAULT_NEAT, populationSize: 40 }, new Rng(3));
+      for (let gen = 0; gen < 5; gen++) {
+        pop.genomes.forEach((g, i) => { g.fitness = i % 7 === 0 ? bad : i; });   // index 0 is non-finite
+        const champ = pop.best();
+        expect(champ.fitness, String(bad)).toBe(39);
+        const summary = pop.epoch();
+        expect(pop.genomes.length).toBe(40);
+        expect(summary.every((s) => Number.isFinite(s.best) && Number.isInteger(s.size))).toBe(true);
+        expect(summary.reduce((a, s) => a + s.size, 0)).toBe(40);
+        expect(pop.genomes[0]!.conns).toEqual(champ.conns);
+      }
+    }
+  });
 });

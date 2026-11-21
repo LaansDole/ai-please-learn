@@ -33,10 +33,13 @@ export class Population {
     this.genomes = Array.from({ length: cfg.populationSize }, () => createInitialGenome(this.nextId++, nIn, nOut, outAct, rng, cfg));
   }
 
-  best(): Genome { return this.genomes.reduce((a, b) => (b.fitness > a.fitness ? b : a)); }
+  /** Highest finite fitness; a genome whose fitness is NaN or infinite never wins. */
+  best(): Genome { return this.genomes.reduce((a, b) => (Number.isFinite(b.fitness) && (!Number.isFinite(a.fitness) || b.fitness > a.fitness) ? b : a)); }
 
   epoch(): SpeciesSummary[] {
     const { cfg, rng } = this;
+    // A broken evaluation ranks last instead of corrupting the comparisons, sorts and shares below.
+    for (const g of this.genomes) if (!Number.isFinite(g.fitness)) g.fitness = -Number.MAX_VALUE;
     const champion = this.best();
     this.speciesSet.speciate(this.genomes, rng, cfg);
     const summary = this.speciesSet.species.map((s) => ({ id: s.id, size: s.members.length, best: Math.max(...s.members.map((m) => m.fitness)) }));
@@ -46,8 +49,10 @@ export class Population {
     const alive = this.speciesSet.species.filter((s) => s.staleness < cfg.stagnationGens || safe.has(s.id));
     this.speciesSet.species = alive;
 
-    const fmin = Math.min(...this.genomes.map((g) => g.fitness));
-    const share = alive.map((s) => s.members.reduce((acc, g) => acc + (g.fitness - fmin + 1e-6), 0) / s.members.length);
+    // fmin is over real fitnesses: measured from -MAX_VALUE every share would overflow. Broken genomes share like the worst real one.
+    let fmin = Infinity;
+    for (const g of this.genomes) if (g.fitness > -Number.MAX_VALUE && g.fitness < fmin) fmin = g.fitness;
+    const share = alive.map((s) => s.members.reduce((acc, g) => acc + (Math.max(0, g.fitness - fmin) + 1e-6), 0) / s.members.length);
     const quota = allocate(share, cfg.populationSize);
 
     const next: Genome[] = [cloneGenome(champion, this.nextId++)];      // global elite at index 0
