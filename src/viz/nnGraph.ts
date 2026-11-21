@@ -11,7 +11,7 @@ export interface NnGraph {
 }
 
 const MOVE_MS = 400, EDGE_MS = 600, NODE_MS = 900, FADE_MS = 300, CAPTION_MS = 2000, HEAT_MS = 1500;
-const R = 7, R_DENSE = 3, DENSE = 24, LABEL_MAX = 14;
+const R = 7, R_DENSE = 3, DENSE = 24, LABEL_GAP = 7, EDGE_GAP = 6, LABEL_SHARE = 0.38, FONT = 11;
 
 /** cubic-bezier(.2, .8, .2, 1) is close to this ease-out; exactness is not visible at these durations. */
 const ease = (t: number) => 1 - (1 - t) ** 3;
@@ -41,6 +41,16 @@ export function createNnGraph(): NnGraph {
   let addedNodes = new Set<number>(), addedEdges = new Set<string>();
   let goneNodes: Point[] = [], goneEdges: [Point, Point][] = [];
   let dense = new Set<number>();              // depths with more than DENSE nodes
+  let labels = new Map<number, string>();     // node id -> label as drawn (shortened only if it cannot fit its side)
+  let labelRoom = { l: 0, r: 0 };             // widest label per side, capped at LABEL_SHARE of the width
+
+  /** Longest prefix of `text` (plus an ellipsis) that fits `max` px; the full name stays available on hover and in `title`. */
+  const fit = (text: string, max: number): string => {
+    if (ctx.measureText(text).width <= max) return text;
+    let n = text.length;
+    while (n > 1 && ctx.measureText(`${text.slice(0, n)}\u2026`).width > max) n--;
+    return `${text.slice(0, n)}\u2026`;
+  };
 
   const at = (id: number, now: number): Point | undefined => {
     const b = target.get(id), a = from.get(id);
@@ -50,10 +60,17 @@ export function createNnGraph(): NnGraph {
   };
   const relayout = () => {
     if (!net) return;
-    target = layoutNetwork(net, w, h);
     const count = new Map<number, number>();
     for (const n of net.nodes) count.set(n.depth, (count.get(n.depth) ?? 0) + 1);
     dense = new Set([...count].filter(([, c]) => c > DENSE).map(([d]) => d));
+    // Reserve room for the labels on each side from their measured width, so none is cut at the panel edge.
+    ctx.font = `${FONT}px ${C.mono}`;
+    const labelled = net.nodes.filter((n) => n.label && !dense.has(n.depth) && n.type !== 'hidden'), cap = w * LABEL_SHARE;
+    const side = (type: 'input' | 'output') => Math.min(cap, Math.max(0, ...labelled.filter((n) => n.type === type).map((n) => ctx.measureText(n.label!).width)));
+    labelRoom = { l: Math.ceil(side('input')), r: Math.ceil(side('output')) };
+    labels = new Map(labelled.map((n) => [n.id, fit(n.label!, n.type === 'input' ? labelRoom.l : labelRoom.r)]));
+    const edge = R + LABEL_GAP + EDGE_GAP;
+    target = layoutNetwork(net, w, h, { l: labelRoom.l + edge, r: labelRoom.r + edge, t: 16, b: 16 });
   };
   const schedule = () => { if (!raf) raf = requestAnimationFrame(draw); };
 
@@ -89,7 +106,7 @@ export function createNnGraph(): NnGraph {
     ctx.setLineDash([]); ctx.lineCap = 'butt';
 
     const pop = prog(now, NODE_MS);
-    ctx.font = `11px ${C.mono}`; ctx.textBaseline = 'middle';
+    ctx.font = `${FONT}px ${C.mono}`; ctx.textBaseline = 'middle';
     net.nodes.forEach((n, i) => {
       const p = at(n.id, now);
       if (!p) return;
@@ -106,16 +123,16 @@ export function createNnGraph(): NnGraph {
       ctx.shadowBlur = 0;
       ctx.strokeStyle = n.id === hover ? C.text : C.line; ctx.lineWidth = 1; ctx.stroke();
       if (a < -0.05 && r >= R) { ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x - 3, p.y); ctx.lineTo(p.x + 3, p.y); ctx.stroke(); }
-      if (!n.label || dense.has(n.depth) || n.id === hover) return;
-      const text = n.label.length > LABEL_MAX ? `${n.label.slice(0, LABEL_MAX - 1)}\u2026` : n.label;
+      const text = labels.get(n.id);
+      if (!text || n.id === hover) return;
       ctx.fillStyle = C.muted; ctx.textAlign = n.type === 'input' ? 'right' : 'left';
-      ctx.fillText(text, p.x + (n.type === 'input' ? -r - 7 : r + 7), p.y);
+      ctx.fillText(text, p.x + (n.type === 'input' ? -R - LABEL_GAP : R + LABEL_GAP), p.y);
     });
 
     const hovered = hover === null ? undefined : net.nodes.find((n) => n.id === hover), hp = hovered && at(hovered.id, now);
     if (hovered && hp) {
       const text = hovered.label ?? `hidden ${hovered.id}`, tw = ctx.measureText(text).width;
-      const left = hovered.type === 'input', x = left ? Math.max(4, hp.x - R - 7 - tw) : Math.min(w - tw - 4, hp.x + R + 7);
+      const left = hovered.type === 'input', x = left ? Math.max(4, hp.x - R - LABEL_GAP - tw) : Math.min(w - tw - 4, hp.x + R + LABEL_GAP);
       ctx.fillStyle = C.panel; ctx.fillRect(x - 3, hp.y - 9, tw + 6, 18);
       ctx.fillStyle = C.text; ctx.textAlign = 'left'; ctx.fillText(text, x, hp.y);
     }
@@ -141,9 +158,14 @@ export function createNnGraph(): NnGraph {
     const box = el.getBoundingClientRect(), x = e.clientX - box.left, y = e.clientY - box.top;
     let best: number | null = null, bestD = 14 * 14;
     for (const [id, p] of target) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bestD) { bestD = d; best = id; } }
-    if (best !== hover) { hover = best; schedule(); }
+    if (best !== hover) {
+      hover = best;
+      const label = net.nodes.find((n) => n.id === best)?.label;   // native tooltip only for a label that had to be shortened
+      el.title = label && best !== null && labels.get(best) !== label && labels.has(best) ? label : '';
+      schedule();
+    }
   };
-  const onLeave = () => { if (hover !== null) { hover = null; schedule(); } };
+  const onLeave = () => { if (hover !== null) { hover = null; el.title = ''; schedule(); } };
   el.addEventListener('pointermove', onMove); el.addEventListener('pointerleave', onLeave);
 
   return {
