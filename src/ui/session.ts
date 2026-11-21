@@ -38,7 +38,7 @@ export interface Session {
   importChampion(policy: PolicySnapshot, best: number): void;
   dispose(): void;                           // terminates both workers
 }
-export interface ClientLike { send(m: ToWorker, transfer?: Transferable[]): void; on: WorkerClient['on']; init(env: EnvRef): Promise<EnvSpecMsg>; terminate(): void }
+export interface ClientLike { send(m: ToWorker, transfer?: Transferable[]): void; on: WorkerClient['on']; init(env: EnvRef): Promise<EnvSpecMsg>; terminate(): void; readonly alive: boolean }
 
 const REPLAY_LOOP_MS = 600;
 
@@ -53,7 +53,8 @@ export function thinHof(hof: HofEntry[]): void {
 }
 
 export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike } = { makeClient: () => new WorkerClient() }): Promise<Session> {
-  const train = deps.makeClient(), stage = deps.makeClient();
+  let train = deps.makeClient();
+  const stage = deps.makeClient();
   let spec: EnvSpecMsg;
   try { [spec] = await Promise.all([train.init(ref), stage.init(ref)]); }
   catch (e) { train.terminate(); stage.terminate(); throw e; }
@@ -64,6 +65,8 @@ export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike 
   let reward = loadReward(spec), ghosts = true, run: RunInfo | null = null;
   let autoReplay: number | null = null, stageBusy = false, stepping = false, lastVersion = 0;
   let loopTimer: ReturnType<typeof setTimeout> | undefined;
+  // runId tags a run's messages: what an earlier run still had queued is dropped. respawning: a replacement train worker is loading.
+  let runId = 0, respawning = false;
 
   const emit = (m: FromWorker) => { for (const fn of [...(listeners.get(m.t) ?? [])]) fn(m); };
   const changed = () => { for (const fn of [...changeFns]) fn(); };
@@ -72,24 +75,30 @@ export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike 
   /** Forgets whatever the stage worker was doing for us; the caller decides what it does next. */
   const resetStage = () => { clearTimeout(loopTimer); autoReplay = null; stageBusy = false; };
 
-  train.on('frame', (m) => { if (viewing.kind === 'live' && autoReplay === null) emit(m); });
-  train.on('network', (m) => { if (viewing.kind === 'live' && autoReplay === null) emit(m); });
-  train.on('status', (m) => { state = m.state; emit(m); changed(); });
-  train.on('error', emit);
-  train.on('iteration', (m) => {
-    const { champion, ...stats } = m.stats;
-    history.push(stats);
-    hof.push({ iteration: stats.iteration, best: stats.best, policy: champion });
-    thinHof(hof);
-    if (stats.rewardVersion !== lastVersion) { rewardMarkers.push(stats.iteration); lastVersion = stats.rewardVersion; }
-    // Spec section 9: with no live frames (MAX, step) the stage shows champion replays, one at a time.
-    if ((speed.mode === 'max' || stepping) && viewing.kind === 'live' && !stageBusy) {
-      stageBusy = true; autoReplay = stats.iteration;
-      sendReplay(champion);
-    }
-    if (stepping) { stepping = false; speed = { mode: 'paused' }; }
-    emit(m); changed();
-  });
+  const sendTrain = (m: ToWorker) => { if (!respawning && train.alive) train.send(m); };
+  const startMsg = (r: RunInfo): ToWorker => ({ t: 'train/start', learner: r.learner, reward, seed: r.seed, speed, ghosts, runId });
+  const wireTrain = (c: ClientLike) => {
+    c.on('frame', (m) => { if (m.runId === runId && viewing.kind === 'live' && autoReplay === null) emit(m); });
+    c.on('network', (m) => { if (m.runId === runId && viewing.kind === 'live' && autoReplay === null) emit(m); });
+    c.on('status', (m) => { if (m.runId !== runId) return; state = m.state; emit(m); changed(); });
+    c.on('error', (m) => { if (!c.alive) state = 'idle'; emit(m); changed(); });   // a terminated worker runs nothing: Start respawns it
+    c.on('iteration', (m) => {
+      if (m.runId !== runId) return;
+      const { champion, ...stats } = m.stats;
+      history.push(stats);
+      hof.push({ iteration: stats.iteration, best: stats.best, policy: champion });
+      thinHof(hof);
+      if (stats.rewardVersion !== lastVersion) { rewardMarkers.push(stats.iteration); lastVersion = stats.rewardVersion; }
+      // Spec section 9: with no live frames (MAX, step) the stage shows champion replays, one at a time.
+      if ((speed.mode === 'max' || stepping) && viewing.kind === 'live' && !stageBusy) {
+        stageBusy = true; autoReplay = stats.iteration;
+        sendReplay(champion);
+      }
+      if (stepping) { stepping = false; speed = { mode: 'paused' }; }
+      emit(m); changed();
+    });
+  };
+  wireTrain(train);
   stage.on('frame', (m) => { if (m.source === 'play' ? viewing.kind === 'play' : showsReplays()) emit(m); });
   stage.on('network', (m) => { if (showsReplays()) emit(m); });
   stage.on('error', emit);
@@ -128,33 +137,42 @@ export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike 
     },
     input(held, pressed) { stage.send({ t: 'stage/input', held, pressed }); },
     start(learner, seed) {
-      run = { learner, seed };
+      run = { learner, seed }; runId++;
       history.length = 0; hof.length = 0; rewardMarkers.length = 0; lastVersion = 0; stepping = false;
       resetStage(); viewing = { kind: 'live' };
       stage.send({ t: 'stage/stop' });
-      train.send({ t: 'train/start', learner, reward, seed, speed, ghosts });
+      if (!train.alive) {
+        const fresh = train = deps.makeClient();
+        wireTrain(fresh); respawning = true;
+        // Sent once the worker is ready, with whatever speed, reward and run are current by then.
+        fresh.init(ref).then(
+          () => { if (train !== fresh) return; respawning = false; if (run) fresh.send(startMsg(run)); },
+          (e: unknown) => { if (train === fresh) { respawning = false; emit({ t: 'error', message: e instanceof Error ? e.message : String(e) }); } },
+        );
+      }
+      sendTrain(startMsg(run));
       changed();
     },
     setSpeed(s) {
       speed = s; stepping = false;
       if (s.mode === 'live' && autoReplay !== null) { resetStage(); stage.send({ t: 'stage/stop' }); }   // live frames take the stage back
-      train.send({ t: 'train/speed', speed: s });
+      sendTrain({ t: 'train/speed', speed: s });
       changed();
     },
     step() {
       if (!run) return;
       stepping = true;
-      train.send({ t: 'train/step' });
+      sendTrain({ t: 'train/step' });
     },
     setReward(cfg) {
       reward = cfg;
       saveReward(cfg);
-      train.send({ t: 'train/reward', reward: cfg });
+      sendTrain({ t: 'train/reward', reward: cfg });
       stage.send({ t: 'stage/reward', reward: cfg });
       changed();
     },
-    setGhosts(on) { ghosts = on; train.send({ t: 'train/ghosts', ghosts: on }); },
-    stop() { stepping = false; train.send({ t: 'train/stop' }); },
+    setGhosts(on) { ghosts = on; sendTrain({ t: 'train/ghosts', ghosts: on }); },
+    stop() { stepping = false; sendTrain({ t: 'train/stop' }); },
     replay(entry) {
       resetStage(); viewing = { kind: 'replay', iteration: entry.iteration };
       sendReplay(entry.policy);

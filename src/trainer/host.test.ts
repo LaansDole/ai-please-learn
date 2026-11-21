@@ -24,7 +24,7 @@ describe('worker host', () => {
     expect('create' in ready.spec).toBe(false);
 
     const learner = resolveConfig('neat', reach1d, { populationSize: 10, episodesPerGenome: 1 });
-    await host({ t: 'train/start', learner, reward: defaultReward(reach1d), seed: 1, speed: { mode: 'max' }, ghosts: false });
+    await host({ t: 'train/start', learner, reward: defaultReward(reach1d), seed: 1, speed: { mode: 'max' }, ghosts: false, runId: 1 });
     f.drain(50);
     expect(msgs.some((m) => m.t === 'iteration')).toBe(true);
   });
@@ -44,7 +44,7 @@ describe('worker host', () => {
     expect(ready.spec.meta).toMatchObject({ id: 'gen-reach-0001', generated: true });
     expect(() => (scope.fetch as () => void)()).toThrow(/sandbox/);
     const learner = resolveConfig('neat', ready.spec, { populationSize: 10, episodesPerGenome: 1 });
-    await host({ t: 'train/start', learner, reward: defaultReward(ready.spec), seed: 1, speed: { mode: 'max' }, ghosts: false });
+    await host({ t: 'train/start', learner, reward: defaultReward(ready.spec), seed: 1, speed: { mode: 'max' }, ghosts: false, runId: 1 });
     f.drain(50);
     expect(msgs.some((m) => m.t === 'iteration')).toBe(true);
     expect(msgs.some((m) => m.t === 'error')).toBe(false);

@@ -12,7 +12,7 @@ export type Speed = { mode: 'paused' } | { mode: 'live'; mult: SpeedMult } | { m
 
 export type ToWorker =
   | { t: 'init'; env: EnvRef }
-  | { t: 'train/start'; learner: LearnerConfig; reward: RewardConfig; seed: number; speed: Speed; ghosts: boolean }
+  | { t: 'train/start'; learner: LearnerConfig; reward: RewardConfig; seed: number; speed: Speed; ghosts: boolean; runId: number }
   | { t: 'train/speed'; speed: Speed }
   | { t: 'train/step' }                                   // run to the end of the current iteration, then pause
   | { t: 'train/reward'; reward: RewardConfig }           // applies from the next iteration
@@ -28,6 +28,7 @@ export type ToWorker =
 export interface FrameMsg {
   t: 'frame';
   source: 'train' | 'play' | 'replay';
+  runId?: number;               // train frames: the run they belong to
   frame: RenderFrame;
   tick: number;                 // env step within the featured episode
   fitness: number;              // featured agent, current episode, current reward config
@@ -39,9 +40,9 @@ export interface FrameMsg {
 export type FromWorker =
   | { t: 'ready'; spec: EnvSpecMsg }
   | FrameMsg
-  | { t: 'network'; source: 'train' | 'replay'; net: NetworkSnapshot }
-  | { t: 'iteration'; stats: IterationStats }
-  | { t: 'status'; state: 'idle' | 'running' | 'paused'; iteration: number; ticksPerSec: number; effectiveMult: number }
+  | { t: 'network'; source: 'train' | 'replay'; runId?: number; net: NetworkSnapshot }
+  | { t: 'iteration'; runId: number; stats: IterationStats }
+  | { t: 'status'; runId: number; state: 'idle' | 'running' | 'paused'; iteration: number; ticksPerSec: number; effectiveMult: number }
   | { t: 'episode'; source: 'play' | 'replay'; fitness: number; terms: number[]; steps: number }
   | { t: 'validated'; report: ValidationReport }
   | { t: 'error'; message: string };

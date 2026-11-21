@@ -9,7 +9,7 @@ import { fakeSched } from './testSched';
 
 const learner = resolveConfig('neat', reach1d, { populationSize: 10, episodesPerGenome: 1 });
 const start = (speed: Speed): ToWorker =>
-  ({ t: 'train/start', learner, reward: defaultReward(reach1d), seed: 3, speed, ghosts: true });
+  ({ t: 'train/start', learner, reward: defaultReward(reach1d), seed: 3, speed, ghosts: true, runId: 7 });
 
 describe('TrainRunner', () => {
   it('MAX: produces iterations identical to runHeadless and no frames', async () => {
@@ -71,5 +71,31 @@ describe('TrainRunner', () => {
     count = 0; r2.handle(start({ mode: 'max' })); f.drain(5); r2.handle({ t: 'train/speed', speed: { mode: 'paused' } });
     expect(status.at(-1)).toMatchObject({ t: 'status', state: 'paused', iteration: count });
     expect(count).toBeGreaterThan(0);
+  });
+  it('D4: every train-sourced message echoes the runId of its train/start', () => {
+    const msgs: FromWorker[] = []; const f = fakeSched();
+    const r = new TrainRunner(reach1d, (m) => msgs.push(m), f.sched);
+    r.handle(start({ mode: 'live', mult: 1 }));
+    while (f.time() < 4500) f.drain(1);
+    for (const t of ['status', 'iteration', 'frame', 'network'] as const) {
+      const of = msgs.filter((m) => m.t === t) as { runId?: number }[];
+      expect(of.length, t).toBeGreaterThan(0);
+      expect(of.every((m) => m.runId === 7), t).toBe(true);
+    }
+  });
+  it('D5: a throwing tick ends the run with an error and an idle status instead of a stuck runner', () => {
+    const throwing = { ...reach1d, create: () => {
+      const env = reach1d.create(), step = env.step.bind(env); let n = 0;
+      env.step = (a) => { if (++n > 5) throw new Error('boom'); step(a); };
+      return env;
+    } };
+    const msgs: FromWorker[] = []; const f = fakeSched(0.1);
+    const r = new TrainRunner(throwing, (m) => msgs.push(m), f.sched);
+    r.handle(start({ mode: 'max' }));
+    f.drain(50);
+    expect(msgs.filter((m) => m.t === 'error')).toEqual([{ t: 'error', message: 'boom' }]);
+    expect(msgs.filter((m) => m.t === 'status').at(-1)).toMatchObject({ state: 'idle' });
+    r.handle(start({ mode: 'paused' }));                           // a new start still works
+    expect(msgs.at(-1)).toMatchObject({ t: 'status', state: 'paused' });
   });
 });

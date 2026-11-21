@@ -14,6 +14,8 @@ export class TrainRunner {
   private speed: Speed = { mode: 'paused' };
   private stepping = false;
   private ghosts = true;
+  /** Echoed in every message, so the main thread can drop what a replaced run still had queued. */
+  private runId = 0;
   private scheduled = false;
   private owed = 0;
   private lastPump = 0;
@@ -35,7 +37,7 @@ export class TrainRunner {
       case 'train/start':
         this.learner?.dispose(); this.pending.length = 0; this.lastFlush = -Infinity;   // unsent stats belong to the run being replaced
         this.learner = createLearner(msg.learner, this.def, msg.reward, msg.seed);
-        this.speed = msg.speed; this.ghosts = msg.ghosts; this.stepping = false;
+        this.speed = msg.speed; this.ghosts = msg.ghosts; this.stepping = false; this.runId = msg.runId;
         this.owed = 0; this.sentNetVersion = -1; this.lastPump = this.windowStart = this.sched.now();
         this.postStatus(); this.schedule(0);
         break;
@@ -66,7 +68,7 @@ export class TrainRunner {
   private postStatus(): void {
     const rate = this.def.meta.fps;
     this.post({
-      t: 'status', state: this.learner === null ? 'idle' : this.running ? 'running' : 'paused',
+      t: 'status', runId: this.runId, state: this.learner === null ? 'idle' : this.running ? 'running' : 'paused',
       iteration: this.learner?.iteration ?? 0, ticksPerSec: this.ticksPerSec, effectiveMult: this.ticksPerSec / rate,
     });
     this.lastStatus = this.sched.now();
@@ -83,7 +85,15 @@ export class TrainRunner {
     this.lastPump = now;
     const deadline = now + SLICE_MS;
     while ((unbounded || this.owed >= 1) && this.sched.now() < deadline) {
-      const iterationDone = l.tick();
+      let iterationDone: boolean;
+      try { iterationDone = l.tick(); } catch (e) {
+        // A learner that threw cannot be resumed: end the run, so the controls show a stopped run that Start can replace.
+        try { l.dispose(); } catch { /* the env that threw may not dispose cleanly either */ }
+        this.learner = null; this.pending.length = 0; this.speed = { mode: 'paused' }; this.stepping = false;
+        this.post({ t: 'error', message: e instanceof Error ? e.message : String(e) });
+        this.postStatus();
+        return;
+      }
       this.ticksInWindow++;
       if (!unbounded) this.owed -= 1;
       if (iterationDone) {
@@ -102,7 +112,7 @@ export class TrainRunner {
 
   private flush(): void {
     if (this.pending.length === 0) return;
-    for (const stats of this.pending) this.post({ t: 'iteration', stats });
+    for (const stats of this.pending) this.post({ t: 'iteration', runId: this.runId, stats });
     this.pending.length = 0;
     this.lastFlush = this.sched.now();
   }
@@ -113,12 +123,12 @@ export class TrainRunner {
     const live = l.live();
     if (live.networkVersion !== this.sentNetVersion && t - this.lastNetwork >= NETWORK_MS) {
       this.sentNetVersion = live.networkVersion; this.lastNetwork = t;
-      this.post({ t: 'network', source: 'train', net: live.network() });
+      this.post({ t: 'network', source: 'train', runId: this.runId, net: live.network() });
     }
     const env = live.envs[live.featured]!;
     const activations = live.activations().slice(), outputs = live.outputs().slice();
     this.post({
-      t: 'frame', source: 'train', frame: buildFrame(this.def, live.envs, live.alive, live.featured, this.ghosts),
+      t: 'frame', source: 'train', runId: this.runId, frame: buildFrame(this.def, live.envs, live.alive, live.featured, this.ghosts),
       tick: 0, fitness: live.fitness(), terms: Array.from(env.terms), activations, outputs,
     }, [activations.buffer, outputs.buffer]);
   }

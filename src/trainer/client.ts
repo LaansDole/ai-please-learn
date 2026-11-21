@@ -1,7 +1,7 @@
 import type { EnvSpecMsg } from '../env/types';
 import type { EnvRef, FromWorker, ToWorker } from './protocol';
 
-const WATCHDOG_MS = 15000;
+const WATCHDOG_MS = 15000, INIT_MS = 10000;
 
 /** Main-thread handle on one worker instance (train, stage or validate). */
 export class WorkerClient {
@@ -31,7 +31,13 @@ export class WorkerClient {
     for (const fn of [...(this.listeners.get(m.t) ?? [])]) fn(m);
   }
 
-  send(msg: ToWorker, transfer: Transferable[] = []): void { this.worker?.postMessage(msg, transfer); }
+  /** False once the worker was terminated (by the watchdog, an init timeout or the owner). */
+  get alive(): boolean { return this.worker !== null; }
+
+  send(msg: ToWorker, transfer: Transferable[] = []): void {
+    if (this.worker) this.worker.postMessage(msg, transfer);
+    else this.dispatch({ t: 'error', message: 'The worker is no longer running. Start again to restart it.' });
+  }
 
   /** Returns the unsubscribe function. */
   on<T extends FromWorker['t']>(t: T, fn: (m: Extract<FromWorker, { t: T }>) => void): () => void {
@@ -46,7 +52,9 @@ export class WorkerClient {
     return new Promise((resolve, reject) => {
       const offReady = this.on('ready', (m) => { off(); resolve(m.spec); });
       const offError = this.on('error', (m) => { off(); reject(new Error(m.message)); });
-      const off = () => { offReady(); offError(); };
+      // The watchdog only covers a running trainer; a module that loops while it loads would otherwise hang the page forever.
+      const timer = setTimeout(() => { off(); this.terminate(); reject(new Error('The concept did not start within 10 seconds.')); }, INIT_MS);
+      const off = () => { clearTimeout(timer); offReady(); offError(); };
       this.send({ t: 'init', env });
     });
   }
