@@ -28,7 +28,8 @@ export function createStackedArea(opts: { testid: string; title: string }): { el
       for (let i = gens.length - 1; i >= 0; i--) ctx.lineTo(x(col(i)), y(bottom(gens[i]!)));
       ctx.closePath();
       ctx.fillStyle = c.token(`--species-${(k % 8) + 1}`); ctx.fill();
-      ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.stroke();
+      // Band separators only while columns are wide; on long runs they would bury the fills under background-coloured strokes.
+      if (plotW / n >= 4) { ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.stroke(); }
     }
     // Species id inside each band where it is thickest; thick bands claim their spot first and overlapping ids are dropped.
     ctx.textAlign = 'center'; ctx.fillStyle = bg; ctx.font = `bold 10px ${mono}`;
