@@ -1,4 +1,5 @@
 import { registerEnv } from '../env/registry';
+import { car } from './car/car';
 import { flappy } from './flappy';
 import { pong } from './pong';
 import { reach1d } from './reach1d';
@@ -14,4 +15,5 @@ export function registerBuiltins(): void {
   registerEnv(pong);
   registerEnv(snake);
   registerEnv(flappy);
+  registerEnv(car);
 }
