@@ -1,4 +1,4 @@
-import { clamp } from '../../core/math';
+import { clamp, finiteOr0 } from '../../core/math';
 import type { Env, EnvDefinition, HumanInput, RenderView } from '../../env/types';
 import { JOINTS, LIMITS, WALKER, createWalkerSim, initRapier, mapFromLimits, mapToLimits, type WalkerSim } from './model';
 
@@ -23,7 +23,7 @@ function create(): Env {
       const a = action as Float32Array;
       let effort = 0;
       for (let j = 0; j < 6; j++) {
-        const v = clamp(a[j]!, -1, 1), [lo, hi] = LIMITS[j]!;
+        const v = clamp(finiteOr0(a[j]!), -1, 1), [lo, hi] = LIMITS[j]!;
         targets[j]! += WALKER.smoothing * (mapToLimits(v, lo, hi) - targets[j]!);
         effort += v * v;
       }

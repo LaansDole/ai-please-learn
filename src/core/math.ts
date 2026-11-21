@@ -1,4 +1,6 @@
 export const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
+/** NaN and +/-Infinity become 0 (a policy output that broke must not reach an env's state). */
+export const finiteOr0 = (v: number): number => (Number.isFinite(v) ? v : 0);
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 export type Vec2 = [number, number];

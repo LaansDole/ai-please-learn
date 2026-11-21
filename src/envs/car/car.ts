@@ -1,4 +1,4 @@
-import { clamp } from '../../core/math';
+import { clamp, finiteOr0 } from '../../core/math';
 import type { Env, EnvDefinition, HumanInput, RenderView } from '../../env/types';
 import { TRACK, castRay, distToCentre, nearestSample } from './track';
 
@@ -31,7 +31,7 @@ function create(): Env {
     },
     step(action) {
       if (done) return;
-      const a = action as Float32Array, steer = clamp(a[0]!, -1, 1), throttle = clamp(a[1]!, -1, 1);
+      const a = action as Float32Array, steer = clamp(finiteOr0(a[0]!), -1, 1), throttle = clamp(finiteOr0(a[1]!), -1, 1);
       speed = clamp((speed + throttle * 300 * DT) * (1 - 0.6 * DT), -60, MAX_SPEED);
       heading += steer * DT * Math.min(2.8 * clamp(Math.abs(speed) / 80, 0, 1), GRIP / Math.max(Math.abs(speed), 1)) * Math.sign(speed);
       x += Math.cos(heading) * speed * DT; y += Math.sin(heading) * speed * DT;

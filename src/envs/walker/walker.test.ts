@@ -26,4 +26,13 @@ describe('walker env', () => {
     expect(run()).toEqual(run());
     env.dispose!();
   });
+  it('non-finite actions count as 0', () => {
+    const run = (v: number) => {
+      const env = walker.create(); env.reset(1); const a = new Float32Array(6).fill(v);
+      for (let i = 0; i < 60; i++) env.step(a);
+      const out = [...env.observe(), ...env.terms]; env.dispose!(); return out;
+    };
+    const still = run(0);
+    for (const bad of [NaN, Infinity, -Infinity]) expect(run(bad), String(bad)).toEqual(still);
+  });
 });

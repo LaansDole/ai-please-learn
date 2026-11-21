@@ -31,4 +31,11 @@ describe('car', () => {
   it('driving backwards earns no checkpoints', () => {
     expect(drive(() => [0, -1], 0, 200).env.terms[0]).toBe(0);
   });
+  it('non-finite actions count as 0 and never corrupt the state', () => {
+    for (const bad of [NaN, Infinity, -Infinity]) {
+      const { env, n } = drive(() => [bad, bad], 0);
+      expect(n, String(bad)).toBe(240);                          // same as doing nothing: stalls
+      expect(env.observe().every(Number.isFinite)).toBe(true);
+    }
+  });
 });

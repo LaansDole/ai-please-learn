@@ -135,7 +135,9 @@ export function createThreeStage(canvas: HTMLCanvasElement): ThreeStage {
       for (const m of markers) { m.sprite.material.map?.dispose(); m.sprite.material.dispose(); }
       for (const g of grid) { g.geometry.dispose(); (g.material as LineBasicMaterial).dispose(); }
       ground.geometry.dispose(); ground.material.dispose();
+      sun.dispose();                                // its shadow map
       renderer.dispose();
+      renderer.forceContextLoss();                  // browsers cap live WebGL contexts: give this one back now, not at garbage collection
     },
   };
 }
