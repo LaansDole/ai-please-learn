@@ -43,20 +43,31 @@ export function createStage(): Stage {
       if (pending) paint3d(pending);        // frames that arrived while loading were dropped, except the newest
     }, (e: unknown) => { caption.textContent = `3D view failed to load: ${e instanceof Error ? e.message : String(e)}`; });
   };
+  let latest: RenderFrame | null = null, raf = 0;
+  const paint = () => {
+    raf = 0;
+    const frame = latest;
+    if (!frame) return;
+    latest = null;
+    el.dataset.frames = String(++frames);
+    const is3d = frame.kind === '3d';
+    canvas.hidden = is3d; canvas3d.hidden = hud.hidden = !is3d;
+    if (frame.kind === '2d') { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); playDrawCmds(ctx, frame.cmds); return; }
+    pending = frame.bodies;
+    if (three) paint3d(frame.bodies);
+    else if (!loading) load3d();
+  };
 
   return {
     el,
+    // Frames can arrive faster than they can be painted (a 3D scene on a software rasteriser takes tens of ms): only the newest
+    // is painted, once per animation frame, so a backlog can never build up and starve the controls.
     show(frame) {
-      el.dataset.frames = String(++frames);
-      const is3d = frame.kind === '3d';
-      canvas.hidden = is3d; canvas3d.hidden = hud.hidden = !is3d;
-      if (frame.kind === '2d') { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); playDrawCmds(ctx, frame.cmds); return; }
-      pending = frame.bodies;
-      if (three) paint3d(frame.bodies);
-      else if (!loading) load3d();
+      latest = frame;
+      raf ||= requestAnimationFrame(paint);
     },
     setHeader(text) { header.textContent = text; caption.textContent = text; },
     setMode(m) { el.dataset.mode = m; },
-    dispose() { gone = true; observer.disconnect(); three?.dispose(); three = null; },
+    dispose() { gone = true; cancelAnimationFrame(raf); observer.disconnect(); three?.dispose(); three = null; },
   };
 }

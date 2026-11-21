@@ -35,3 +35,19 @@ for (const [env, method] of [['pong', 'neat'], ['snake', 'neat'], ['pong', 'ppo'
     await expect(page.getByTestId('error-banner')).toBeHidden();
   });
 }
+
+// A 3D frame costs tens of milliseconds on a software rasteriser while the worker offers one every 16 ms: frames nobody has
+// painted yet must be dropped, not queued. Before the stage did that, the page stopped answering within seconds at x1000.
+test('walker: controls keep answering while 3D frames arrive faster than they can be painted', async ({ page }) => {
+  await page.goto('/#/c/walker/4');
+  await page.getByTestId('speed-1000').click();
+  await page.getByTestId('btn-start').click();
+  await page.waitForTimeout(15000);
+  const t0 = Date.now();
+  await page.getByTestId('btn-pause').click({ timeout: 60000 });
+  await expect(page.getByTestId('btn-pause')).toHaveText('Resume');
+  const pauseMs = Date.now() - t0;
+  console.log(`[responsive] walker at x1000: pause answered in ${pauseMs} ms`);
+  expect(pauseMs).toBeLessThan(5000);
+  await expect(page.getByTestId('error-banner')).toBeHidden();
+});
