@@ -15,13 +15,13 @@ for (let i = TRACK.n - 1; i >= 0; i--) SURFACE.push(TRACK.rx[i]!, TRACK.ry[i]!);
 
 function create(): Env {
   let x = 0, y = 0, heading = 0, speed = 0, sample = 0, start = 0, travelled = 0, progress = 0, sinceCheckpoint = 0, done = false;
-  const terms = new Float32Array(6), obs = new Float32Array(8), rays = new Float32Array(7).fill(RAY_MAX), human = new Float32Array(2);
+  const terms = new Float32Array(6), obs = new Float32Array(8), human = new Float32Array(2);
 
   return {
     reset(seed) {
       start = sample = (seed % 8) * 20;
       x = TRACK.cx[sample]!; y = TRACK.cy[sample]!; heading = Math.atan2(TRACK.ty[sample]!, TRACK.tx[sample]!);
-      speed = 0; travelled = 0; progress = 0; sinceCheckpoint = 0; done = false; terms.fill(0); rays.fill(RAY_MAX);
+      speed = 0; travelled = 0; progress = 0; sinceCheckpoint = 0; done = false; terms.fill(0);
     },
     step(action) {
       if (done) return;
@@ -46,10 +46,7 @@ function create(): Env {
       else if (++sinceCheckpoint >= STALL_STEPS) { terms[STALL]!++; done = true; }
     },
     observe() {
-      for (let i = 0; i < 7; i++) {
-        rays[i] = castRay(TRACK, x, y, heading + RAY_ANGLES[i]!, sample, RAY_MAX);
-        obs[i] = rays[i]! / (RAY_MAX / 2) - 1;
-      }
+      for (let i = 0; i < 7; i++) obs[i] = castRay(TRACK, x, y, heading + RAY_ANGLES[i]!, sample, RAY_MAX) / (RAY_MAX / 2) - 1;
       obs[7] = speed / MAX_SPEED;
       return obs;
     },
@@ -66,10 +63,10 @@ function create(): Env {
           const i = ((startGate + g) % GATES) * TRACK.gateEvery, next = g === nextGate;
           d.line(TRACK.lx[i]!, TRACK.ly[i]!, TRACK.rx[i]!, TRACK.ry[i]!, next ? ACCENT : BG, next ? 3 : 1);
         }
-        // Sensor rays as of the last observe().
-        for (let i = 0; i < 7; i++) {
-          const ang = heading + RAY_ANGLES[i]!;
-          d.line(x, y, x + Math.cos(ang) * rays[i]!, y + Math.sin(ang) * rays[i]!, ACCENT, 1);
+        // Sensor rays, cast again here: a human player never calls observe(), so a cache would be stale.
+        for (const off of RAY_ANGLES) {
+          const ang = heading + off, dist = castRay(TRACK, x, y, ang, sample, RAY_MAX);
+          d.line(x, y, x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, ACCENT, 1);
         }
       }
       const c = Math.cos(heading), s = Math.sin(heading);
