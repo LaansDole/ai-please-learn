@@ -23,4 +23,13 @@ describe('reward engine', () => {
     expect(validateReward(reach1d, null).ok).toBe(false);
     expect(validateReward(reach1d, { version: 1, envId: 'reach1d', preset: null, weights: { effort: 2 } }).ok).toBe(true);
   });
+  it('B6: only own, finite weights are used; anything else falls back to the default', () => {
+    const def = { ...reach1d, rewardTerms: [{ ...reach1d.rewardTerms[0]!, key: 'toString' }, ...reach1d.rewardTerms.slice(1)] };
+    const s = signedWeights(def, { version: 1, envId: 'reach1d', preset: null, weights: { arrived: NaN } });
+    expect(Array.from(s)).toEqual([10, 5, -0.5]);
+  });
+  it('validateReward caps weights so fitness cannot overflow', () => {
+    const w = (v: number) => validateReward(reach1d, { version: 1, envId: 'reach1d', preset: null, weights: { effort: v } }).ok;
+    expect(w(1e6)).toBe(true); expect(w(1e6 + 1)).toBe(false); expect(w(1e300)).toBe(false);
+  });
 });

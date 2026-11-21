@@ -48,4 +48,10 @@ describe('envs that need prepare() (Rapier WASM)', () => {
     expect(() => registerEnv(def)).not.toThrow();
     await expect(prepareEnv(def)).rejects.toThrow(/humanAct/);
   });
+  it('B4: preset weights must be finite numbers >= 0', () => {
+    for (const w of [-1, NaN, Infinity, '2' as unknown as number]) {
+      const def: EnvDefinition = { ...reach1d, presets: [reach1d.presets[0]!, { name: 'x', description: '', weights: { effort: w } }] };
+      expect(validateDefinition(def).length, String(w)).toBe(1);
+    }
+  });
 });

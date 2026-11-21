@@ -23,7 +23,10 @@ function staticErrors(def: EnvDefinition): string[] {
   if (def.presets[0]?.name !== 'default') errors.push('The first preset must be named "default".');
   else if (def.rewardTerms.some((t) => def.presets[0]!.weights[t.key] !== t.defaultWeight)) errors.push('The "default" preset must equal the defaultWeights.');
   for (const p of def.presets) {
-    for (const k of Object.keys(p.weights)) if (!keys.has(k)) errors.push(`Preset "${p.name}" references unknown reward term "${k}".`);
+    for (const [k, w] of Object.entries(p.weights)) {
+      if (!keys.has(k)) errors.push(`Preset "${p.name}" references unknown reward term "${k}".`);
+      else if (typeof w !== 'number' || !Number.isFinite(w) || w < 0) errors.push(`Preset "${p.name}" needs a finite weight >= 0 for "${k}".`);
+    }
   }
 
   return errors;
