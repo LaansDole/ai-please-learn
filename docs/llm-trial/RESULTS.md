@@ -69,12 +69,23 @@ Each run 3 file was trained with the headless trainer the benchmarks use (`runHe
 
 | File | Gen-1 best | Last-5 best | Mean, gen 1 -> gen 30 | Improves? |
 |---|---|---|---|---|
-| balance-a-pole-on-a-cart | 65.18 | 65.74 | 4.09 -> 47.26 | **No (flat best).** A network of generation 1 already balances to the step limit; only the population mean improves. |
+| balance-a-pole-on-a-cart | 65.18 | 65.74 | 4.09 -> 47.26 | **No (flat best).** A network of generation 1 is already at the reward ceiling; only the population mean improves. See the follow-up below. |
 | catch-apples-in-a-basket | 11.77 | 57.03 | -2.97 -> 23.44 | yes |
-| dodge-falling-rocks | 7.08 | 12.87 | 1.77 -> 1.89 | **Weak.** The best jumps to about 12.6 in generation 2 and stays there (12.2 to 12.9, with dips to 4 to 7); the mean does not move. |
+| dodge-falling-rocks | 7.08 | 12.87 | 1.77 -> 1.89 | **Weak.** The best jumps to about 12.6 in generation 2 (the ceiling is about 13) and stays there, with dips to 4 to 7; the mean does not move. See the follow-up below. |
 | land-a-lunar-lander-gently | 12.70 | 53.63 | -3.61 -> 5.25 | yes, noisy (best swings between about 14 and 54 from one generation to the next) |
 | learn-to-juggle-a-ball | 11.87 | 42.02 | -0.50 -> 3.40 | yes |
 
 For comparison, the run 2 "Dodge Falling Rocks" (kept as `src/gen/testdata/unlearnable-dodge.evolab-concept.json`, now rejected by the validator) gives gen-1 best 14.23, last-5 best 14.22 on the same script.
 
-What the learnability check does and does not catch: it plays up to 64 seeded random-action episodes and rejects a module when all score the same, or when failure is possible yet a random episode lasts to `maxSteps` with the best score. All five run 3 modules pass it without a repair, so in this run the improvement over run 2 comes from the prompt, not from the repair loop. The cart-pole result shows the gap that remains: random *actions* never balance the pole, so the check passes, but a random *network* (in effect a fixed reaction to the pole angle) does. The check also cannot see a ceiling in episodes of fixed length (no failure to survive).
+Follow-up on the two flagged modules (same script, 120 generations, seeds 1 and 2). Both are solved almost at once rather than unlearnable: the best fitness reaches the reward ceiling within about 10 generations and has nowhere to go after that.
+
+| File | Seed | Best at generation 1, 11, 21, ..., 111, 120 | Ceiling |
+|---|---|---|---|
+| balance-a-pole-on-a-cart | 1 | 65.2 65.3 65.5 65.7 65.8 65.8 65.9 65.9 65.9 65.9 65.9 65.9 65.9 | about 66 (20 s survived with the pole upright and centred) |
+| balance-a-pole-on-a-cart | 2 | 40.5 65.2 65.4 65.4 65.6 65.6 65.8 65.9 65.9 65.9 65.9 65.9 65.9 | |
+| dodge-falling-rocks | 1 | 7.1 12.7 4.6 12.5 12.5 12.4 12.6 12.9 5.0 12.6 12.7 12.5 6.4 | about 13 (full survival 10, clearance up to 3) |
+| dodge-falling-rocks | 2 | 4.0 12.5 6.1 12.8 12.5 12.3 12.6 2.0 12.6 12.5 6.8 4.9 3.1 | |
+
+So neither is a good demonstration of gradual improvement: cart-pole is at its ceiling in generation 1 on seed 1 and by generation 11 on seed 2; Dodge improves once, early, and its best then swings between the ceiling and 2 to 7 because every generation is scored on new rock patterns. They were not regenerated: no cheap rollout separates "solved in 10 generations" from the three modules that keep improving, and asking the model again until NEAT happens to struggle would not be a fix.
+
+What the learnability check does and does not catch: it plays up to 64 seeded random-action episodes and 32 episodes with random one-layer networks (what NEAT's first generation looks like). It rejects a module when all random-action episodes score the same, or when failure is possible yet untrained play lasts to `maxSteps` with the best score (one random-action episode, or at least 4 of the 32 networks). The run 2 Dodge is rejected on every seed tried (7 to 11 of 32 networks survive it). All five run 3 modules pass without a repair, so in this run the improvement over run 2 comes from the prompt, not from the repair loop. What it does not catch: a task that is merely easy, where untrained play fails but a learner reaches the ceiling within a few generations (the two modules above), and a ceiling in episodes of fixed length (no failure to survive).
