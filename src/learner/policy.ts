@@ -1,6 +1,7 @@
 import type { Action, ActionSpec, Env, EnvDefinition } from '../env/types';
 import type { Genome } from '../neat/genome';
 import { compile, type Network } from '../neat/network';
+import { createMlpPolicy } from './mlpPolicy';
 import type { NetworkSnapshot, Policy, PolicySnapshot } from './types';
 
 /** Ties go to the lowest index. */
@@ -36,7 +37,7 @@ export function genomeSnapshot(g: Genome, net: Network, def: Pick<EnvDefinition,
 }
 
 export function createPolicy(snap: PolicySnapshot, def: EnvDefinition): Policy {
-  if (snap.kind === 'mlp') throw new Error('mlp policies are added in chunk C6');
+  if (snap.kind === 'mlp') return createMlpPolicy(snap, def);
   const net = compile(snap.genome);
   const snapshot = genomeSnapshot(snap.genome, net, def);
   const outputs = net.values.subarray(net.nIn, net.nIn + net.nOut);

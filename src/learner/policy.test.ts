@@ -28,8 +28,9 @@ describe('policy', () => {
     expect(policy.activations().length).toBe(policy.network().nodes.length);
     expect(policy.outputs().length).toBe(3);
   });
-  it('mlp snapshots are rejected until chunk C6', () => {
-    expect(() => createPolicy({ kind: 'mlp', algo: 'dqn', sizes: [2, 3], hidden: 'relu', params: new Float32Array(9) }, reach1d)).toThrow(/C6/);
+  it('mlp snapshots are replayed by an MLP policy', () => {
+    const p = createPolicy({ kind: 'mlp', algo: 'dqn', sizes: [2, 3], hidden: 'relu', params: new Float32Array(9) }, reach1d);
+    expect(p.network().edges.length).toBe(6);
   });
   it('netAct picks the best-scoring candidate', () => {
     const g: Genome = {
