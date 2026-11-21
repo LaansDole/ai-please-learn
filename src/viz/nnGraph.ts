@@ -33,7 +33,7 @@ export function createNnGraph(): NnGraph {
   const cold = rgb(token('--panel-2')), hot = rgb(C.glow);
   const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1;
   /** Progress 0..1 of an animation `ms` long that started at t0; instant under reduced motion. */
-  const prog = (now: number, ms: number) => (motion ? Math.min(1, (now - t0) / ms) : 1);
+  const prog = (now: number, ms: number) => (motion ? Math.min(1, Math.max(0, now - t0) / ms) : 1);   // rAF time can trail performance.now()
 
   let net: NetworkSnapshot | null = null, acts: Float32Array | null = null, showDisabled = false;
   let w = 0, h = 0, t0 = 0, raf = 0, hover: number | null = null, caption = '';

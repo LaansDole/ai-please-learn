@@ -16,9 +16,8 @@ export function createStage(): Stage {
   const ctx = canvas.getContext('2d')!;
   const note = h('p', { class: 'stage-note', hidden: true }, '3D view arrives in C4');
   const header = h('span', { class: 'stage-header', testid: 'stage-header' }, 'Loading');
-  const mode = h('span', { class: 'badge' }, 'live');
   const el = h('section', { class: 'panel stage', testid: 'stage', dataset: { mode: 'live', frames: '0' } },
-    h('div', { class: 'stage-bar' }, header, mode),
+    h('div', { class: 'stage-bar' }, header),
     h('div', { class: 'stage-view' }, canvas, note));
   let frames = 0;
   return {
@@ -31,6 +30,6 @@ export function createStage(): Stage {
       playDrawCmds(ctx, frame.cmds);
     },
     setHeader(text) { header.textContent = text; },
-    setMode(m) { el.dataset.mode = m; mode.textContent = m; },
+    setMode(m) { el.dataset.mode = m; },
   };
 }

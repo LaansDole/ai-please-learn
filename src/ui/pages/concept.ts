@@ -2,6 +2,7 @@ import { listEnvs } from '../../env/registry';
 import { iterationLabel } from '../../learner/types';
 import { h } from '../dom';
 import { createPlayPanel } from '../panels/play';
+import { createLearnPanel } from '../panels/learn';
 import { createNetworkPanel } from '../panels/network';
 import { createRewardPanel } from '../panels/rewards';
 import { createStage } from '../panels/stage';
@@ -17,8 +18,10 @@ function buildStep(step: Step, session: Session): StepView {
     return { side: p.el, dispose: () => { p.dispose(); session.backToLive(); } };   // sends stage/stop
   }
   if (step === 2) { const p = createRewardPanel(session); return { side: p.el, dispose: p.dispose }; }
-  const p = createNetworkPanel(session, { live: step === 4 });
-  return { side: p.el, dispose: p.dispose };
+  const net = createNetworkPanel(session, { live: step === 4 });
+  if (step === 3) return { side: net.el, dispose: net.dispose };
+  const learn = createLearnPanel(session);
+  return { side: net.el, lower: learn.lower, dispose: () => { net.dispose(); learn.dispose(); } };
 }
 
 export const conceptPage: PageFn = (root, route) => {
