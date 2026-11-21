@@ -31,8 +31,15 @@ async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof f
 }
 
 export function createChat(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy'): (messages: ChatMessage[]) => Promise<string> {
+  // Some hosted models (OpenAI's reasoning models) accept only their default temperature and answer 400: drop it and ask again.
+  let temperature: number | undefined = 0.2;
   return async (messages) => {
-    const res = await request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, temperature: 0.2, stream: false });
+    const post = () => request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, temperature, stream: false });
+    const res = await post().catch((e: Error) => {
+      if (temperature === undefined || !/\(400\).*temperature/s.test(e.message)) throw e;
+      temperature = undefined;
+      return post();
+    });
     const data = await res.json().catch(() => null) as { choices?: { message?: { content?: unknown } }[] } | null;
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content) throw new Error('LLM returned no content');

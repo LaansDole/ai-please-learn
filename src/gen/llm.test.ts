@@ -70,4 +70,18 @@ describe('LLM client in direct mode (static hosting, no proxy)', () => {
   it('still reports HTTP errors from the endpoint', async () => {
     await expect(createChat(settings, fakeFetch(404, 'model not found').impl, 'direct')(messages)).rejects.toThrow('LLM request failed (404): model not found');
   });
+  it('asks again without temperature when the model rejects it, and remembers', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const impl = (async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      bodies.push(body);
+      return 'temperature' in body
+        ? new Response('{"error":{"message":"Unsupported value: \'temperature\' does not support 0.2 with this model."}}', { status: 400 })
+        : new Response(JSON.stringify(ok));
+    }) as unknown as typeof fetch;
+    const chat = createChat(settings, impl, 'direct');
+    expect(await chat(messages)).toBe('hello');
+    expect(await chat(messages)).toBe('hello');
+    expect(bodies.map((b) => 'temperature' in b)).toEqual([true, false, false]);
+  });
 });
