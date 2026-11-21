@@ -1,6 +1,6 @@
 import { createChartCanvas } from './canvas';
 
-const PAD = { l: 46, r: 12, t: 10, b: 22 };
+const PAD = { l: 46, r: 12, t: 10, b: 22 }, LABELS = 6, LABEL_MIN_HEIGHT = 14;
 
 /**
  * Stacked population shares: one band per species id (never hue alone: the largest current species carry their id). Spec section 11.4.
@@ -44,19 +44,24 @@ export function createStackedArea(opts: { testid: string; title: string }): { el
       ctx.fillStyle = colours[ids[k]! % 8]!; ctx.fill();   // by id, so a band keeps its colour while the sample shifts
       if (separators) { ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.stroke(); }
     }
-    // Species id inside each band where it is thickest; thick bands claim their spot first and overlapping ids are dropped.
-    ctx.textAlign = 'center'; ctx.fillStyle = bg; ctx.font = `bold 10px ${mono}`;
-    const spots = ids.map((id, k) => {
-      let best = 0, bestH = 0;
-      for (let g = 0; g < n; g++) { const hgt = (rows[g]![k]! - (k === 0 ? 0 : rows[g]![k - 1]!)) * plotH; if (hgt > bestH) { bestH = hgt; best = g; } }
-      const mid = (rows[best]![k]! + (k === 0 ? 0 : rows[best]![k - 1]!)) / 2;
-      return { id, height: bestH, x: Math.min(Math.max(n === 1 ? PAD.l + plotW / 2 : x(best), PAD.l + 10), PAD.l + plotW - 10), y: y(mid) };
-    }).filter((s) => s.height > 14).sort((a, b) => b.height - a.height);
+    // Ids only for the largest species alive now, each where its band is thickest and only if the id fits inside it.
+    const now = n - 1;
+    const current = ids.map((id, k) => ({ id, k, size: top(now, k) - bottom(now, k) })).filter((s) => s.size > 0)
+      .sort((a, b) => b.size - a.size).slice(0, LABELS);
+    ctx.textAlign = 'center'; ctx.font = `bold 10px ${mono}`;
     const placed: { x: number; y: number }[] = [];
-    for (const s of spots) {
-      if (placed.some((p) => Math.abs(p.x - s.x) < 22 && Math.abs(p.y - s.y) < 13)) continue;
-      placed.push(s);
-      ctx.fillText(String(s.id), s.x, s.y);
+    for (const { id, k } of current) {
+      let best = 0, bestH = 0;
+      for (let g = 0; g < n; g++) { const hgt = (top(g, k) - bottom(g, k)) * plotH; if (hgt >= bestH) { bestH = hgt; best = g; } }
+      if (bestH < LABEL_MIN_HEIGHT) continue;
+      const text = String(id), half = ctx.measureText(text).width / 2 + 3;
+      const px = Math.min(Math.max(n === 1 ? PAD.l + plotW / 2 : x(best), PAD.l + half), PAD.l + plotW - half);
+      const py = y((top(best, k) + bottom(best, k)) / 2);
+      if (placed.some((p) => Math.abs(p.x - px) < half * 2 + 4 && Math.abs(p.y - py) < 14)) continue;
+      placed.push({ x: px, y: py });
+      // A plate behind the id keeps it legible over any band colour and over neighbouring slivers.
+      ctx.fillStyle = bg; ctx.fillRect(px - half, py - 7, half * 2, 14);
+      ctx.fillStyle = colours[id % 8]!; ctx.fillText(text, px, py + 0.5);
     }
     ctx.fillStyle = muted; ctx.font = `10px ${mono}`; ctx.textAlign = 'right';
     for (const share of [0, 0.5, 1]) ctx.fillText(`${share * 100}%`, PAD.l - 6, y(share));
