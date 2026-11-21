@@ -1,4 +1,4 @@
-import { checkConformance } from '../env/conformance';
+import { checkConformance, checkLearnability } from '../env/conformance';
 import { toDefinition } from './generatedEnv';
 import { validateMeta, type GeneratedMeta } from './meta';
 import { compileGenerated } from './sandbox';
@@ -12,7 +12,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const fail = (errors: string[]): ValidationReport => ({ ok: false, errors: errors.slice(0, MAX_ERRORS), warnings: [] });
 
 /**
- * Checks 2 to 12 of spec section 12.6, stopping at the first failing group. Executes the module: call it only inside a worker
+ * Checks 2 to 12 of spec section 12.6, then the learnability check, stopping at the first failing group. Executes the module: call it only inside a worker
  * (or in Node tests). `now` is used only for stats.ms and the time budget.
  */
 export function validateModule(source: string, meta: unknown, now: () => number = () => performance.now()): ValidationReport {
@@ -50,8 +50,12 @@ export function validateModule(source: string, meta: unknown, now: () => number 
   } catch (e) { errors.push(`reset(1) or observe() threw: ${message(e)}`); }
   if (errors.length) return fail(errors);
 
-  const rep = checkConformance(toDefinition('gen-validate', m, createEnv), { steps: 2000, seed: 12345, obsBound: 100 });
+  const def = toDefinition('gen-validate', m, createEnv);
+  const rep = checkConformance(def, { steps: 2000, seed: 12345, obsBound: 100 });
   errors.push(...rep.errors);
+  if (!errors.length) {
+    try { errors.push(...checkLearnability(def)); } catch (e) { errors.push(`random play threw: ${message(e)}`); }
+  }
   const ms = now() - t0;
   if (ms > BUDGET_MS) errors.unshift(`validation took too long (${Math.round(ms)} ms); make step() and render() cheaper`);
   return { ok: errors.length === 0, errors: errors.slice(0, MAX_ERRORS), warnings: rep.warnings, stats: { steps: rep.steps, episodes: rep.episodes, ms } };

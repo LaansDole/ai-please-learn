@@ -1,13 +1,13 @@
 {
   "format": "evolab-concept",
   "version": 1,
-  "id": "gen-cart-pole-balance-991f",
+  "id": "gen-cart-pole-balance-7f8f",
   "name": "Cart-Pole Balance",
   "prompt": "balance a pole on a cart",
   "meta": {
     "name": "Cart-Pole Balance",
-    "tagline": "Keep the pole upright by driving the cart.",
-    "description": "A pole balanced on a rolling cart starts almost upright. Push the cart left or right to catch the pole as it tips, and keep both the cart and pole within the track limits for as long as possible.",
+    "tagline": "Keep the pole upright as the cart and track get harder to control.",
+    "description": "Balance an upright pole by pushing its cart left or right. Keep the pole near vertical and the cart near the center as the track narrows and gravity increases; a tilt or a cart that leaves the track ends the episode.",
     "fps": 60,
     "maxSteps": 1200,
     "observation": {
@@ -15,7 +15,8 @@
         "cart position",
         "cart velocity",
         "pole angle",
-        "pole angular velocity"
+        "pole angular velocity",
+        "difficulty"
       ]
     },
     "action": {
@@ -28,55 +29,64 @@
     },
     "rewardTerms": [
       {
-        "key": "balanceQuality",
-        "kind": "reward",
-        "description": "Average pole-uprightness quality during the episode, scaled from 0 to 1.",
-        "defaultWeight": 8
-      },
-      {
         "key": "survival",
         "kind": "reward",
-        "description": "Fraction of the maximum episode duration completed.",
-        "defaultWeight": 4
+        "description": "Time survived, in seconds.",
+        "defaultWeight": 1
       },
       {
-        "key": "controlEffort",
+        "key": "upright",
+        "kind": "reward",
+        "description": "Time-weighted measure of how steadily upright the pole stays.",
+        "defaultWeight": 2
+      },
+      {
+        "key": "centered",
+        "kind": "reward",
+        "description": "Time-weighted measure of how close the cart stays to the center.",
+        "defaultWeight": 0.3
+      },
+      {
+        "key": "effort",
         "kind": "penalty",
-        "description": "Fraction of steps spent pushing the cart.",
-        "defaultWeight": 0.2
+        "description": "Time spent applying force rather than coasting.",
+        "defaultWeight": 0.03
       }
     ],
     "presets": [
       {
         "name": "default",
-        "description": "Balance well and survive as long as possible.",
+        "description": "Balance the pole and keep the cart centered.",
         "weights": {
-          "balanceQuality": 8,
-          "survival": 4,
-          "controlEffort": 0.2
+          "survival": 1,
+          "upright": 2,
+          "centered": 0.3,
+          "effort": 0.03
         }
       },
       {
         "name": "aggressive",
-        "description": "Prioritize keeping the pole upright, even with frequent corrections.",
+        "description": "Prioritize keeping the pole upright, even with brisk corrections.",
         "weights": {
-          "balanceQuality": 12,
-          "survival": 5,
-          "controlEffort": 0
+          "survival": 1,
+          "upright": 3,
+          "centered": 0.15,
+          "effort": 0.005
         }
       },
       {
         "name": "survivalist",
-        "description": "Favor lasting through the episode while avoiding excessive movement.",
+        "description": "Favor lasting longer and avoiding excessive movement.",
         "weights": {
-          "balanceQuality": 5,
-          "survival": 8,
-          "controlEffort": 0.8
+          "survival": 2,
+          "upright": 1.5,
+          "centered": 0.5,
+          "effort": 0.1
         }
       }
     ],
     "human": {
-      "hint": "Use the left and right arrow keys to push the cart.",
+      "hint": "Use the left and right arrow keys to push the cart; release both to coast.",
       "keys": [
         {
           "code": "ArrowLeft",
@@ -89,7 +99,7 @@
       ]
     }
   },
-  "source": "function createEnv(sdk) {\n  var MAX_STEPS = 1200;\n  var DT = 1 / 60;\n  var TRACK_LIMIT = 2.4;\n  var ANGLE_LIMIT = 12 * Math.PI / 180;\n  var cartMass = 1;\n  var poleMass = 0.1;\n  var halfPoleLength = 0.5;\n  var gravity = 9.8;\n  var forceMagnitude = 10;\n\n  var rng, x, xDot, angle, angleDot, steps, done;\n  var terms = [0, 0, 0];\n  var obs = [0, 0, 0, 0];\n\n  function reset(seed) {\n    rng = sdk.rng(seed);\n    x = rng.range(-0.05, 0.05);\n    xDot = rng.range(-0.03, 0.03);\n    angle = rng.range(-0.045, 0.045);\n    angleDot = rng.range(-0.03, 0.03);\n    steps = 0;\n    done = false;\n    terms[0] = 0;\n    terms[1] = 0;\n    terms[2] = 0;\n  }\n\n  return {\n    reset: reset,\n\n    step: function (action) {\n      if (done) return;\n\n      var force = 0;\n      if (action === 0) force = -forceMagnitude;\n      else if (action === 2) force = forceMagnitude;\n\n      var sinA = Math.sin(angle);\n      var cosA = Math.cos(angle);\n      var totalMass = cartMass + poleMass;\n      var temp = (force + poleMass * halfPoleLength * angleDot * angleDot * sinA) / totalMass;\n      var angleAcc = (gravity * sinA - cosA * temp) /\n        (halfPoleLength * (4 / 3 - poleMass * cosA * cosA / totalMass));\n      var cartAcc = temp - poleMass * halfPoleLength * angleAcc * cosA / totalMass;\n\n      xDot += cartAcc * DT;\n      angleDot += angleAcc * DT;\n      x += xDot * DT;\n      angle += angleDot * DT;\n\n      steps += 1;\n      var angleQuality = sdk.clamp(1 - Math.abs(angle) / ANGLE_LIMIT, 0, 1);\n      var positionQuality = sdk.clamp(1 - Math.abs(x) / (TRACK_LIMIT * 2), 0, 1);\n      terms[0] += angleQuality * positionQuality / MAX_STEPS;\n      terms[1] += 1 / MAX_STEPS;\n      if (force !== 0) terms[2] += 1 / MAX_STEPS;\n\n      if (Math.abs(x) > TRACK_LIMIT || Math.abs(angle) > ANGLE_LIMIT || steps >= MAX_STEPS) {\n        done = true;\n      }\n    },\n\n    observe: function () {\n      obs[0] = sdk.clamp(x / TRACK_LIMIT, -1, 1);\n      obs[1] = sdk.clamp(xDot / 3, -1, 1);\n      obs[2] = sdk.clamp(angle / ANGLE_LIMIT, -1, 1);\n      obs[3] = sdk.clamp(angleDot / 4, -1, 1);\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        draw.line(45, 390, 755, 390, sdk.colors.dim, 3);\n        draw.line(100, 402, 700, 402, sdk.colors.dim, 1);\n        draw.text(\"Keep the pole upright\", 24, 35, sdk.colors.fg, 18);\n      }\n\n      var cartX = 400 + x * 120;\n      var cartY = 365;\n      var poleX = cartX + Math.sin(angle) * 95;\n      var poleY = cartY - Math.cos(angle) * 95;\n\n      draw.rect(cartX - 34, cartY - 15, 68, 28, sdk.colors.accent);\n      draw.circle(cartX - 21, cartY + 17, 8, sdk.colors.fg);\n      draw.circle(cartX + 21, cartY + 17, 8, sdk.colors.fg);\n      draw.line(cartX, cartY - 12, poleX, poleY, sdk.colors.warn, 8);\n      draw.circle(poleX, poleY, 7, sdk.colors.good);\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
+  "source": "function createEnv(sdk) {\n  var STEPS = 1200;\n  var DT = 1 / 60;\n  var rng, x, xDot, angle, angleDot, t, done;\n  var terms = [0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0];\n\n  function difficulty() {\n    return Math.min(1, t / STEPS);\n  }\n\n  function trackLimit() {\n    return 2.4 - 0.5 * difficulty();\n  }\n\n  function reset(seed) {\n    rng = sdk.rng(seed);\n    x = 0;\n    xDot = 0;\n    angle = rng.range(-0.035, 0.035);\n    angleDot = rng.range(-0.02, 0.02);\n    t = 0;\n    done = false;\n    terms[0] = 0;\n    terms[1] = 0;\n    terms[2] = 0;\n    terms[3] = 0;\n  }\n\n  return {\n    reset: reset,\n\n    step: function (action) {\n      if (done) return;\n\n      var force = 0;\n      if (action === 0) force = -10;\n      else if (action === 2) force = 10;\n\n      var diff = difficulty();\n      var gravity = 9.8 * (1 + 0.18 * diff);\n      var poleMass = 0.1;\n      var cartMass = 1;\n      var totalMass = poleMass + cartMass;\n      var halfPoleLength = 0.5;\n      var poleMassLength = poleMass * halfPoleLength;\n      var sinAngle = Math.sin(angle);\n      var cosAngle = Math.cos(angle);\n\n      var temp = (force + poleMassLength * angleDot * angleDot * sinAngle) / totalMass;\n      var angleAcc = (gravity * sinAngle - cosAngle * temp) /\n        (halfPoleLength * (4 / 3 - poleMass * cosAngle * cosAngle / totalMass));\n      var cartAcc = temp - poleMassLength * angleAcc * cosAngle / totalMass;\n\n      xDot += cartAcc * DT;\n      xDot *= 0.999;\n      angleDot += angleAcc * DT;\n      angleDot *= 0.999;\n      x += xDot * DT;\n      angle += angleDot * DT;\n      t += 1;\n\n      var dt = DT;\n      var angleQuality = Math.exp(-Math.pow(angle / 0.24, 2) - Math.pow(angleDot / 2.5, 2));\n      var centerScale = Math.max(0.5, trackLimit() * 0.6);\n      var centerQuality = Math.exp(-Math.pow(x / centerScale, 2));\n      terms[0] += dt;\n      terms[1] += angleQuality * dt;\n      terms[2] += centerQuality * dt;\n      if (force !== 0) terms[3] += dt;\n\n      var angleLimit = 0.48 - 0.08 * diff;\n      if (Math.abs(angle) > angleLimit || Math.abs(x) > trackLimit() || t >= STEPS) {\n        done = true;\n      }\n    },\n\n    observe: function () {\n      obs[0] = sdk.clamp(x / 2.4, -1, 1);\n      obs[1] = sdk.clamp(xDot / 4, -1, 1);\n      obs[2] = sdk.clamp(angle / 0.6, -1, 1);\n      obs[3] = sdk.clamp(angleDot / 6, -1, 1);\n      obs[4] = difficulty();\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      var scale = 120;\n      var cartX = 400 + x * scale;\n      var cartY = 365;\n      var pivotX = cartX;\n      var pivotY = cartY - 16;\n      var poleLength = 115;\n      var tipX = pivotX + Math.sin(angle) * poleLength;\n      var tipY = pivotY - Math.cos(angle) * poleLength;\n\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        var limit = trackLimit();\n        var left = 400 - limit * scale;\n        var right = 400 + limit * scale;\n        draw.line(left, 390, right, 390, sdk.colors.dim, 4);\n        draw.line(left, 390, left, 405, sdk.colors.dim, 3);\n        draw.line(right, 390, right, 405, sdk.colors.dim, 3);\n        draw.line(400, 385, 400, 395, sdk.colors.dim, 1);\n        draw.text(\"BALANCE\", 24, 32, sdk.colors.fg, 18);\n        draw.text(\"difficulty \" + Math.round(difficulty() * 100) + \"%\", 24, 55, sdk.colors.dim, 13);\n      }\n\n      draw.line(pivotX, pivotY, tipX, tipY, sdk.colors.accent, 7);\n      draw.circle(tipX, tipY, 7, sdk.colors.warn);\n      draw.rect(cartX - 28, cartY - 16, 56, 28, sdk.colors.good);\n      draw.circle(cartX - 17, cartY + 14, 7, sdk.colors.fg);\n      draw.circle(cartX + 17, cartY + 14, 7, sdk.colors.fg);\n      draw.circle(pivotX, pivotY, 6, sdk.colors.accent);\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
   "model": "gpt-6-luna",
-  "createdAt": 1795274977558
+  "createdAt": 1795276526805
 }

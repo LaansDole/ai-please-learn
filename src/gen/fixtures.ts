@@ -22,6 +22,11 @@ export const NON_DETERMINISTIC = variant(['function createEnv(sdk) {', 'var shar
 export const NO_REWARD = variant(['terms[0] += Math.max(0, 1 - d) / STEPS;', ''], ['terms[1] += 1 / STEPS;', 'd = 0;'], ['terms[2] += 1 / STEPS;', 'd = 0;']);
 export const INSTANT_DONE = variant(['t = 0; done = false;', 't = 0; done = true;']);
 
+/** Every episode scores the same whatever the agent does: nothing to learn from. */
+export const NO_SIGNAL = variant(['terms[0] += Math.max(0, 1 - d) / STEPS;', 'terms[0] += 1 / STEPS;'], ['terms[1] += 1 / STEPS;', 'd = 0;'], ['terms[2] += 1 / STEPS;', 'd = 0;']);
+/** Leaving the middle is a terminal failure, but random play often lasts to the step limit and takes the top score. */
+export const RANDOM_SURVIVES = variant(['if (t >= STEPS) done = true;', 'if (t >= STEPS || Math.abs(x) > 0.5) done = true;']);
+
 /** The two fenced blocks an LLM is asked to return. */
 export function toResponse(f: Fixture): string {
   return `\`\`\`json\n${JSON.stringify(f.meta, null, 2)}\n\`\`\`\n\n\`\`\`js\n${f.source}\`\`\`\n`;

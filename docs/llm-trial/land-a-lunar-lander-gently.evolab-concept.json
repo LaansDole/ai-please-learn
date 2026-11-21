@@ -1,23 +1,23 @@
 {
   "format": "evolab-concept",
   "version": 1,
-  "id": "gen-lunar-lander-4b26",
-  "name": "Lunar Lander",
+  "id": "gen-gentle-lunar-lander-796f",
+  "name": "Gentle Lunar Lander",
   "prompt": "land a lunar lander gently",
   "meta": {
-    "name": "Lunar Lander",
-    "tagline": "Brake, align, and touch down gently on the lunar pad.",
-    "description": "Guide a small lander toward the marked pad using its main engine and side jets. The moon's gravity pulls the craft down, and a landing only counts if the lander reaches the pad slowly with little horizontal drift.",
+    "name": "Gentle Lunar Lander",
+    "tagline": "Steer the lander onto a shrinking pad without a hard touchdown.",
+    "description": "Guide a lunar lander sideways and control its descent with the main engine. Gravity increases and the landing pad narrows as you approach the surface, so watch your speed and line up for a gentle touchdown.",
     "fps": 30,
     "maxSteps": 500,
     "observation": {
       "labels": [
-        "horizontal distance from pad",
+        "horizontal offset from pad",
         "altitude",
-        "horizontal velocity",
-        "downward velocity",
-        "pad position",
-        "fuel remaining"
+        "horizontal speed",
+        "downward speed",
+        "landing pad width",
+        "gravity strength"
       ]
     },
     "action": {
@@ -25,70 +25,90 @@
       "labels": [
         "coast",
         "main engine",
-        "left jet",
-        "right jet"
+        "left thruster",
+        "right thruster",
+        "main and left",
+        "main and right"
       ]
     },
     "rewardTerms": [
       {
-        "key": "approach",
+        "key": "flightTime",
         "kind": "reward",
-        "description": "Accumulated shaping reward for lining up with the pad and descending.",
-        "defaultWeight": 8
+        "description": "Time spent flying before landing or failure, in seconds.",
+        "defaultWeight": 1.2
+      },
+      {
+        "key": "safeApproach",
+        "kind": "reward",
+        "description": "Time spent descending at a controlled speed while aligned with the pad.",
+        "defaultWeight": 4
+      },
+      {
+        "key": "descent",
+        "kind": "reward",
+        "description": "Fraction of the starting altitude descended.",
+        "defaultWeight": 4
       },
       {
         "key": "landed",
         "kind": "reward",
-        "description": "One-time reward for a safe touchdown on the pad.",
+        "description": "Bonus for touching down inside the pad at a gentle speed.",
         "defaultWeight": 20
       },
       {
-        "key": "fuelUsed",
+        "key": "mishaps",
         "kind": "penalty",
-        "description": "Fraction of the starting fuel spent.",
-        "defaultWeight": 2
+        "description": "Crashes, leaving the flight area, or timing out.",
+        "defaultWeight": 14
       },
       {
-        "key": "crashes",
+        "key": "thrustUse",
         "kind": "penalty",
-        "description": "Number of hard landings or boundary crashes.",
-        "defaultWeight": 10
+        "description": "Time spent firing thrusters.",
+        "defaultWeight": 0.15
       }
     ],
     "presets": [
       {
         "name": "default",
-        "description": "Balance alignment, safe landing, and fuel use.",
+        "description": "Land safely while keeping the approach controlled.",
         "weights": {
-          "approach": 8,
+          "flightTime": 1.2,
+          "safeApproach": 4,
+          "descent": 4,
           "landed": 20,
-          "fuelUsed": 2,
-          "crashes": 10
+          "mishaps": 14,
+          "thrustUse": 0.15
         }
       },
       {
         "name": "aggressive",
-        "description": "Prioritize reaching the pad safely.",
+        "description": "Prioritize reaching the pad and completing the landing.",
         "weights": {
-          "approach": 6,
-          "landed": 25,
-          "fuelUsed": 0.5,
-          "crashes": 12
+          "flightTime": 0.6,
+          "safeApproach": 2,
+          "descent": 5,
+          "landed": 30,
+          "mishaps": 18,
+          "thrustUse": 0.05
         }
       },
       {
         "name": "survivalist",
-        "description": "Favor careful alignment and conserving fuel.",
+        "description": "Reward a long, controlled flight and strongly discourage mishaps.",
         "weights": {
-          "approach": 10,
-          "landed": 18,
-          "fuelUsed": 4,
-          "crashes": 12
+          "flightTime": 2,
+          "safeApproach": 6,
+          "descent": 2,
+          "landed": 16,
+          "mishaps": 22,
+          "thrustUse": 0.25
         }
       }
     ],
     "human": {
-      "hint": "Use Up for the main engine and Left/Right for the side jets.",
+      "hint": "Use Up to fire the main engine and Left/Right to steer. You can combine Up with either direction.",
       "keys": [
         {
           "code": "ArrowUp",
@@ -96,16 +116,16 @@
         },
         {
           "code": "ArrowLeft",
-          "label": "left jet"
+          "label": "left thruster"
         },
         {
           "code": "ArrowRight",
-          "label": "right jet"
+          "label": "right thruster"
         }
       ]
     }
   },
-  "source": "function createEnv(sdk) {\n  var STEPS = 500;\n  var GROUND = 435;\n  var TOUCH_Y = 415;\n  var PAD_HALF = 62;\n  var START_FUEL = 160;\n\n  var rng, x, y, vx, vy, padX, fuel, tick, done;\n  var lastAction = 0;\n  var stars = [];\n  var terms = [0, 0, 0, 0];\n  var obs = new Float32Array(6);\n\n  function reset(seed) {\n    rng = sdk.rng(seed);\n    padX = rng.range(300, 500);\n    x = rng.range(130, 670);\n    y = rng.range(82, 125);\n    vx = rng.range(-0.65, 0.65);\n    vy = rng.range(0.15, 0.55);\n    fuel = START_FUEL;\n    tick = 0;\n    done = false;\n    lastAction = 0;\n\n    terms[0] = 0;\n    terms[1] = 0;\n    terms[2] = 0;\n    terms[3] = 0;\n\n    stars = [];\n    for (var i = 0; i < 28; i++) {\n      stars.push([rng.range(18, 782), rng.range(18, 310), rng.range(1, 2.2)]);\n    }\n  }\n\n  function step(action) {\n    if (done) return;\n\n    var a = Math.floor(action);\n    if (a < 0 || a > 3) a = 0;\n    lastAction = 0;\n\n    var ax = 0;\n    var thrust = 0;\n    var cost = 0;\n\n    if (fuel > 0) {\n      if (a === 1) {\n        thrust = 0.034;\n        cost = 1;\n        lastAction = 1;\n      } else if (a === 2) {\n        ax = -0.025;\n        cost = 0.7;\n        lastAction = 2;\n      } else if (a === 3) {\n        ax = 0.025;\n        cost = 0.7;\n        lastAction = 3;\n      }\n    }\n\n    if (cost > fuel) {\n      cost = fuel;\n      if (cost <= 0) {\n        thrust = 0;\n        ax = 0;\n        lastAction = 0;\n      }\n    }\n    fuel = Math.max(0, fuel - cost);\n    terms[2] += cost / START_FUEL;\n\n    vx = sdk.clamp(vx + ax, -4, 4);\n    vy = sdk.clamp(vy + 0.013 - thrust, -3.5, 3.5);\n    x += vx;\n    y += vy;\n\n    var horizontalProximity = Math.max(0, 1 - Math.abs(x - padX) / 360);\n    var descentProgress = sdk.clamp((y - 82) / (TOUCH_Y - 82), 0, 1);\n    var velocityQuality = Math.max(0, 1 - Math.abs(vx) / 2.5);\n    var shaping = 0.7 * horizontalProximity * (0.65 + 0.35 * velocityQuality) +\n      0.3 * descentProgress;\n    terms[0] += shaping / STEPS;\n\n    tick += 1;\n\n    if (y >= TOUCH_Y) {\n      var onPad = Math.abs(x - padX) <= PAD_HALF - 10;\n      var gentle = Math.abs(vx) <= 0.65 && Math.abs(vy) <= 0.75;\n      if (onPad && gentle) {\n        terms[1] += 1;\n      } else {\n        terms[3] += 1;\n      }\n      y = TOUCH_Y;\n      done = true;\n    } else if (x < 12 || x > 788) {\n      terms[3] += 1;\n      done = true;\n    } else if (tick >= STEPS) {\n      done = true;\n    }\n  }\n\n  function observe() {\n    obs[0] = sdk.clamp((x - padX) / 400, -1, 1);\n    obs[1] = sdk.clamp((GROUND - y) / (GROUND - 50), -1, 1);\n    obs[2] = sdk.clamp(vx / 2.5, -1, 1);\n    obs[3] = sdk.clamp(vy / 3.5, -1, 1);\n    obs[4] = sdk.clamp((padX - 400) / 400, -1, 1);\n    obs[5] = sdk.clamp(2 * fuel / START_FUEL - 1, -1, 1);\n    return obs;\n  }\n\n  function render(draw, ghost) {\n    if (!ghost) {\n      draw.clear(sdk.colors.bg);\n\n      for (var i = 0; i < stars.length; i++) {\n        draw.circle(stars[i][0], stars[i][1], stars[i][2], sdk.colors.dim);\n      }\n\n      draw.rect(0, GROUND, 800, 65, sdk.colors.dim);\n      draw.line(0, GROUND, 800, GROUND, sdk.colors.fg, 2);\n\n      draw.rect(padX - PAD_HALF, GROUND - 5, PAD_HALF * 2, 8, sdk.colors.good);\n      draw.line(padX - PAD_HALF, GROUND - 8, padX - PAD_HALF, GROUND + 4, sdk.colors.good, 2);\n      draw.line(padX + PAD_HALF, GROUND - 8, padX + PAD_HALF, GROUND + 4, sdk.colors.good, 2);\n\n      draw.text(\"PAD\", padX - 14, GROUND - 17, sdk.colors.good, 12);\n      draw.text(\"FUEL \" + Math.round(fuel), 24, 30, sdk.colors.fg, 14);\n    }\n\n    if (lastAction === 1) {\n      draw.poly([x - 5, y + 10, x + 5, y + 10, x, y + 23], sdk.colors.warn, true);\n    } else if (lastAction === 2) {\n      draw.poly([x + 10, y - 3, x + 21, y, x + 10, y + 3], sdk.colors.warn, true);\n    } else if (lastAction === 3) {\n      draw.poly([x - 10, y - 3, x - 21, y, x - 10, y + 3], sdk.colors.warn, true);\n    }\n\n    draw.poly([x - 9, y - 8, x + 9, y - 8, x + 7, y + 8, x - 7, y + 8], sdk.colors.accent, true);\n    draw.line(x - 7, y + 7, x - 13, y + 14, sdk.colors.fg, 2);\n    draw.line(x + 7, y + 7, x + 13, y + 14, sdk.colors.fg, 2);\n    draw.line(x - 13, y + 14, x - 5, y + 14, sdk.colors.fg, 2);\n    draw.line(x + 13, y + 14, x + 5, y + 14, sdk.colors.fg, 2);\n    draw.circle(x, y - 1, 2, sdk.colors.fg);\n  }\n\n  return {\n    reset: reset,\n    step: step,\n    observe: observe,\n    get done() {\n      return done;\n    },\n    terms: terms,\n    render: render,\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowUp\")) return 1;\n      if (input.held.has(\"ArrowLeft\")) return 2;\n      if (input.held.has(\"ArrowRight\")) return 3;\n      return 0;\n    }\n  };\n}\n",
+  "source": "function createEnv(sdk) {\n  var GROUND = 420;\n  var START_Y = 65;\n  var FLIGHT_LIMIT = 260;\n  var terms = [0, 0, 0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0, 0];\n  var rng, x, y, vx, vy, padX, padHalf, tick, done;\n  var lastMain = false, lastSide = 0;\n  var starsX = [], starsY = [];\n\n  function progress() {\n    return sdk.clamp((y - START_Y) / (GROUND - START_Y), 0, 1);\n  }\n\n  function gravity() {\n    return sdk.clamp(0.026 + 0.000055 * tick + 0.012 * progress(), 0.026, 0.052);\n  }\n\n  function updatePad() {\n    padHalf = 52 - 24 * progress();\n  }\n\n  function setAction(action) {\n    var a = action | 0;\n    if (a < 0 || a > 5) a = 0;\n    lastMain = a === 1 || a === 4 || a === 5;\n    lastSide = a === 2 || a === 4 ? -1 : (a === 3 || a === 5 ? 1 : 0);\n  }\n\n  return {\n    reset: function (seed) {\n      rng = sdk.rng(seed);\n      x = rng.range(300, 500);\n      y = START_Y;\n      vx = 0;\n      vy = 0;\n      padX = sdk.clamp(x + rng.range(-115, 115), 170, 630);\n      tick = 0;\n      done = false;\n      lastMain = false;\n      lastSide = 0;\n      updatePad();\n      for (var i = 0; i < terms.length; i++) terms[i] = 0;\n      starsX = [];\n      starsY = [];\n      for (var j = 0; j < 28; j++) {\n        starsX.push(rng.range(20, 780));\n        starsY.push(rng.range(20, 320));\n      }\n    },\n\n    step: function (action) {\n      if (done) return;\n\n      setAction(action);\n      var oldY = y;\n      var g = gravity();\n\n      vy += g;\n      if (lastMain) vy -= 0.082;\n      vx += lastSide * 0.024;\n      vx *= 0.995;\n      vy = sdk.clamp(vy, -4.5, 7.5);\n      vx = sdk.clamp(vx, -5.5, 5.5);\n      x += vx;\n      y += vy;\n      tick++;\n      updatePad();\n\n      terms[0] += 1 / 30;\n      terms[2] += Math.max(0, y - oldY) / (GROUND - START_Y);\n      if (lastMain || lastSide !== 0) terms[5] += 1 / 30;\n\n      var dx = Math.abs(x - padX);\n      var align = sdk.clamp(1 - dx / (padHalf + 120), 0, 1);\n      var lateralControl = sdk.clamp(1 - Math.abs(vx) / 5, 0, 1);\n      var descentControl = sdk.clamp((vy - 0.15) / 1.0, 0, 1) *\n        sdk.clamp((4.2 - vy) / 2.8, 0, 1);\n      terms[1] += align * lateralControl * descentControl / 30;\n\n      if (y >= GROUND) {\n        if (dx <= padHalf - 8 && Math.abs(vx) <= 1.25 && vy >= 0 && vy <= 1.5) {\n          terms[3] += 1;\n        } else {\n          terms[4] += 1;\n        }\n        done = true;\n      } else if (x < 18 || x > 782 || y < 18 || tick >= FLIGHT_LIMIT) {\n        terms[4] += 1;\n        done = true;\n      }\n    },\n\n    observe: function () {\n      var alt = (GROUND - y) / (GROUND - START_Y);\n      var g = gravity();\n      obs[0] = sdk.clamp((x - padX) / 200, -1, 1);\n      obs[1] = sdk.clamp(2 * alt - 1, -1, 1);\n      obs[2] = sdk.clamp(vx / 5.5, -1, 1);\n      obs[3] = sdk.clamp(vy / 7.5, -1, 1);\n      obs[4] = sdk.clamp((padHalf - 40) / 20, -1, 1);\n      obs[5] = sdk.clamp((g - 0.039) / 0.02, -1, 1);\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        for (var i = 0; i < starsX.length; i++) {\n          draw.circle(starsX[i], starsY[i], 1.5, sdk.colors.dim);\n        }\n        draw.line(0, GROUND + 18, 800, GROUND + 18, sdk.colors.dim, 3);\n        draw.line(padX - padHalf, GROUND, padX + padHalf, GROUND, sdk.colors.good, 6);\n        draw.line(padX - padHalf, GROUND + 2, padX - padHalf - 10, GROUND + 12, sdk.colors.dim, 2);\n        draw.line(padX + padHalf, GROUND + 2, padX + padHalf + 10, GROUND + 12, sdk.colors.dim, 2);\n        draw.text(\"PAD\", padX - 14, GROUND + 32, sdk.colors.dim, 12);\n        draw.text(\"DOWN \" + Math.max(0, vy).toFixed(1), 24, 30, sdk.colors.fg, 14);\n      }\n\n      if (lastMain) {\n        draw.poly([x - 5, y + 12, x, y + 28, x + 5, y + 12], sdk.colors.warn, true);\n      }\n      if (lastSide < 0) {\n        draw.poly([x - 12, y + 2, x - 25, y + 7, x - 12, y + 10], sdk.colors.warn, true);\n      } else if (lastSide > 0) {\n        draw.poly([x + 12, y + 2, x + 25, y + 7, x + 12, y + 10], sdk.colors.warn, true);\n      }\n\n      draw.poly([x - 12, y + 9, x - 9, y - 8, x, y - 14, x + 9, y - 8, x + 12, y + 9], sdk.colors.accent, true);\n      draw.line(x - 8, y + 8, x - 14, y + 17, sdk.colors.fg, 2);\n      draw.line(x + 8, y + 8, x + 14, y + 17, sdk.colors.fg, 2);\n      draw.line(x - 16, y + 17, x - 11, y + 17, sdk.colors.fg, 2);\n      draw.line(x + 11, y + 17, x + 16, y + 17, sdk.colors.fg, 2);\n    },\n\n    humanAct: function (input) {\n      var up = input.held.has(\"ArrowUp\");\n      var left = input.held.has(\"ArrowLeft\");\n      var right = input.held.has(\"ArrowRight\");\n      if (left && !right) return up ? 4 : 2;\n      if (right && !left) return up ? 5 : 3;\n      return up ? 1 : 0;\n    }\n  };\n}\n",
   "model": "gpt-6-luna",
-  "createdAt": 1795275054020
+  "createdAt": 1795276630963
 }

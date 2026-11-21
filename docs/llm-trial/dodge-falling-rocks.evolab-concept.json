@@ -1,30 +1,35 @@
 {
   "format": "evolab-concept",
   "version": 1,
-  "id": "gen-dodge-falling-rocks-5362",
+  "id": "gen-dodge-falling-rocks-f7ec",
   "name": "Dodge Falling Rocks",
   "prompt": "dodge falling rocks",
   "meta": {
     "name": "Dodge Falling Rocks",
-    "tagline": "Watch the sky and move before the rocks land.",
-    "description": "Move along the ground to avoid rocks falling from above. Survive as long as you can, and watch each rock’s position and speed to plan a safe path.",
+    "tagline": "Read the falling rocks and find a safe path.",
+    "description": "Move along the bottom of the arena to avoid falling rocks. The storm gets faster and denser as you survive, so watch the rocks' positions and drift to choose a safe lane.",
     "fps": 30,
-    "maxSteps": 900,
+    "maxSteps": 1200,
     "observation": {
       "labels": [
         "player x",
-        "lowest rock x",
-        "lowest rock y",
-        "lowest rock speed",
-        "second rock x",
-        "second rock y",
-        "second rock speed",
-        "third rock x",
-        "third rock y",
-        "third rock speed",
-        "fourth rock x",
-        "fourth rock y",
-        "fourth rock speed"
+        "storm intensity",
+        "nearest rock relative x",
+        "nearest rock vertical distance",
+        "nearest rock horizontal speed",
+        "nearest rock size",
+        "second rock relative x",
+        "second rock vertical distance",
+        "second rock horizontal speed",
+        "second rock size",
+        "third rock relative x",
+        "third rock vertical distance",
+        "third rock horizontal speed",
+        "third rock size",
+        "fourth rock relative x",
+        "fourth rock vertical distance",
+        "fourth rock horizontal speed",
+        "fourth rock size"
       ]
     },
     "action": {
@@ -37,64 +42,55 @@
     },
     "rewardTerms": [
       {
-        "key": "timeAlive",
+        "key": "survival",
         "kind": "reward",
-        "description": "Fraction of the episode limit survived.",
+        "description": "Fraction of the goal duration survived, increasing each safe step.",
         "defaultWeight": 10
       },
       {
-        "key": "rocksDodged",
+        "key": "safeRoom",
         "kind": "reward",
-        "description": "Fraction of an expected episode's rocks passed safely.",
+        "description": "Average clearance from rocks predicted to reach the player's lane soon.",
+        "defaultWeight": 3
+      },
+      {
+        "key": "collisions",
+        "kind": "penalty",
+        "description": "Number of rock collisions.",
         "defaultWeight": 5
-      },
-      {
-        "key": "collision",
-        "kind": "penalty",
-        "description": "One if a falling rock hits the player.",
-        "defaultWeight": 10
-      },
-      {
-        "key": "movement",
-        "kind": "penalty",
-        "description": "Fraction of steps spent moving left or right.",
-        "defaultWeight": 0.5
       }
     ],
     "presets": [
       {
         "name": "default",
-        "description": "Survive and dodge rocks without needless movement.",
+        "description": "Balance staying alive with keeping a safe distance from incoming rocks.",
         "weights": {
-          "timeAlive": 10,
-          "rocksDodged": 5,
-          "collision": 10,
-          "movement": 0.5
+          "survival": 10,
+          "safeRoom": 3,
+          "collisions": 5
         }
       },
       {
         "name": "aggressive",
-        "description": "Reward successfully dodging every rock.",
+        "description": "Prioritize surviving the storm.",
         "weights": {
-          "timeAlive": 8,
-          "rocksDodged": 10,
-          "collision": 12,
-          "movement": 0.2
+          "survival": 15,
+          "safeRoom": 2,
+          "collisions": 8
         }
       },
       {
         "name": "survivalist",
-        "description": "Prioritize staying alive and moving only when needed.",
+        "description": "Favor maintaining generous clearance from danger.",
         "weights": {
-          "timeAlive": 14,
-          "rocksDodged": 2,
-          "collision": 15,
-          "movement": 1.5
+          "survival": 8,
+          "safeRoom": 6,
+          "collisions": 6
         }
       }
     ],
     "human": {
-      "hint": "Use the left and right arrow keys to dodge. Stay still to hold your position.",
+      "hint": "Use the left and right arrow keys to dodge.",
       "keys": [
         {
           "code": "ArrowLeft",
@@ -107,7 +103,7 @@
       ]
     }
   },
-  "source": "function createEnv(sdk) {\n  var MAX_STEPS = 900;\n  var PLAYER_Y = 445;\n  var PLAYER_RADIUS = 16;\n  var ROCK_RADIUS = 18;\n  var MOVE_SPEED = 8;\n  var rng, playerX, rocks, spawnTimer, stepCount, isDone;\n  var terms = [0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];\n\n  function reset(seed) {\n    rng = sdk.rng(seed);\n    playerX = 400;\n    rocks = [];\n    spawnTimer = rng.int(14) + 14;\n    stepCount = 0;\n    isDone = false;\n    for (var i = 0; i < terms.length; i++) terms[i] = 0;\n  }\n\n  function step(action) {\n    if (isDone) return;\n\n    var move = 0;\n    if (action === 0) move = -1;\n    else if (action === 2) move = 1;\n    playerX = sdk.clamp(playerX + move * MOVE_SPEED, 36, 764);\n    if (move !== 0) terms[3] += 1 / MAX_STEPS;\n\n    spawnTimer -= 1;\n    if (spawnTimer <= 0) {\n      rocks.push({\n        x: rng.range(36, 764),\n        y: -22,\n        speed: rng.range(4.2, 5.6)\n      });\n      spawnTimer = rng.int(15) + 31;\n    }\n\n    var hit = false;\n    for (var r = rocks.length - 1; r >= 0; r--) {\n      var rock = rocks[r];\n      rock.y += rock.speed;\n\n      var dx = rock.x - playerX;\n      var dy = rock.y - PLAYER_Y;\n      var reach = PLAYER_RADIUS + ROCK_RADIUS;\n      if (dx * dx + dy * dy <= reach * reach) {\n        hit = true;\n      } else if (rock.y > PLAYER_Y + reach) {\n        terms[1] += 1 / 26;\n        rocks.splice(r, 1);\n      }\n    }\n\n    stepCount += 1;\n    if (hit) {\n      terms[2] = 1;\n      isDone = true;\n    } else {\n      terms[0] += 1 / MAX_STEPS;\n      if (stepCount >= MAX_STEPS) isDone = true;\n    }\n  }\n\n  function observe() {\n    obs[0] = (playerX - 400) / 364;\n\n    var sorted = rocks.slice();\n    sorted.sort(function (a, b) {\n      return b.y - a.y;\n    });\n\n    for (var i = 0; i < 4; i++) {\n      var offset = 1 + i * 3;\n      if (i < sorted.length) {\n        var rock = sorted[i];\n        obs[offset] = (rock.x - 400) / 364;\n        obs[offset + 1] = sdk.clamp((rock.y - 250) / 250, -1, 1);\n        obs[offset + 2] = rock.speed / 6;\n      } else {\n        obs[offset] = 0;\n        obs[offset + 1] = -1;\n        obs[offset + 2] = 0;\n      }\n    }\n    return obs;\n  }\n\n  function render(draw, ghost) {\n    if (!ghost) {\n      draw.clear(sdk.colors.bg);\n      draw.line(24, PLAYER_Y + 22, 776, PLAYER_Y + 22, sdk.colors.dim, 2);\n      draw.line(24, PLAYER_Y + 28, 776, PLAYER_Y + 28, sdk.colors.dim, 1);\n      for (var i = 0; i < rocks.length; i++) {\n        draw.circle(rocks[i].x, rocks[i].y, ROCK_RADIUS, sdk.colors.bad);\n        draw.circle(rocks[i].x - 5, rocks[i].y - 6, 4, sdk.colors.warn);\n      }\n    }\n    draw.circle(playerX, PLAYER_Y, PLAYER_RADIUS, sdk.colors.accent);\n    draw.line(playerX - 12, PLAYER_Y + 12, playerX + 12, PLAYER_Y + 12, sdk.colors.good, 3);\n  }\n\n  function humanAct(input) {\n    if (input.held.has(\"ArrowLeft\")) return 0;\n    if (input.held.has(\"ArrowRight\")) return 2;\n    return 1;\n  }\n\n  reset(0);\n\n  return {\n    reset: reset,\n    step: step,\n    observe: observe,\n    get done() {\n      return isDone;\n    },\n    terms: terms,\n    render: render,\n    humanAct: humanAct\n  };\n}\n",
+  "source": "function createEnv(sdk) {\n  var GOAL = 1100;\n  var PLAYER_Y = 438;\n  var PLAYER_R = 13;\n  var MAX_ROCKS = 100;\n\n  var rng, rocks, playerX, t, done;\n  var terms = [0, 0, 0];\n  var obs = new Array(18);\n\n  function reset(seed) {\n    rng = sdk.rng(seed);\n    rocks = [];\n    playerX = 400;\n    t = 0;\n    done = false;\n    terms[0] = 0;\n    terms[1] = 0;\n    terms[2] = 0;\n  }\n\n  function step(action) {\n    if (done) return;\n\n    var move = action === 0 ? -1 : (action === 2 ? 1 : 0);\n    playerX = sdk.clamp(playerX + move * 8.5, 24, 776);\n\n    var progress = Math.min(1, t / GOAL);\n    var spawnChance = 0.028 + 0.055 * progress;\n    var rockSpeed = 3.2 + 2.6 * progress;\n\n    if (rocks.length < MAX_ROCKS && rng.next() < spawnChance) {\n      var radius = rng.range(13, 23);\n      rocks.push({\n        x: rng.range(30 + radius, 770 - radius),\n        y: -radius,\n        vx: rng.range(-0.75, 0.75),\n        speed: rockSpeed * rng.range(0.82, 1.18),\n        r: radius\n      });\n    }\n\n    var hit = false;\n    for (var i = rocks.length - 1; i >= 0; i--) {\n      var rock = rocks[i];\n      rock.y += rock.speed;\n      rock.x += rock.vx;\n\n      if (rock.x < rock.r + 20) {\n        rock.x = rock.r + 20;\n        rock.vx = Math.abs(rock.vx);\n      } else if (rock.x > 780 - rock.r) {\n        rock.x = 780 - rock.r;\n        rock.vx = -Math.abs(rock.vx);\n      }\n\n      var dx = playerX - rock.x;\n      var dy = PLAYER_Y - rock.y;\n      var reach = PLAYER_R + rock.r;\n      if (dx * dx + dy * dy <= reach * reach) hit = true;\n\n      if (rock.y > 550) rocks.splice(i, 1);\n    }\n\n    if (hit) {\n      terms[2] += 1;\n      t += 1;\n      done = true;\n      return;\n    }\n\n    terms[0] += 1 / GOAL;\n\n    var nearestGap = 100;\n    for (var j = 0; j < rocks.length; j++) {\n      var r = rocks[j];\n      var timeToLane = (PLAYER_Y - r.y) / r.speed;\n      if (timeToLane >= 0 && timeToLane <= 60) {\n        var predictedX = sdk.clamp(r.x + r.vx * timeToLane, 20 + r.r, 780 - r.r);\n        var gap = Math.abs(playerX - predictedX) - PLAYER_R - r.r;\n        if (gap < nearestGap) nearestGap = gap;\n      }\n    }\n    var clearance = sdk.clamp((nearestGap + 8) / 90, 0, 1);\n    terms[1] += clearance / GOAL;\n\n    t += 1;\n    if (t >= GOAL) done = true;\n  }\n\n  function observe() {\n    obs[0] = (playerX - 400) / 376;\n    obs[1] = Math.min(1, t / GOAL);\n\n    var chosen = [];\n    for (var slot = 0; slot < 4; slot++) {\n      var bestIndex = -1;\n      var bestY = -100000;\n      for (var i = 0; i < rocks.length; i++) {\n        var alreadyChosen = false;\n        for (var k = 0; k < chosen.length; k++) {\n          if (chosen[k] === i) alreadyChosen = true;\n        }\n        if (!alreadyChosen && rocks[i].y > bestY) {\n          bestY = rocks[i].y;\n          bestIndex = i;\n        }\n      }\n\n      var base = 2 + slot * 4;\n      if (bestIndex < 0) {\n        obs[base] = 0;\n        obs[base + 1] = 1;\n        obs[base + 2] = 0;\n        obs[base + 3] = 0;\n      } else {\n        chosen.push(bestIndex);\n        var rock = rocks[bestIndex];\n        obs[base] = sdk.clamp((rock.x - playerX) / 400, -1, 1);\n        obs[base + 1] = sdk.clamp((PLAYER_Y - rock.y) / 500, -1, 1);\n        obs[base + 2] = sdk.clamp(rock.vx / 1.5, -1, 1);\n        obs[base + 3] = sdk.clamp(rock.r / 25, 0, 1);\n      }\n    }\n    return obs;\n  }\n\n  function render(draw, ghost) {\n    if (!ghost) {\n      draw.clear(sdk.colors.bg);\n      draw.line(18, PLAYER_Y + 22, 782, PLAYER_Y + 22, sdk.colors.dim, 2);\n      for (var i = 0; i < rocks.length; i++) {\n        draw.circle(rocks[i].x, rocks[i].y, rocks[i].r, sdk.colors.warn);\n        draw.circle(rocks[i].x - rocks[i].r * 0.25, rocks[i].y - rocks[i].r * 0.25, rocks[i].r * 0.22, sdk.colors.dim);\n      }\n      draw.text(\"STORM \" + Math.round(Math.min(1, t / GOAL) * 100) + \"%\", 24, 32, sdk.colors.fg, 18);\n    }\n    draw.circle(playerX, PLAYER_Y, PLAYER_R, sdk.colors.accent);\n    draw.circle(playerX, PLAYER_Y - 3, 5, sdk.colors.good);\n  }\n\n  function humanAct(input) {\n    if (input.held.has(\"ArrowLeft\")) return 0;\n    if (input.held.has(\"ArrowRight\")) return 2;\n    return 1;\n  }\n\n  return {\n    reset: reset,\n    step: step,\n    observe: observe,\n    get done() { return done; },\n    terms: terms,\n    render: render,\n    humanAct: humanAct\n  };\n}\n",
   "model": "gpt-6-luna",
-  "createdAt": 1795275009750
+  "createdAt": 1795276569277
 }

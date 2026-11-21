@@ -59,6 +59,11 @@ HARD RULES
 - The task must be learnable: include at least one reward term that changes gradually as the agent gets closer to success
   (a shaping term), not only a rare jackpot. Include at least one penalty term.
 - At least one reward term must change within the first 200 steps of random play.
+- Rewards must be dense: pay a little on most steps (time survived, progress, closeness), not only at the end of the episode.
+- Random actions must score clearly lower than skilled play, and must never last to maxSteps. Make failure terminal (set done),
+  pay a reward for every step survived, and ramp the difficulty up during the episode (faster, denser, narrower) so that
+  only a policy that reacts to the observations survives. Never cap the score at a value random play can reach.
+  The app rejects an environment in which a random episode survives to maxSteps with the best score.
 - Simple physics with a fixed time step of 1 / fps. Keep step() cheap (well under 0.1 ms).
 - The episode must be able to end: failure, success, or a step limit you enforce.
 

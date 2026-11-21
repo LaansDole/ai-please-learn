@@ -1,94 +1,103 @@
 {
   "format": "evolab-concept",
   "version": 1,
-  "id": "gen-juggle-the-ball-39cf",
+  "id": "gen-juggle-the-ball-85b3",
   "name": "Juggle the Ball",
   "prompt": "learn to juggle a ball",
   "meta": {
     "name": "Juggle the Ball",
-    "tagline": "Keep the ball bouncing by getting the paddle underneath it.",
-    "description": "Move a paddle to bounce a falling ball back into the air. Each bounce can send the ball sideways depending on where it lands, so track its motion and keep repositioning the paddle. The episode ends when the ball is missed or the time limit is reached.",
+    "tagline": "Move the paddle to keep the ball bouncing.",
+    "description": "Slide the paddle beneath a falling ball and bounce it back into the air. Each catch changes the ball's horizontal motion, while the game gradually gets faster and the paddle gets narrower. Watch the ball's position and velocity to time your next catch.",
     "fps": 30,
     "maxSteps": 1800,
     "observation": {
       "labels": [
         "ball horizontal position",
-        "ball height",
+        "ball vertical position",
         "ball horizontal velocity",
         "ball vertical velocity",
         "paddle horizontal position",
-        "ball horizontal distance from paddle",
-        "ball is descending"
+        "paddle half-width",
+        "difficulty"
       ]
     },
     "action": {
       "type": "discrete",
       "labels": [
         "move left",
-        "hold",
+        "stay still",
         "move right"
       ]
     },
     "rewardTerms": [
       {
-        "key": "height",
+        "key": "catches",
         "kind": "reward",
-        "description": "Accumulated ball height above the paddle, scaled by the episode limit.",
-        "defaultWeight": 8
+        "description": "Number of successful paddle catches.",
+        "defaultWeight": 3
       },
       {
-        "key": "bounces",
+        "key": "survival",
         "kind": "reward",
-        "description": "Number of successful paddle bounces.",
-        "defaultWeight": 0.2
+        "description": "Fraction of the episode's step limit survived.",
+        "defaultWeight": 5
+      },
+      {
+        "key": "alignment",
+        "kind": "reward",
+        "description": "Average closeness of the paddle to the ball's predicted landing point while it falls.",
+        "defaultWeight": 4
       },
       {
         "key": "misses",
         "kind": "penalty",
-        "description": "Ball missed and the episode ended.",
-        "defaultWeight": 3
+        "description": "Number of times the ball is missed.",
+        "defaultWeight": 2
       },
       {
         "key": "movement",
         "kind": "penalty",
         "description": "Fraction of steps spent moving the paddle.",
-        "defaultWeight": 0.3
+        "defaultWeight": 0.2
       }
     ],
     "presets": [
       {
         "name": "default",
-        "description": "Build height while keeping the ball in play.",
+        "description": "Balance catching, survival, and aiming.",
         "weights": {
-          "height": 8,
-          "bounces": 0.2,
-          "misses": 3,
-          "movement": 0.3
+          "catches": 3,
+          "survival": 5,
+          "alignment": 4,
+          "misses": 2,
+          "movement": 0.2
         }
       },
       {
         "name": "aggressive",
-        "description": "Prioritize scoring as many bounces as possible.",
+        "description": "Prioritize successful catches and aiming for the next one.",
         "weights": {
-          "height": 5,
-          "bounces": 0.5,
+          "catches": 5,
+          "survival": 3,
+          "alignment": 5,
           "misses": 2,
           "movement": 0.1
         }
       },
       {
         "name": "survivalist",
-        "description": "Favor safe, high bounces and avoid risky movement.",
+        "description": "Prioritize staying alive and avoid unnecessary movement.",
         "weights": {
-          "height": 10,
-          "bounces": 0.1,
-          "misses": 6,
-          "movement": 0.7
+          "catches": 2,
+          "survival": 7,
+          "alignment": 3,
+          "misses": 3,
+          "movement": 0.5
         }
       }
     ],
     "human": {
-      "hint": "Use the left and right arrow keys to move the paddle.",
+      "hint": "Use the left and right arrow keys to slide the paddle under the falling ball.",
       "keys": [
         {
           "code": "ArrowLeft",
@@ -101,7 +110,7 @@
       ]
     }
   },
-  "source": "function createEnv(sdk) {\n  var LIMIT = 1800;\n  var PADDLE_Y = 450;\n  var PADDLE_W = 112;\n  var BALL_R = 10;\n  var CATCH_Y = PADDLE_Y - 9 - BALL_R;\n  var rng, bx, by, vx, vy, px, steps, done;\n  var terms = [0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0, 0, 0];\n\n  function resetTerms() {\n    for (var i = 0; i < terms.length; i++) terms[i] = 0;\n  }\n\n  return {\n    reset: function (seed) {\n      rng = sdk.rng(seed);\n      bx = 400 + rng.range(-110, 110);\n      by = 285;\n      vx = rng.range(-1.2, 1.2);\n      vy = 0;\n      px = 400;\n      steps = 0;\n      done = false;\n      resetTerms();\n    },\n\n    step: function (action) {\n      if (done) return;\n\n      var move = action === 0 ? -1 : (action === 2 ? 1 : 0);\n      px = sdk.clamp(px + move * 6.5, PADDLE_W / 2, 800 - PADDLE_W / 2);\n      if (move !== 0) terms[3] += 1 / LIMIT;\n\n      var oldY = by;\n      vx = sdk.clamp(vx, -5.5, 5.5);\n      vy += 0.24;\n      bx += vx;\n      by += vy;\n\n      if (bx < BALL_R) {\n        bx = BALL_R;\n        vx = Math.abs(vx);\n      } else if (bx > 800 - BALL_R) {\n        bx = 800 - BALL_R;\n        vx = -Math.abs(vx);\n      }\n\n      if (vy > 0 && oldY <= CATCH_Y && by >= CATCH_Y &&\n          Math.abs(bx - px) <= PADDLE_W / 2 + BALL_R) {\n        by = CATCH_Y;\n        var offset = sdk.clamp((bx - px) / (PADDLE_W / 2), -1, 1);\n        vx = sdk.clamp(vx + offset * 2.8, -5.5, 5.5);\n        vy = -8.5 + Math.abs(offset) * 0.4;\n        terms[1] += 1;\n      }\n\n      var height = sdk.clamp((CATCH_Y - by) / 270, 0, 1);\n      terms[0] += height / LIMIT;\n\n      steps += 1;\n      if (by > 490) {\n        terms[2] += 1;\n        done = true;\n      }\n      if (steps >= LIMIT) done = true;\n    },\n\n    observe: function () {\n      obs[0] = sdk.clamp((bx - 400) / 400, -1, 1);\n      obs[1] = sdk.clamp((250 - by) / 250, -1, 1);\n      obs[2] = sdk.clamp(vx / 6, -1, 1);\n      obs[3] = sdk.clamp(vy / 10, -1, 1);\n      obs[4] = sdk.clamp((px - 400) / 400, -1, 1);\n      obs[5] = sdk.clamp((bx - px) / 400, -1, 1);\n      obs[6] = vy > 0 ? 1 : -1;\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        draw.line(0, PADDLE_Y + 12, 800, PADDLE_Y + 12, sdk.colors.dim, 2);\n        draw.text(\"Bounces: \" + terms[1], 24, 32, sdk.colors.fg, 18);\n      }\n      draw.rect(px - PADDLE_W / 2, PADDLE_Y - 9, PADDLE_W, 18, sdk.colors.accent);\n      if (!ghost) {\n        draw.circle(bx, by, BALL_R, sdk.colors.good);\n      }\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
+  "source": "function createEnv(sdk) {\n  var MAX_STEPS = 1800;\n  var rng;\n  var ballX, ballY, ballVX, ballVY, paddleX;\n  var t, done, catchCount;\n  var terms = [0, 0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0, 0, 0];\n\n  function difficulty() {\n    return sdk.clamp(t / 1050 + catchCount / 42, 0, 1);\n  }\n\n  function gravity() {\n    return 0.18 + 0.13 * difficulty();\n  }\n\n  function halfWidth() {\n    return 64 - 28 * difficulty();\n  }\n\n  function landingX() {\n    var g = gravity();\n    var dy = 432 - ballY;\n    var disc = ballVY * ballVY + 2 * g * dy;\n    var flight = (-ballVY + Math.sqrt(Math.max(0, disc))) / g;\n    flight = sdk.clamp(flight, 0, 200);\n\n    var span = 730;\n    var period = span * 2;\n    var q = ballX - 35 + ballVX * flight;\n    q = ((q % period) + period) % period;\n    if (q > span) q = period - q;\n    return 35 + q;\n  }\n\n  return {\n    reset: function (seed) {\n      rng = sdk.rng(seed);\n      ballX = rng.range(330, 470);\n      ballY = 190;\n      ballVX = rng.range(-2.4, 2.4);\n      ballVY = 1.5;\n      paddleX = 400;\n      t = 0;\n      done = false;\n      catchCount = 0;\n      for (var i = 0; i < terms.length; i++) terms[i] = 0;\n    },\n\n    step: function (action) {\n      if (done) return;\n\n      var dir = action === 0 ? -1 : (action === 2 ? 1 : 0);\n      var d = difficulty();\n      var oldY = ballY;\n      var g = gravity();\n      var hw = halfWidth();\n\n      paddleX = sdk.clamp(paddleX + dir * (8.5 - 1.5 * d), 80, 720);\n      if (dir !== 0) terms[4] += 1 / MAX_STEPS;\n\n      ballX += ballVX;\n      if (ballX < 35) {\n        ballX = 70 - ballX;\n        ballVX = Math.abs(ballVX);\n      } else if (ballX > 765) {\n        ballX = 1530 - ballX;\n        ballVX = -Math.abs(ballVX);\n      }\n\n      ballY += ballVY;\n      ballVY += g;\n\n      if (ballY < 35) {\n        ballY = 35;\n        ballVY = Math.abs(ballVY) * 0.98;\n      }\n\n      if (ballVY > 0 && oldY < 432 && ballY >= 432) {\n        if (Math.abs(ballX - paddleX) <= hw + 10) {\n          var offset = sdk.clamp((ballX - paddleX) / hw, -1, 1);\n          ballY = 431;\n          ballVX = sdk.clamp(ballVX * 0.88 + offset * (2 + 2.2 * d), -6.5, 6.5);\n          ballVY = -(11.8 + 1.8 * d);\n          catchCount += 1;\n          terms[0] += 1;\n        } else {\n          terms[3] += 1;\n          done = true;\n        }\n      }\n\n      t += 1;\n      terms[1] += 1 / MAX_STEPS;\n\n      if (!done && ballVY > 0) {\n        var distance = Math.abs(landingX() - paddleX);\n        terms[2] += Math.max(0, 1 - distance / 400) / MAX_STEPS;\n      }\n\n      if (t >= MAX_STEPS) done = true;\n    },\n\n    observe: function () {\n      obs[0] = (ballX - 400) / 365;\n      obs[1] = (ballY - 250) / 250;\n      obs[2] = ballVX / 7;\n      obs[3] = ballVY / 14;\n      obs[4] = (paddleX - 400) / 320;\n      obs[5] = (halfWidth() - 50) / 20;\n      obs[6] = difficulty();\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        draw.line(35, 35, 765, 35, sdk.colors.dim, 2);\n        draw.line(35, 432, 765, 432, sdk.colors.dim, 2);\n        draw.text(\"Catches: \" + catchCount, 24, 32, sdk.colors.fg, 18);\n        draw.text(\"Difficulty: \" + Math.round(difficulty() * 100) + \"%\", 650, 32, sdk.colors.dim, 15);\n        draw.circle(ballX, ballY, 10, sdk.colors.warn);\n      }\n      draw.rect(paddleX - halfWidth(), 432, halfWidth() * 2, 14, sdk.colors.accent);\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
   "model": "gpt-6-luna",
-  "createdAt": 1795274954730
+  "createdAt": 1795276496610
 }

@@ -5,7 +5,7 @@ import { SYSTEM_PROMPT, repairMessage, userMessage } from './prompt';
 
 describe('prompt', () => {
   it('contains the contract and no unreplaced placeholders', () => {
-    for (const s of ['createEnv(sdk)', 'RESPONSE FORMAT', 'HARD RULES', 'sdk.rng(seed)', 'draw.poly', 'humanAct(input)', 'Never use Math.random'])
+    for (const s of ['createEnv(sdk)', 'RESPONSE FORMAT', 'HARD RULES', 'sdk.rng(seed)', 'draw.poly', 'humanAct(input)', 'Never use Math.random', 'Random actions', 'maxSteps'])
       expect(SYSTEM_PROMPT).toContain(s);
     expect(SYSTEM_PROMPT).not.toContain('{{');
   });

@@ -1,5 +1,6 @@
 import { Rng } from '../core/rng';
 import { RecordingDraw2D, RecordingScene3D } from './draw2d';
+import { defaultReward, fitness, signedWeights } from './reward';
 import type { Action, DrawCmd, Env, EnvDefinition } from './types';
 
 export interface ConformanceReport { errors: string[]; warnings: string[]; steps: number; episodes: number; termsChanged: boolean[] }
@@ -148,4 +149,44 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
     for (const e of made) e.dispose?.();
   }
   return report;
+}
+
+/**
+ * Can anything be learned here? Plays seeded random-policy episodes (each at most maxSteps long) under the default weights and
+ * returns one repair sentence per problem:
+ *  - every episode scored the same fitness: the reward carries no signal;
+ *  - failure is possible, yet a random episode lasted to maxSteps and took the top score: random play is already at the
+ *    ceiling, so the best fitness cannot improve (the "Dodge Falling Rocks" case: best 11.9 from generation 1 to 418).
+ * Up to 64 episodes, because the lucky survivor is rare: 1 random episode in 20 for that module, which 12 or 16 episodes
+ * missed on most seeds, while a NEAT population of 150 finds it in generation 1. Bounded by `maxTotalSteps` (no new episode
+ * starts past it); the expensive case, long surviving episodes, is the one the check is looking for.
+ * Deterministic. The env must be prepared (prepareEnv) and conformant.
+ * ponytail: random policy only. A fixed-length episode has no observable ceiling, and a constant policy that survives is not
+ * caught; add constant-action rollouts if such concepts turn up.
+ */
+export function checkLearnability(def: EnvDefinition, opts: { episodes?: number; maxTotalSteps?: number; seed?: number } = {}): string[] {
+  const seed = opts.seed ?? 4242, budget = opts.maxTotalSteps ?? 60000, maxSteps = def.meta.maxSteps;
+  const signed = signedWeights(def, defaultReward(def)), rng = new Rng(seed), env = def.create();
+  const fits: number[] = [], lengths: number[] = [];
+  try {
+    for (let e = 0, total = 0; e < (opts.episodes ?? 64) && total < budget; e++) {
+      env.reset(seed + e);
+      let n = 0;
+      while (!env.done && n < maxSteps) { env.step(randomAction(def, env, rng)); n++; }
+      fits.push(fitness(env.terms, signed)); lengths.push(n); total += n;
+    }
+  } finally { env.dispose?.(); }
+  const episodes = fits.length;
+  const best = Math.max(...fits), fmt = (v: number) => String(Math.round(v * 100) / 100);
+  if (best - Math.min(...fits) < 1e-9) {
+    return [`all ${episodes} random-play episodes scored exactly the same fitness (${fmt(best)}), so there is no signal to learn from; `
+      + 'at least one reward term must depend on how well the agent plays (progress, accuracy or time survived).'];
+  }
+  const full = lengths.filter((l) => l >= maxSteps).length;
+  if (full > 0 && full < episodes && fits.some((f, i) => f === best && lengths[i]! >= maxSteps)) {
+    return [`random play already survives the whole episode: ${full} of ${episodes} random episodes lasted to maxSteps (${maxSteps}) and one of them took the best `
+      + `fitness (${fmt(best)}), so a learner has nothing to improve. Make it harder: ramp the difficulty up over time (faster, denser or narrower) `
+      + 'until random actions always fail well before maxSteps, and keep paying a reward per step survived so skilled play scores clearly higher.'];
+  }
+  return [];
 }

@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import * as F from './fixtures';
 import { parseResponse } from './parse';
@@ -24,6 +25,8 @@ describe('validator', () => {
     ['NON_DETERMINISTIC', /not deterministic/],
     ['NO_REWARD', /no reward term ever changed/],
     ['INSTANT_DONE', /done must be false right after reset/],
+    ['NO_SIGNAL', /scored exactly the same fitness/],
+    ['RANDOM_SURVIVES', /random play already survives the whole episode/],
   ] as const)('rejects %s with an actionable message', (name, pattern) => {
     const r = run(F[name]);
     expect(r.ok).toBe(false);
@@ -53,5 +56,16 @@ describe('validator', () => {
     let t = 0;
     const r = validateModule(F.GOOD.source, F.GOOD.meta, () => (t += 4000));
     expect(r.ok).toBe(false); expect(r.errors[0]).toMatch(/took too long/);
+  });
+  const concept = (path: string) => JSON.parse(readFileSync(path, 'utf8')) as { meta: unknown; source: string };
+  it('rejects the real "Dodge Falling Rocks" whose best fitness never moved in 418 generations', () => {
+    const r = run(concept('src/gen/testdata/unlearnable-dodge.evolab-concept.json'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join('\n')).toMatch(/random play already survives the whole episode.*maxSteps \(900\)/);
+  });
+  it('accepts every committed llm-trial concept', () => {
+    const files = readdirSync('docs/llm-trial').filter((f) => f.endsWith('.evolab-concept.json'));
+    expect(files.length).toBeGreaterThan(0);
+    for (const f of files) expect([f, run(concept(`docs/llm-trial/${f}`)).errors]).toEqual([f, []]);
   });
 });
