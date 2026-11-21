@@ -1,4 +1,3 @@
-import { read, write } from '../persist/storage';
 import type { ChatMessage } from './prompt';
 import { normalizeBaseUrl, type ConnectionMode, type LlmSettings } from './settings';
 
@@ -31,28 +30,11 @@ async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof f
   return res;
 }
 
-/** "<base URL>|<model>" of every endpoint that answered 400 to a temperature other than its default. */
-const NO_TEMPERATURE = 'evolab.llm.noTemperature.v1';
-function noTemperature(): string[] {
-  const v = read(NO_TEMPERATURE);
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-}
-
 export function createChat(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy'): (messages: ChatMessage[]) => Promise<string> {
-  // A low temperature keeps local models (whose default is around 0.8) to the strict two-block format, so it stays the default.
-  // Some hosted models (OpenAI's reasoning models) accept only their own default and answer 400: drop it, ask again, and
-  // remember the endpoint so that later generations do not pay (and log) the rejected request again.
-  const id = `${normalizeBaseUrl(settings.baseUrl)}|${settings.model}`;
-  let temperature: number | undefined = noTemperature().includes(id) ? undefined : 0.2;
+  // No temperature is sent: some hosted models (OpenAI's reasoning models) answer 400 to anything but their own default,
+  // and the validator and repair loop absorb the variance of a model's default.
   return async (messages) => {
-    const post = () => request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, temperature, stream: false });
-    const res = await post().catch((e: Error) => {
-      if (temperature === undefined || !/\(400\).*temperature/s.test(e.message)) throw e;
-      temperature = undefined;
-      const known = noTemperature();
-      if (!known.includes(id)) write(NO_TEMPERATURE, [...known, id]);
-      return post();
-    });
+    const res = await request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, stream: false });
     const data = await res.json().catch(() => null) as { choices?: { message?: { content?: unknown } }[] } | null;
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content) throw new Error('LLM returned no content');
