@@ -41,8 +41,9 @@ describe('throughput', () => {
     });
   }
 
-  // The plan asked for 2000 per second; this machine measures about 2100, too close to assert. The floor is the spec's own
-  // budget instead (section 15: one DQN minibatch update under 1 ms). See docs/benchmarks.md, "Throughput".
+  // The plan asked for 2000 per second. Normally this measures about 11000, but in a run where the whole machine was 5 times
+  // slower it measured 1860, so the floor is the spec's own budget instead (section 15: one DQN minibatch update under 1 ms).
+  // See docs/benchmarks.md, "Throughput".
   it('Mlp [8, 32, 32, 3] relu: at least 1000 batch-32 forward+backward passes per second', async () => {
     const net = new Mlp([8, 32, 32, 3], 'relu'), rng = new Rng(1), N = 4000;
     net.init(rng);

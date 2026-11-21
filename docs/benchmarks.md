@@ -35,19 +35,19 @@ Walker physics (spec section 10.6), all in `WALKER` and `createWalkerSim` in `sr
 
 ## Throughput
 
-Measured with `npm run perf` (`tests/perf/perf.test.ts`): headless NEAT with each concept's default config and seed 1, over the first generations of a run, in generations per minute. The floors are the budgets of spec section 15. Each rate is work divided by the smaller of wall time and the CPU time the process received, best of up to three attempts, so a busy machine does not fail the guard. Machine: Apple Silicon (arm64), Node 22, with other applications running.
+Measured with `npm run perf` (`tests/perf/perf.test.ts`): headless NEAT with each concept's default config and seed 1, over the first generations of a run, in generations per minute. The floors are the budgets of spec section 15. Each rate is work divided by the smaller of wall time and the CPU time the process received, best of up to three attempts. Machine: Apple Silicon (arm64), Node 22.
 
-| Guard | Measured over | Measured | Floor |
-|---|---|---|---|
-| NEAT Pong (pop 150, 2 episodes) | 10 generations | 130 to 143 generations/min | 40 |
-| NEAT Snake (pop 150, 2 episodes) | 10 generations | 1660 to 1730 generations/min | 60 |
-| NEAT Flappy (pop 150) | 10 generations | 550 to 585 generations/min | 30 |
-| NEAT Car (pop 100) | 6 generations | 109 to 117 generations/min | 15 |
-| NEAT Tetris (pop 80) | 4 generations | 184 to 192 generations/min | 12 |
-| NEAT Walker (pop 60) | 2 generations | 47 to 49 generations/min | 4 |
-| `Mlp([8, 32, 32, 3], 'relu')` forward + backward, batch 32 | 4000 passes | 1860 to 2190 per second | 1000 (plan: 2000) |
-| NEAT `Network.activate`, 20 nodes, 99 connections | 400,000 calls | 611,000 to 677,000 per second | 200,000 |
+| Guard | Measured over | Measured | Slow runs | Floor |
+|---|---|---|---|---|
+| NEAT Pong (pop 150, 2 episodes) | 10 generations | 640 to 660 generations/min | 130 to 143 | 40 |
+| NEAT Snake (pop 150, 2 episodes) | 10 generations | 7860 to 8010 generations/min | 1660 to 1730 | 60 |
+| NEAT Flappy (pop 150) | 10 generations | 2870 to 2950 generations/min | 550 to 585 | 30 |
+| NEAT Car (pop 100) | 6 generations | 617 to 625 generations/min | 109 to 117 | 15 |
+| NEAT Tetris (pop 80) | 4 generations | 726 to 750 generations/min | 184 to 192 | 12 |
+| NEAT Walker (pop 60) | 2 generations | 298 to 303 generations/min | 47 to 49 | 4 |
+| `Mlp([8, 32, 32, 3], 'relu')` forward + backward, batch 32 | 4000 passes | 11,100 to 11,500 per second | 1860 to 2190 | 1000 (plan: 2000) |
+| NEAT `Network.activate`, 20 nodes, 99 connections | 400,000 calls | 3.3 million per second | 611,000 to 677,000 | 200,000 |
 
-The ranges are four consecutive runs. These rates cover only the first generations of a run, so they are not comparable with the whole-run times in the learning table above.
+"Measured" is two consecutive runs after a clean `npm ci` (the whole file takes 3 s). "Slow runs" are four consecutive runs from earlier the same day on the same machine and code, in which everything was uniformly about 5 times slower (16 to 20 s for the file). The cause was not identified; CPU-time accounting did not remove it, so it was not other programs taking the cores. Both are recorded because the guards have to pass in both states. These rates cover only the first generations of a run, so they are not comparable with the whole-run times in the learning table above.
 
-Floor lowered, MLP: the plan asked for 2000 forward+backward passes per second. The measured rate is 1860 to 2190 (one of the four runs was below 2000), so that floor would fail without any regression. The loop has no allocation to remove: `forward` and `backward` reuse buffers sized once per batch size, and the time is the arithmetic itself (about 135,000 float32 multiply-adds per pass). The floor is now 1000 per second, which is the budget the spec itself sets (section 15: one DQN minibatch update under 1 ms). No other floor was changed.
+Floor lowered, MLP: the plan asked for 2000 forward+backward passes per second. In the slow runs the rate was 1860 to 2190 (one of the four below 2000), so that floor would fail without any regression in the code. The loop has no allocation to remove: `forward` and `backward` reuse buffers sized once per batch size. The floor is now 1000 per second, which is the budget the spec itself sets (section 15: one DQN minibatch update under 1 ms). No other floor was changed; every other guard kept at least 3 times its floor in the slow runs.
