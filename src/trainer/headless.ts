@@ -1,3 +1,4 @@
+import { prepareEnv } from '../env/registry';
 import { defaultReward } from '../env/reward';
 import type { EnvDefinition, RewardConfig } from '../env/types';
 import type { LearnerConfig } from '../learner/config';
@@ -11,7 +12,7 @@ export interface HeadlessOptions {
 
 /** Trains flat out with no worker, scheduler or frames. Used by Node tests and benchmarks. */
 export async function runHeadless(o: HeadlessOptions): Promise<IterationStats[]> {
-  await o.def.prepare?.();
+  await prepareEnv(o.def);
   const learner = createLearner(o.learner, o.def, o.reward ?? defaultReward(o.def), o.seed);
   const out: IterationStats[] = [];
   try {

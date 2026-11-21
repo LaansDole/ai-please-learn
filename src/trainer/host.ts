@@ -1,4 +1,4 @@
-import { getEnv } from '../env/registry';
+import { getEnv, prepareEnv } from '../env/registry';
 import type { EnvDefinition } from '../env/types';
 import { registerBuiltins } from '../envs/index';
 import type { EnvRef, ToWorker } from './protocol';
@@ -25,7 +25,7 @@ export function createHost(post: Post, sched: Scheduler, loadEnv: (ref: EnvRef) 
     try {
       if (msg.t === 'init') {
         const def = await loadEnv(msg.env);
-        await def.prepare?.();
+        await prepareEnv(def);
         train = new TrainRunner(def, post, guarded);
         stage = new StageRunner(def, post, guarded);
         const { meta, observation, action, rewardTerms, presets, human, train: trainDefaults } = def;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { reach1d } from '../envs/reach1d';
-import { clearRegistry, getEnv, listEnvs, registerEnv, validateDefinition } from './registry';
+import { clearRegistry, getEnv, listEnvs, prepareEnv, registerEnv, validateDefinition } from './registry';
 import type { EnvDefinition } from './types';
 
 beforeEach(clearRegistry);
@@ -23,5 +23,29 @@ describe('registry', () => {
     };
     for (const [what, def] of Object.entries(broken)) expect(validateDefinition(def).length, what).toBeGreaterThan(0);
     expect(() => registerEnv(broken['duplicate term keys']!)).toThrow();
+  });
+});
+
+describe('envs that need prepare() (Rapier WASM)', () => {
+  // create() fails until prepare() has resolved, as the Walker does before its physics engine is loaded.
+  const needsPrepare = (over: Partial<EnvDefinition> = {}): EnvDefinition => {
+    let ready = false;
+    return {
+      ...reach1d,
+      prepare: async () => { ready = true; },
+      create: () => { if (!ready) throw new Error('not prepared'); return reach1d.create(); },
+      ...over,
+    };
+  };
+  it('registers without creating an instance, and prepareEnv runs the instance checks afterwards', async () => {
+    const def = needsPrepare();
+    expect(() => registerEnv(def)).not.toThrow();
+    await expect(prepareEnv(def)).resolves.toBeUndefined();
+    expect(validateDefinition(def)).toEqual([]);
+  });
+  it('prepareEnv rejects a prepared env whose instance breaks the contract', async () => {
+    const def = needsPrepare({ create: () => ({ ...reach1d.create(), humanAct: undefined }) });
+    expect(() => registerEnv(def)).not.toThrow();
+    await expect(prepareEnv(def)).rejects.toThrow(/humanAct/);
   });
 });
