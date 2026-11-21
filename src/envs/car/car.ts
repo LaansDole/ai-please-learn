@@ -3,6 +3,12 @@ import type { Env, EnvDefinition, HumanInput, RenderView } from '../../env/types
 import { TRACK, castRay, distToCentre, nearestSample } from './track';
 
 const DT = 1 / 60, CAR_R = 9, MAX_SPEED = 260, RAY_MAX = 300, STALL_STEPS = 240, GATES = TRACK.n / TRACK.gateEvery;
+/**
+ * Tyre grip: lateral acceleration (turn rate * speed) is capped at 220 px/s^2, so above ~80 px/s the car turns wider the faster
+ * it goes (radius 100 px at 150 px/s, 307 px flat out). Without it the whole track could be driven at full throttle and a random
+ * generation-1 network that merely steered away from walls already scored ~90% of the best possible; now corners need braking.
+ */
+const GRIP = 220;
 const RAY_ANGLES = [-90, -50, -25, 0, 25, 50, 90].map((deg) => (deg * Math.PI) / 180);
 const CHECKPOINT = 0, LAP = 1, CRASH = 2, STALL = 3, SPEED = 4, WOBBLE = 5;
 const BG = '#0d121b', FG = '#d7e0ee', DIM = '#2a3446', ACCENT = '#4de1c1', WARN = '#ffc857';
@@ -27,7 +33,7 @@ function create(): Env {
       if (done) return;
       const a = action as Float32Array, steer = clamp(a[0]!, -1, 1), throttle = clamp(a[1]!, -1, 1);
       speed = clamp((speed + throttle * 300 * DT) * (1 - 0.6 * DT), -60, MAX_SPEED);
-      heading += steer * 2.8 * DT * clamp(Math.abs(speed) / 80, 0, 1) * Math.sign(speed);
+      heading += steer * DT * Math.min(2.8 * clamp(Math.abs(speed) / 80, 0, 1), GRIP / Math.max(Math.abs(speed), 1)) * Math.sign(speed);
       x += Math.cos(heading) * speed * DT; y += Math.sin(heading) * speed * DT;
       const s = nearestSample(TRACK, x, y, sample);
       let adv = (s - sample + TRACK.n) % TRACK.n;
@@ -84,7 +90,7 @@ function create(): Env {
 export const car: EnvDefinition = {
   meta: {
     id: 'car', name: 'Car racing', tagline: 'Drive laps of a winding track using seven distance sensors.',
-    description: 'A car sees the track only through seven distance sensors and its own speed. It learns to steer and use the throttle to pass checkpoints and finish laps without touching the walls.',
+    description: 'A car sees the track only through seven distance sensors and its own speed. Its tyres have limited grip, so it must learn to brake for corners as well as steer to pass checkpoints and finish laps without touching the walls.',
     dims: '2d', fps: 60, maxSteps: 3000, learners: ['neat', 'ppo'], ghosts: true,
   },
   observation: { labels: ['ray -90', 'ray -50', 'ray -25', 'ray 0', 'ray +25', 'ray +50', 'ray +90', 'speed'] },
