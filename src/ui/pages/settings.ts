@@ -1,3 +1,4 @@
+import { listModels } from '../../gen/llm';
 import { PRESETS, isLocalUrl, loadSettings, resolveMode, saveSettings, validateSettings, type LlmSettings } from '../../gen/settings';
 import { h } from '../dom';
 import type { PageFn } from '../router';
@@ -49,6 +50,18 @@ export const settingsPage: PageFn = (root) => {
   const preset = (name: keyof typeof PRESETS, label: string) => h('button', { type: 'button', testid: `settings-preset-${name}`, onclick: () => { baseUrl.value = PRESETS[name]; save(); } }, label);
   const field = (label: string, input: HTMLElement, ...extra: (Node | string)[]) =>
     h('div', { class: 'form-field' }, h('label', { for: input.id }, label), input, ...extra);
+  const testButton = h('button', { type: 'button', class: 'btn-primary', testid: 'settings-test' }, 'Test connection');
+  testButton.addEventListener('click', async () => {
+    const now = current();
+    if (!now) { save(); return; }
+    testButton.disabled = true; result.textContent = 'Connecting...';
+    try {
+      const models = await listModels(now, fetch, await resolveMode(now));
+      result.textContent = `Connected: ${models.length} model${models.length === 1 ? '' : 's'}.`
+        + (models.includes(now.model) ? '' : ` Warning: model ${now.model} not found on this server.`);
+    } catch (e) { result.textContent = `Failed: ${e instanceof Error ? e.message : String(e)}`; }
+    testButton.disabled = false;
+  });
 
   root.append(h('div', { class: 'page', testid: 'settings' },
     h('header', { class: 'topbar' },
@@ -66,7 +79,7 @@ export const settingsPage: PageFn = (root) => {
         field('Connection mode', mode, active, proxyNote),
         directHelp,
         error,
-        h('div', { class: 'preset-row' }, h('button', { type: 'button', class: 'btn-primary', testid: 'settings-test' }, 'Test connection'), result)))));
+        h('div', { class: 'test-row' }, testButton, result)))));
   sync();
   return () => { gone = true; };
 };
