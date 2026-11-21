@@ -1,15 +1,18 @@
 import type { EnvDefinition, RewardConfig } from './types';
 
-export function applyPreset(def: EnvDefinition, name: string): RewardConfig {
+/** What the reward engine needs of an env; EnvSpecMsg satisfies it, so the main thread can use these functions too. */
+export type RewardSpec = Pick<EnvDefinition, 'meta' | 'rewardTerms' | 'presets'>;
+
+export function applyPreset(def: RewardSpec, name: string): RewardConfig {
   const preset = def.presets.find((p) => p.name === name);
   if (!preset) throw new Error(`unknown preset: ${name}`);
   return { version: 1, envId: def.meta.id, preset: name, weights: { ...preset.weights } };
 }
 
-export function defaultReward(def: EnvDefinition): RewardConfig { return applyPreset(def, 'default'); }
+export function defaultReward(def: RewardSpec): RewardConfig { return applyPreset(def, 'default'); }
 
 /** Magnitudes become signed: reward terms +w, penalty terms -w. Missing keys fall back to defaultWeight. */
-export function signedWeights(def: EnvDefinition, cfg: RewardConfig): Float32Array {
+export function signedWeights(def: RewardSpec, cfg: RewardConfig): Float32Array {
   return Float32Array.from(def.rewardTerms, (t) => {
     const w = cfg.weights[t.key] ?? t.defaultWeight;
     return t.kind === 'penalty' ? -w : w;
@@ -24,7 +27,7 @@ export function fitness(terms: Float32Array, signed: Float32Array): number {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-export function validateReward(def: EnvDefinition, json: unknown): { ok: true; cfg: RewardConfig } | { ok: false; errors: string[] } {
+export function validateReward(def: RewardSpec, json: unknown): { ok: true; cfg: RewardConfig } | { ok: false; errors: string[] } {
   if (!isObject(json)) return { ok: false, errors: ['Reward config must be a JSON object.'] };
   const errors: string[] = [];
   if (json.version !== 1) errors.push('"version" must be 1.');
