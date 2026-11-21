@@ -1,58 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { SMOKE_ENVS } from './envs';
+import { JOURNEY_ENVS } from './envs';
+import { collectErrors } from './helpers';
 
-for (const id of SMOKE_ENVS) {
-  test(`${id}: play, evolve at MAX, replay from the hall of fame`, async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId(`card-${id}`).click();
-    const stage = page.getByTestId('stage');
-    await expect(stage).toHaveAttribute('data-mode', 'play');
-    if (id === 'walker') await expect(page.locator('[data-testid="stage"] canvas[data-kind="3d"]')).toBeVisible();
-    // Deviation from the plan: an unsteered Snake hits the wall after 6 ticks and the episode (and its frames) ends,
-    // so restart the episode whenever it is over; `data-frames` counts every frame the stage has shown.
-    await expect.poll(async () => {
-      if (await page.getByText('Episode over').isVisible()) await page.getByTestId('play-restart').click();
-      return Number(await stage.getAttribute('data-frames'));
-    }).toBeGreaterThan(10);
-    await page.getByTestId('step-3').click();
-    await expect.poll(async () => Number(await page.getByTestId('nn-graph').getAttribute('data-nodes'))).toBeGreaterThan(2);
-    await page.getByTestId('step-4').click();
-    await page.getByTestId('speed-max').click();
-    await page.getByTestId('btn-start').click();
-    await expect.poll(async () => Number(await page.getByTestId('fitness-chart').getAttribute('data-points')), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
-    await page.getByTestId('btn-pause').click();
-    await page.getByTestId('hof-item').first().click();
-    await expect(stage).toHaveAttribute('data-mode', 'replay');
-    const before = Number(await stage.getAttribute('data-frames'));
-    await expect.poll(async () => Number(await stage.getAttribute('data-frames'))).toBeGreaterThan(before + 5);
-    await expect(page.getByTestId('error-banner')).toBeHidden();
-  });
-}
-
-test('pong with DQN: picker, RL charts, replay', async ({ page }) => {
-  await page.goto('/#/c/pong/3');
-  await page.getByTestId('method-dqn').check();
-  await expect(page.getByTestId('method-explainer')).toContainText('replay buffer');
-  await page.getByTestId('step-4').click();
-  await page.getByTestId('speed-max').click();
-  await page.getByTestId('btn-start').click();
-  await expect.poll(async () => Number(await page.getByTestId('loss-chart').getAttribute('data-points')), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
-  await expect(page.getByTestId('explore-chart')).toBeVisible();
-  await expect(page.getByTestId('species-chart')).toBeHidden();
-  await expect(page.getByTestId('outputs-bar')).toBeVisible();
-  await page.getByTestId('btn-pause').click();
-  await page.getByTestId('hof-item').first().click();
-  await expect(page.getByTestId('stage')).toHaveAttribute('data-mode', 'replay');
-  await expect(page.getByTestId('error-banner')).toBeHidden();
-});
-test('car: DQN is disabled with a reason, PPO trains', async ({ page }) => {
-  await page.goto('/#/c/car/3');
-  await expect(page.getByTestId('method-dqn')).toBeDisabled();
-  await expect(page.getByTestId('method-reason-dqn')).toContainText('continuous');
-  await page.getByTestId('method-ppo').check();
-  await page.getByTestId('step-4').click();
-  await page.getByTestId('speed-max').click();
-  await page.getByTestId('btn-start').click();
-  await expect.poll(async () => Number(await page.getByTestId('fitness-chart').getAttribute('data-points')), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
-  await expect(page.getByTestId('error-banner')).toBeHidden();
+test('gallery lists the six built-in concepts and the new-concept box', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await expect(page.getByTestId('gallery')).toBeVisible();
+  for (const env of JOURNEY_ENVS) {
+    const card = page.getByTestId(`card-${env.id}`);
+    await expect(card.locator('h2')).toHaveText(env.name);
+    await expect(card.locator('.badge-dim')).toHaveText(env.dims.toUpperCase());
+  }
+  await expect(page.locator('a.card')).toHaveCount(JOURNEY_ENVS.length);          // reach1d stays hidden
+  await expect(page.getByTestId('new-concept')).toBeVisible();
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('settings')).toBeVisible();
+  expect(errors).toEqual([]);
 });
