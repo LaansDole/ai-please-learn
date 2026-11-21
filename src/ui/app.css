@@ -216,6 +216,51 @@ fieldset.weights legend { padding: 0 6px; font-size: 12px; color: var(--muted); 
 .note ul { margin: 0; padding-left: 18px; }
 .note-warn { flex-direction: row; align-items: center; gap: 10px; border: 1px solid var(--warn); }
 .warn-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex: none; font: 700 12px var(--font-mono); color: #2b1d00; background: var(--warn); border-radius: 2px; }
+.test-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.test-row .field-help { flex: 1; min-width: 200px; overflow-wrap: anywhere; }
+
+/* Concept from text */
+.card-link { display: flex; flex-direction: column; flex: 1; color: var(--text); text-decoration: none; }
+.card-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid var(--line); }
+.card-actions button { flex: 1; min-height: 26px; padding: 2px 8px; font-size: 12px; }
+.btn-danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.badge-gen { color: var(--accent-2); border-color: var(--accent-2); }
+.badge-gen::before { content: "\2726  "; }
+.crumb .badge { align-self: center; }
+.new-concept { padding: 14px; gap: 10px; border-style: dashed; overflow: visible; }
+.new-concept:hover { border-color: var(--line); }
+.new-concept:focus-within { border-color: var(--accent); }
+/* Errors and the paste block need room: the panel takes a whole row instead of stretching its neighbours. */
+.new-concept:has(.gen-manual:not([hidden])), .new-concept:has(.gen-errors:not(:empty)) { grid-column: 1 / -1; }
+.gen-form { display: flex; flex-direction: column; gap: 6px; }
+.gen-form label { font-size: 12px; color: var(--muted); }
+.gen-row { display: flex; gap: 6px; }
+.gen-row input { flex: 1; min-width: 0; }
+.new-concept .field-help { overflow-wrap: anywhere; }
+.gen-log { margin: 0; padding-left: 22px; font: 12px/1.7 var(--font-mono); color: var(--muted); }
+.gen-log:empty, .gen-errors:empty { display: none; }
+.gen-log li:last-child { color: var(--text); }
+.gen-log details, .gen-errors details { font-family: var(--font-ui); }
+.gen-log summary, .gen-errors summary { cursor: pointer; color: var(--muted); }
+.gen-log details ul { margin: 2px 0 4px; padding-left: 16px; color: var(--muted); overflow-wrap: anywhere; }
+.gen-errors { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--danger); border-radius: var(--radius); font-size: 13px; overflow-wrap: anywhere; }
+.gen-errors-title { font-weight: 600; }
+.gen-errors-title::before { content: "\2715  "; color: var(--danger); }
+.gen-errors .errors { color: var(--text); }
+.gen-errors pre, .source-modal pre {
+  margin: 0; padding: 8px 10px; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 12px/1.5 var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.gen-manual { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.gen-manual textarea { width: 100%; resize: vertical; font-size: 12px; line-height: 1.5; }
+.source-modal {
+  width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 16px; overflow: auto;
+  color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.source-modal[open] { display: flex; flex-direction: column; gap: 10px; }
+.source-modal::backdrop { background: rgb(5 8 12 / 0.7); }
+.source-modal pre { max-height: none; flex: none; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 
 @media (prefers-reduced-motion: reduce) {

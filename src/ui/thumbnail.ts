@@ -40,8 +40,17 @@ export function drawThumbnail(canvas: HTMLCanvasElement, def: EnvDefinition): vo
     ctx.beginPath(); ctx.arc(gx + 14 * u, gy - 232 * u, 22 * u, 0, Math.PI * 2); ctx.fill();
     return;
   }
+  drawInitials(canvas, def.meta.name);
+}
+
+/** Generated concepts have no trusted render on the main thread: their card shows the name's initials. */
+export function drawInitials(canvas: HTMLCanvasElement, name: string): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const css = getComputedStyle(document.documentElement), w = canvas.width, hgt = canvas.height;
+  ctx.fillStyle = css.getPropertyValue('--panel-2'); ctx.fillRect(0, 0, w, hgt);
   ctx.fillStyle = css.getPropertyValue('--muted');
   ctx.font = `600 ${hgt * 0.3}px ${css.getPropertyValue('--font-mono')}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(def.meta.name.split(/\s+/).map((s) => s[0]).join('').slice(0, 3).toUpperCase(), w / 2, hgt / 2);
+  ctx.fillText(name.split(/\s+/).map((s) => s[0]).join('').slice(0, 3).toUpperCase(), w / 2, hgt / 2);
 }

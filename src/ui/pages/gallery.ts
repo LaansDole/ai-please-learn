@@ -1,11 +1,44 @@
 import { listEnvs } from '../../env/registry';
+import { library, toConceptFile, type StoredConcept } from '../../gen/library';
 import { h } from '../dom';
-import type { PageFn } from '../router';
-import { drawThumbnail } from '../thumbnail';
+import { createNewConceptPanel } from '../panels/newConcept';
+import { showSource } from '../panels/sourceModal';
+import { formatRoute, type PageFn } from '../router';
+import { drawInitials, drawThumbnail } from '../thumbnail';
+
+function download(name: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = h('a', { href: url, download: name });
+  document.body.append(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Buttons sit outside the link so they can be reached and pressed on their own. */
+function generatedCard(c: StoredConcept, onDeleted: () => void): HTMLElement {
+  const canvas = h('canvas', { width: 640, height: 400, class: 'card-thumb', 'aria-hidden': 'true' });
+  drawInitials(canvas, c.name);
+  const learners = c.meta.action.type === 'continuous' ? ['NEAT', 'PPO'] : ['NEAT', 'DQN', 'PPO'];
+  return h('div', { class: 'card', testid: `card-${c.id}` },
+    h('a', { class: 'card-link', href: `#/c/${c.id}` },
+      canvas,
+      h('div', { class: 'card-body' },
+        h('h2', null, c.name),
+        h('p', null, c.meta.tagline),
+        h('div', { class: 'badges' },
+          h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated'),
+          h('span', { class: 'badge badge-dim' }, '2D'),
+          ...learners.map((l) => h('span', { class: 'badge' }, l))))),
+    h('div', { class: 'card-actions' },
+      h('button', { type: 'button', testid: `card-source-${c.id}`, onclick: () => showSource(c) }, 'View source'),
+      h('button', { type: 'button', testid: `card-export-${c.id}`, onclick: () => download(`${c.id}.evolab-concept.json`, toConceptFile(c)) }, 'Export'),
+      h('button', { type: 'button', class: 'btn-danger', testid: `card-delete-${c.id}`, onclick: () => {
+        if (confirm(`Delete "${c.name}"?`)) void library.remove(c.id).then(onDeleted);
+      } }, 'Delete')));
+}
 
 export const galleryPage: PageFn = (root) => {
-  const defs = listEnvs().filter((d) => !d.meta.hidden);
-  const cards = defs.map((def) => {
+  let gone = false;
+  const cards = listEnvs().filter((d) => !d.meta.hidden).map((def) => {
     const canvas = h('canvas', { width: 640, height: 400, class: 'card-thumb', 'aria-hidden': 'true' });
     drawThumbnail(canvas, def);
     return h('a', { class: 'card', href: `#/c/${def.meta.id}`, testid: `card-${def.meta.id}` },
@@ -17,12 +50,23 @@ export const galleryPage: PageFn = (root) => {
           h('span', { class: 'badge badge-dim' }, def.meta.dims.toUpperCase()),
           ...def.meta.learners.map((l) => h('span', { class: 'badge' }, l.toUpperCase())))));
   });
+  const grid = h('div', { class: 'card-grid' },
+    createNewConceptPanel((id) => { location.hash = formatRoute({ page: 'concept', envId: id, step: 1 }); }), ...cards);
+  const libraryError = h('p', { class: 'errors-line', role: 'alert' });
+  let generated: HTMLElement[] = [];
+  const refresh = () => library.list().then((list) => {
+    if (gone) return;
+    for (const el of generated) el.remove();
+    generated = list.map((c) => generatedCard(c, refresh));
+    grid.append(...generated);
+  }, () => { libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
+  void refresh();
+
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
       h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
       h('span', { class: 'topbar-note' }, 'Watch neural networks learn to play, one generation at a time.'),
       h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
-    h('main', { class: 'gallery' },
-      h('h1', null, 'Concepts'),
-      cards.length ? h('div', { class: 'card-grid' }, ...cards) : h('p', { class: 'empty' }, 'No concepts yet'))));
+    h('main', { class: 'gallery' }, h('h1', null, 'Concepts'), libraryError, grid)));
+  return () => { gone = true; };
 };

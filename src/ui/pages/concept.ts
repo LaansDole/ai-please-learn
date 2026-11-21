@@ -1,4 +1,5 @@
 import { listEnvs } from '../../env/registry';
+import { library, type StoredConcept } from '../../gen/library';
 import { iterationLabel } from '../../learner/types';
 import { resolveConfig } from '../../learner/config';
 import { loadRunPrefs, type RunPrefs } from '../../persist/storage';
@@ -8,8 +9,10 @@ import { createLearnPanel } from '../panels/learn';
 import { createNetworkPanel } from '../panels/network';
 import { createRewardPanel } from '../panels/rewards';
 import { createStage } from '../panels/stage';
+import { showSource } from '../panels/sourceModal';
 import { formatRoute, type PageFn, type Step } from '../router';
 import { openSession, type Session } from '../session';
+import type { EnvRef } from '../../trainer/protocol';
 
 const STEPS: [Step, string][] = [[1, 'Play'], [2, 'Rewards'], [3, 'Network'], [4, 'Learn']];
 interface StepView { side: HTMLElement; lower?: HTMLElement; refresh?(): void; dispose(): void }
@@ -28,25 +31,45 @@ function buildStep(step: Step, session: Session, run: RunControl): StepView {
   return { side: net.el, lower: learn.lower, refresh: () => { net.refresh(); learn.refresh(); }, dispose: () => { net.dispose(); learn.dispose(); } };
 }
 
+type Unmount = (() => void) & { onStep(step: Step): void };
+
+function unknownConcept(root: HTMLElement): void {
+  root.append(h('main', { class: 'page gallery' }, h('h1', null, 'Unknown concept'), h('p', null, h('a', { href: '#/' }, 'Back to the gallery'))));
+}
+
 export const conceptPage: PageFn = (root, route) => {
   if (route.page !== 'concept') return;
-  const def = listEnvs().find((d) => d.meta.id === route.envId);
-  if (!def) {
-    root.append(h('main', { class: 'page gallery' }, h('h1', null, 'Unknown concept'), h('p', null, h('a', { href: '#/' }, 'Back to the gallery'))));
-    return;
+  const id = route.envId;
+  if (!id.startsWith('gen-')) {
+    const def = listEnvs().find((d) => d.meta.id === id);
+    if (!def) return unknownConcept(root);
+    return mount(root, def.meta.name, { kind: 'builtin', id }, route.step);
   }
-  let step = route.step, session: Session | null = null, run: RunControl | null = null, gone = false;
+  // Generated concepts live in IndexedDB, so the page mounts once the record has loaded.
+  let step = route.step, gone = false, inner: Unmount | null = null;
+  library.get(id).then((c) => {
+    if (gone) return;
+    if (!c) unknownConcept(root);
+    else inner = mount(root, c.name, { kind: 'generated', id, source: c.source, meta: c.meta }, step, c);
+  }, () => { if (!gone) unknownConcept(root); });
+  return Object.assign(() => { gone = true; inner?.(); }, { onStep(next: Step) { step = next; inner?.onStep(next); } });
+};
+
+function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, concept?: StoredConcept): Unmount {
+  let step = firstStep, session: Session | null = null, run: RunControl | null = null, gone = false;
   const views = new Map<Step, StepView>();
   const stage = createStage();
   const banner = h('div', { class: 'error-banner', testid: 'error-banner', role: 'alert', hidden: true });
   const side = h('div', { class: 'side' }), lower = h('div', { class: 'lower' });
   const buttons = STEPS.map(([n, label]) => h('button', {
-    class: 'step', testid: `step-${n}`, onclick: () => { location.hash = formatRoute({ page: 'concept', envId: def.meta.id, step: n }); },
+    class: 'step', testid: `step-${n}`, onclick: () => { location.hash = formatRoute({ page: 'concept', envId: ref.id, step: n }); },
   }, h('span', { class: 'step-mark', 'aria-hidden': 'true' }), `${n} ${label}`));
   root.append(h('div', { class: 'page' },
     h('header', { class: 'topbar' },
-      h('div', { class: 'crumb' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, def.meta.name)),
+      h('div', { class: 'crumb' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, name),
+        concept && h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated')),
       h('nav', { class: 'stepper', 'aria-label': 'Steps' }, ...buttons),
+      concept && h('button', { type: 'button', testid: 'view-source', onclick: () => showSource(concept) }, 'View source'),
       h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
     banner,
     h('main', { class: 'concept' }, h('div', { class: 'cols' }, stage.el, side), lower)));
@@ -80,7 +103,7 @@ export const conceptPage: PageFn = (root, route) => {
   };
   showStep();
 
-  openSession({ kind: 'builtin', id: def.meta.id }).then((s) => {
+  openSession(ref).then((s) => {
     if (gone) { s.dispose(); return; }
     session = s;
     const prefs = loadRunPrefs(s.spec);
@@ -97,4 +120,4 @@ export const conceptPage: PageFn = (root, route) => {
     session?.dispose();
     stage.dispose();
   }, { onStep(next: Step) { step = next; showStep(); } });
-};
+}
