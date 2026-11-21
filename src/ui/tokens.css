@@ -1,12 +1,23 @@
 :root {
   --bg: #0a0e14;  --panel: #10161f;  --panel-2: #161d29;  --line: #232c3b;
+  /* --line separates panels; --line-strong (3:1 on --panel and --bg) bounds form controls, where the edge is the affordance. */
+  --line-strong: #556480;
   --text: #d7e0ee;  --muted: #7d8aa3;  --faint: #4a566b;
   --accent: #4de1c1;  --accent-2: #7aa2ff;  --warn: #ffc857;  --danger: #ff5d73;
+  --on-accent: #06231c;  --on-warn: #2b1d00;  --stage-bg: #0d121b;
   --w-pos: #4de1c1;  --w-neg: #ff5d73;  --glow: #fff3b0;  --heat: #ffb347;
   --series-best: #4de1c1;  --series-mean: #7aa2ff;  --series-median: #c792ea;
   --species-1: #4de1c1; --species-2: #7aa2ff; --species-3: #c792ea; --species-4: #ffc857;
   --species-5: #ff8a65; --species-6: #82d173; --species-7: #f078b4; --species-8: #9aa7bd;
   --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --radius: 4px;  --gap: 12px;  --ease: cubic-bezier(.2, .8, .2, 1);
+  /* Type roles. rem, so the browser's font-size setting scales them. */
+  --fs-label: 0.6875rem;                                  /* 11 px: uppercase panel labels, badges */
+  --fs-small: 0.75rem;                                    /* 12 px: help text, chart notes, code */
+  --fs-body: 0.875rem;                                    /* 14 px: everything else */
+  --fs-lead: 1rem;                                        /* 16 px: card titles, ledes, the breadcrumb */
+  --fs-title: 1.25rem;                                    /* 20 px: page and section titles, readouts */
+  --fs-display: clamp(1.875rem, 1.1rem + 2.6vw, 3rem);    /* the gallery headline only */
+  --radius: 4px;  --gap: 12px;  --pad: 20px;  --ease: cubic-bezier(.2, .8, .2, 1);
 }
+@media (max-width: 720px) { :root { --pad: 12px; } }
