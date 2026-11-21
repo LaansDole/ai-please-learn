@@ -1,7 +1,7 @@
 import {
   AmbientLight, BoxGeometry, BufferGeometry, CanvasTexture, CapsuleGeometry, Color, DirectionalLight, Float32BufferAttribute, Fog,
   HemisphereLight, LineBasicMaterial, LineSegments, Mesh, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene,
-  SphereGeometry, Sprite, SpriteMaterial, WebGLRenderer,
+  SphereGeometry, Sprite, SpriteMaterial, Vector3, WebGLRenderer,
 } from 'three';
 import type { Body3D, Vec3 } from '../env/types';
 import { distanceMarkers, focusOf, followCamera } from './follow';
@@ -17,7 +17,7 @@ const BG = '#0a0e14', GROUND = '#10161f', GRID = '#2f3b4f', GRID_5M = '#566784',
 // The spec's camera (0, 1.4, 4.5) looked along the ground, so the grid and the far leg were invisible: it now sits higher and a little
 // behind the figure. CAMERA is the followed point (x eases to the figure); the eye is CAMERA + EYE_X and looks ahead by LOOK_X.
 const CAMERA: Vec3 = [0, 2.0, 4.6], EYE_X = -0.9, LOOK_X = 0.4, LOOK_Y = 0.75, LERP = 0.08, SNAP = 6;
-const TRACK_HALF = 200, LANE_HALF = 5, MARKER_SPAN = 12, MARKER_Z = 1.1, GHOST_OPACITY = 0.18;
+const TRACK_HALF = 200, LANE_HALF = 5, MARKER_SPAN = 12, MARKER_Y = 0.14, MARKER_Z = 1.1, LABEL_HALF = 0.22, GHOST_OPACITY = 0.18;
 
 /** Faint line every metre across and along the track, brighter every 5 m, and the start line in the accent colour. */
 function gridLines(): LineSegments[] {
@@ -39,12 +39,12 @@ function markerSprite(): { sprite: Sprite; set(metres: number): void } {
   canvas.width = 128; canvas.height = 64;
   const ctx = canvas.getContext('2d')!, texture = new CanvasTexture(canvas);
   const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
-  sprite.scale.set(0.44, 0.22, 1);
+  sprite.scale.set(2 * LABEL_HALF, LABEL_HALF, 1);
   let shown = NaN;
   return {
     sprite,
     set(metres) {
-      sprite.position.set(metres, 0.14, MARKER_Z);
+      sprite.position.set(metres, MARKER_Y, MARKER_Z);
       if (metres === shown) return;
       shown = metres;
       ctx.clearRect(0, 0, 128, 64);
@@ -67,6 +67,7 @@ export function createThreeStage(canvas: HTMLCanvasElement): ThreeStage {
   scene.fog = new Fog(BG, 8, 26);
   const camera = new PerspectiveCamera(40, 800 / 500, 0.1, 60);
   let cam: Vec3 = [...CAMERA], placed = false;
+  const edge = new Vector3();
 
   scene.add(new HemisphereLight('#cfe0ff', GROUND, 1.2), new AmbientLight('#ffffff', 0.25));
   const sun = new DirectionalLight('#ffffff', 2.2);
@@ -113,7 +114,14 @@ export function createThreeStage(canvas: HTMLCanvasElement): ThreeStage {
       camera.position.set(cam[0] + EYE_X, cam[1], cam[2]); camera.lookAt(cam[0] + LOOK_X, LOOK_Y, 0);
       sun.position.set(cam[0] + 3, 7, 5); sun.target.position.set(cam[0], 0, 0);
       const shown = distanceMarkers(cam[0], MARKER_SPAN);
-      markers.forEach((m, i) => { m.sprite.visible = i < shown.length; if (i < shown.length) m.set(shown[i]!); });
+      // A label cut by the canvas edge reads as a different number: it shows only once both of its ends are in frame.
+      camera.updateMatrixWorld();
+      const inFrame = (x: number) => Math.abs(edge.set(x, MARKER_Y, MARKER_Z).project(camera).x) <= 1;
+      markers.forEach((m, i) => {
+        const x = shown[i];
+        m.sprite.visible = x !== undefined && inFrame(x - LABEL_HALF) && inFrame(x + LABEL_HALF);
+        if (x !== undefined && m.sprite.visible) m.set(x);
+      });
       renderer.render(scene, camera);
       return focus ? focus[0] : null;
     },
