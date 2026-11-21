@@ -46,4 +46,13 @@ describe('tickLabel', () => {
     expect(tickLabel(123.4)).toBe('123');
     expect(tickLabel(25000)).toBe('25k');
   });
+  it('F1/F2: huge, flat and near-flat ranges give a few finite ticks instead of throwing or freezing', () => {
+    for (const [min, max] of [[1e16, 1e16], [1e22, 1e22], [1e16, 1e16 + 2], [-1e308, 1e308], [1e300, 1.0000001e300], [-5e20, -5e20], [NaN, 1], [0, Infinity]] as const) {
+      const t = niceTicks(min, max);
+      expect(t.length, `${min}..${max}`).toBeGreaterThanOrEqual(2);
+      expect(t.length, `${min}..${max}`).toBeLessThanOrEqual(50);
+      if (Number.isFinite(min) && Number.isFinite(max)) expect(t.every(Number.isFinite), `${min}..${max}`).toBe(true);
+    }
+    expect(niceTicks(1e-9, 2e-9).length).toBeGreaterThan(2);      // a genuinely small range keeps its resolution
+  });
 });

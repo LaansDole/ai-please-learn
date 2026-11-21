@@ -1,12 +1,17 @@
 /** Evenly spaced ticks with a step from {1, 2, 5} x 10^k, covering [min, max]. */
 export function niceTicks(min: number, max: number, target = 5): number[] {
-  if (!(max > min)) max = min + 1;
+  // A span below the values' own precision cannot be ticked (the step would vanish next to them): widen it relative to the magnitude.
+  const floor = Math.max(Math.abs(min), Math.abs(max)) * 1e-6;
+  if (!(max - min > floor)) max = min + Math.max(1, floor);
   const raw = (max - min) / target, mag = 10 ** Math.floor(Math.log10(raw)), norm = raw / mag;
   const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
-  const digits = Math.max(0, -Math.floor(Math.log10(step)));
+  const first = Math.floor(min / step + 1e-9), last = Math.ceil(max / step - 1e-9);
+  // Non-finite input or a span that overflows: no nice step exists, the two ends are the ticks.
+  if (!(step > 0) || !Number.isFinite(step) || !(last - first <= 10 * target)) return [min, max];
+  const digits = Math.min(20, Math.max(0, -Math.floor(Math.log10(step))));
   const out: number[] = [];
   // Integer multiples of the step, so ticks do not accumulate floating-point drift.
-  for (let i = Math.floor(min / step + 1e-9); i <= Math.ceil(max / step - 1e-9); i++) out.push(Number((i * step).toFixed(digits)));
+  for (let i = first; i <= last; i++) out.push(Number((i * step).toFixed(digits)));
   return out;
 }
 

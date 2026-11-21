@@ -88,9 +88,10 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
 
   // Marker labels: the reward in force when a marker first shows up, against the one before it.
   const markerLabels = new Map<number, string>();
-  let lastReward = session.reward, raf = 0;
+  let lastReward = session.reward, raf = 0, shownRun = session.run;
   const render = () => {
     raf = 0;
+    if (session.run !== shownRun) { shownRun = session.run; outputs.reset(); }
     const hist = session.history, kind = session.run?.learner.kind ?? prefs.learner;
     if (session.rewardMarkers.length === 0) { markerLabels.clear(); lastReward = session.reward; }
     const markers: ChartMarker[] = session.rewardMarkers.map((x) => {
