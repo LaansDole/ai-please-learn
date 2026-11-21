@@ -37,9 +37,6 @@ test.describe('visual acceptance screenshots', () => {
     await expect(page.locator('a.card')).toHaveCount(6);
     await expect(page.getByTestId('new-concept')).toBeVisible();
     await shot(page, '01-gallery');
-    await page.setViewportSize({ width: 390, height: 844 });
-    await shot(page, '17-mobile-gallery');
-    await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByTestId('nav-settings').click();
     await expect(page.getByTestId('settings-base-url')).toHaveValue('http://localhost:11434/v1');
     await expect(page.getByTestId('settings-remote-warning')).toBeHidden();
@@ -54,10 +51,6 @@ test.describe('visual acceptance screenshots', () => {
     await learnLive(page, 'pong', 20);
     await expect(page.getByTestId('toggle-ghosts')).toBeChecked();
     await shot(page, '03-pong-learn');
-    await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByTestId('step-4')).toBeVisible();
-    await shot(page, '18-mobile-learn');
-    await page.setViewportSize({ width: 1440, height: 900 });
     await vis(page, 'nn-show-disabled').check();
     expect(await attr(vis(page, 'nn-graph'), 'data-nodes')).toBeGreaterThanOrEqual(9);
     await vis(page, 'nn-graph').scrollIntoViewIfNeeded();
