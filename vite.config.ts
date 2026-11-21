@@ -23,6 +23,10 @@ export default defineConfig({
   server: { headers: { 'Content-Security-Policy': CSP } },
   preview: { headers: { 'Content-Security-Policy': CSP } },
   worker: { format: 'es' },
+  // Only workers simulate. The page imports the walker definition for its metadata, and with it the dynamic import of Rapier
+  // that it never executes: left to the bundler, that emitted a second 4.3 MB copy of the chunk. This option covers the page
+  // bundle only (workers build with `worker.rolldownOptions`), so the worker still bundles Rapier.
+  build: { rolldownOptions: { external: ['@dimforge/rapier3d-compat'] } },
   // Rapier ships its WASM inlined as base64; pre-bundling it for a module worker is slow and unnecessary (spec section 16).
   optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
 });
