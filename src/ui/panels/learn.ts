@@ -4,7 +4,7 @@ import { argmax } from '../../learner/policy';
 import { loadRunPrefs } from '../../persist/storage';
 import { createOutputsBar } from '../../viz/barChart';
 import { createLineChart, type ChartMarker } from '../../viz/lineChart';
-import { stackShares } from '../../viz/scale';
+import { sampleEvenly, stackShares } from '../../viz/scale';
 import { createStackedArea } from '../../viz/stackedArea';
 import { h } from '../dom';
 import type { Session } from '../session';
@@ -17,6 +17,8 @@ function weightChanges(prev: RewardConfig, next: RewardConfig): string {
   const keys = Object.keys({ ...prev.weights, ...next.weights }).filter((k) => prev.weights[k] !== next.weights[k]);
   return keys.map((k) => `${k} ${prev.weights[k] ?? '-'} -> ${next.weights[k] ?? '-'}`).join(', ') || 'weights changed';
 }
+
+const SPECIES_COLUMNS = 240;
 
 /** Step 4, everything below the stage: run controls, stats, charts and the outputs bar. */
 export function createLearnPanel(session: Session): { lower: HTMLElement; dispose(): void } {
@@ -53,8 +55,10 @@ export function createLearnPanel(session: Session): { lower: HTMLElement; dispos
       return { x, label: markerLabels.get(x)! };
     });
     fitness.setData(hist.map((s) => s.iteration), { best: hist.map((s) => s.best), mean: hist.map((s) => s.mean), median: hist.map((s) => s.median) }, markers);
-    const shares = stackShares(hist.flatMap((s) => (s.neat ? [s.neat] : [])));
-    species.setData(shares.ids, shares.rows);
+    // Long runs are drawn from a bounded sample of generations: the chart is ~500 px wide and repaints every frame at MAX.
+    const neat = hist.flatMap((s) => (s.neat ? [s.neat] : []));
+    const shares = stackShares(sampleEvenly(neat, SPECIES_COLUMNS));
+    species.setData(shares.ids, shares.rows, neat.length);
   };
   // History can grow hundreds of times per second at MAX; charts repaint once per frame.
   const offChange = session.onChange(() => { if (!raf) raf = requestAnimationFrame(render); });

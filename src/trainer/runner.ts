@@ -1,5 +1,5 @@
 import { createLearner } from '../learner/index';
-import type { Learner } from '../learner/types';
+import type { IterationStats, Learner } from '../learner/types';
 import type { EnvDefinition } from '../env/types';
 import { buildFrame } from './frame';
 import type { FromWorker, Speed, ToWorker } from './protocol';
@@ -7,7 +7,7 @@ import type { FromWorker, Speed, ToWorker } from './protocol';
 export interface Scheduler { now(): number; defer(fn: () => void, ms: number): void }
 export type Post = (m: FromWorker, transfer?: Transferable[]) => void;
 
-const SLICE_MS = 12, FRAME_MS = 16, NETWORK_MS = 250, STATUS_MS = 1000;
+const SLICE_MS = 12, FRAME_MS = 16, NETWORK_MS = 250, STATUS_MS = 1000, BATCH_MS = 100;
 
 export class TrainRunner {
   private learner: Learner | null = null;
@@ -24,26 +24,33 @@ export class TrainRunner {
   private ticksInWindow = 0;
   private windowStart = 0;
   private ticksPerSec = 0;
+  // At MAX a fast env finishes hundreds of generations per second; their stats leave in batches so the main thread is not flooded.
+  private pending: IterationStats[] = [];
+  private lastFlush = -Infinity;
 
   constructor(private def: EnvDefinition, private post: Post, private sched: Scheduler) {}
 
   handle(msg: ToWorker): void {
     switch (msg.t) {
       case 'train/start':
-        this.learner?.dispose();
+        this.learner?.dispose(); this.pending.length = 0; this.lastFlush = -Infinity;   // unsent stats belong to the run being replaced
         this.learner = createLearner(msg.learner, this.def, msg.reward, msg.seed);
         this.speed = msg.speed; this.ghosts = msg.ghosts; this.stepping = false;
         this.owed = 0; this.sentNetVersion = -1; this.lastPump = this.windowStart = this.sched.now();
         this.postStatus(); this.schedule(0);
         break;
       case 'train/speed':
+        this.flush();
         this.speed = msg.speed; this.stepping = false; this.owed = 0; this.lastPump = this.sched.now();
         this.postStatus(); this.schedule(0);
         break;
       case 'train/step': this.stepping = true; this.postStatus(); this.schedule(0); break;
       case 'train/reward': this.learner?.setReward(msg.reward); break;
       case 'train/ghosts': this.ghosts = msg.ghosts; break;
-      case 'train/stop': this.learner?.dispose(); this.learner = null; this.speed = { mode: 'paused' }; this.stepping = false; this.postStatus(); break;
+      case 'train/stop':
+        this.learner?.dispose(); this.learner = null; this.pending.length = 0;
+        this.speed = { mode: 'paused' }; this.stepping = false; this.postStatus();
+        break;
       default: break;
     }
   }
@@ -80,17 +87,25 @@ export class TrainRunner {
       this.ticksInWindow++;
       if (!unbounded) this.owed -= 1;
       if (iterationDone) {
-        this.post({ t: 'iteration', stats: l.stats() });
+        this.pending.push(l.stats());
         if (this.stepping) { this.stepping = false; this.speed = { mode: 'paused' }; break; }
       }
     }
     const t = this.sched.now();
     if (t - this.windowStart >= 500) { this.ticksPerSec = (this.ticksInWindow * 1000) / (t - this.windowStart); this.ticksInWindow = 0; this.windowStart = t; }
+    if (this.speed.mode !== 'max' || t - this.lastFlush >= BATCH_MS) this.flush();
     if (this.speed.mode === 'live' && !this.stepping) this.emitLive(l, t);
     if (!this.running || t - this.lastStatus >= STATUS_MS) this.postStatus();
     if (unbounded) this.schedule(0);
     else this.schedule(this.owed >= 1 ? 0 : Math.min(FRAME_MS, ((1 - this.owed) * 1000) / rate));
   };
+
+  private flush(): void {
+    if (this.pending.length === 0) return;
+    for (const stats of this.pending) this.post({ t: 'iteration', stats });
+    this.pending.length = 0;
+    this.lastFlush = this.sched.now();
+  }
 
   private emitLive(l: Learner, t: number): void {
     if (t - this.lastFrame < FRAME_MS) return;

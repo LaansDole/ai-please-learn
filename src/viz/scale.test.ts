@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimate, ema, niceTicks, stackShares } from './scale';
+import { decimate, ema, niceTicks, sampleEvenly, stackShares } from './scale';
 
 describe('chart scales', () => {
   it('picks nice ticks covering the range', () => {
@@ -22,6 +22,11 @@ describe('chart scales', () => {
   it('stacks species shares in order of first appearance', () => {
     expect(stackShares([{ species: [{ id: 1, size: 30 }, { id: 2, size: 10 }] }, { species: [{ id: 2, size: 20 }, { id: 3, size: 20 }] }]))
       .toEqual({ ids: [1, 2, 3], rows: [[0.75, 1, 1], [0, 0.5, 1]] });
+  });
+  it('samples long series evenly and keeps both ends', () => {
+    const xs = Array.from({ length: 1001 }, (_, i) => i);
+    expect(sampleEvenly(xs, 5)).toEqual([0, 250, 500, 750, 1000]);
+    expect(sampleEvenly([1, 2, 3], 5)).toEqual([1, 2, 3]);
   });
   it('smooths with an exponential moving average', () => {
     expect(ema([0, 10, 10], 0.5)).toEqual([0, 5, 7.5]);

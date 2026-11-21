@@ -58,4 +58,18 @@ describe('TrainRunner', () => {
     const versions = msgs.filter((m) => m.t === 'iteration').map((m) => (m as Extract<FromWorker, { t: 'iteration' }>).stats.rewardVersion);
     expect(versions[0]).toBe(0); expect(versions.at(-1)).toBe(1);
   });
+  it('MAX: iterations reach the main thread in batches at most once per 100 ms; pausing flushes the rest', () => {
+    const f = fakeSched(0.1); const times: number[] = []; let count = 0;
+    const r = new TrainRunner(reach1d, (m) => { if (m.t === 'iteration') { count++; if (times.at(-1) !== f.time()) times.push(f.time()); } }, f.sched);
+    r.handle(start({ mode: 'max' }));
+    f.drain(300);
+    expect(times.length).toBeGreaterThanOrEqual(3);
+    expect(count).toBeGreaterThan(times.length);                    // several generations per batch
+    for (let i = 1; i < times.length; i++) expect(times[i]! - times[i - 1]!).toBeGreaterThanOrEqual(100);
+    const status: FromWorker[] = [];
+    const r2 = new TrainRunner(reach1d, (m) => { if (m.t === 'iteration') count++; else status.push(m); }, f.sched);
+    count = 0; r2.handle(start({ mode: 'max' })); f.drain(5); r2.handle({ t: 'train/speed', speed: { mode: 'paused' } });
+    expect(status.at(-1)).toMatchObject({ t: 'status', state: 'paused', iteration: count });
+    expect(count).toBeGreaterThan(0);
+  });
 });

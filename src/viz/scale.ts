@@ -30,7 +30,7 @@ export function decimate(xs: number[], ys: number[], maxPoints: number): { xs: n
 }
 
 /** rows[g][k]: cumulative upper bound in [0, 1] of species ids[k]'s population share at generation g. Ids in order of first appearance. */
-export function stackShares(history: { species: { id: number; size: number }[] }[]): { ids: number[]; rows: number[][] } {
+export function stackShares(history: readonly { species: { id: number; size: number }[] }[]): { ids: number[]; rows: number[][] } {
   const ids: number[] = [], index = new Map<number, number>();
   for (const g of history) for (const s of g.species) if (!index.has(s.id)) { index.set(s.id, ids.length); ids.push(s.id); }
   const rows = history.map((g) => {
@@ -41,6 +41,13 @@ export function stackShares(history: { species: { id: number; size: number }[] }
     return sizes.map((s) => (acc += total > 0 ? s / total : 0));
   });
   return { ids, rows };
+}
+
+/** At most `max` (>= 2) items at evenly spaced indices; the first and the last are always kept. */
+export function sampleEvenly<T>(xs: readonly T[], max: number): readonly T[] {
+  const n = xs.length;
+  if (n <= max) return xs;
+  return Array.from({ length: max }, (_, i) => xs[Math.round((i * (n - 1)) / (max - 1))]!);
 }
 
 export function ema(values: number[], alpha: number): number[] {
