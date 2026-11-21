@@ -13,21 +13,21 @@ function randomAction(def: EnvDefinition, env: Env, rng: Rng): Action {
   return rng.int(env.candidates!().length);
 }
 
-/** Null when every value is finite and (if given) within +/-bound. */
-function badVector(name: string, v: ArrayLike<number>, bound = Infinity): string | null {
+/** Null when every value is finite and (if given) within +/-bound. `what`: 'observation', 'term' or 'candidates() value'. */
+function badVector(what: string, v: ArrayLike<number>, n: number, bound = Infinity): string | null {
   for (let i = 0; i < v.length; i++) {
     const x = v[i]!;
-    if (!Number.isFinite(x)) return `${name}[${i}] is ${x}; every value must be a finite number.`;
-    if (Math.abs(x) > bound) return `${name}[${i}] is ${x}; observations must stay within +/-${bound} (scale them to about [-1, 1]).`;
+    if (!Number.isFinite(x)) return `${what} ${i} at step ${n} is not a finite number (got ${x}).`;
+    if (Math.abs(x) > bound) return `${what} ${i} at step ${n} is ${x}; observations must stay within +/-${bound} (scale them to about [-1, 1]).`;
   }
   return null;
 }
 
-function badState(def: EnvDefinition, env: Env, bound: number): string | null {
-  if (typeof env.done !== 'boolean') return 'done must be a boolean.';
-  const bad = badVector('observe()', env.observe(), bound) ?? badVector('terms', env.terms);
+function badState(def: EnvDefinition, env: Env, n: number, bound: number): string | null {
+  if (typeof env.done !== 'boolean') return `done must be a boolean (got ${typeof env.done} at step ${n}).`;
+  const bad = badVector('observation', env.observe(), n, bound) ?? badVector('term', env.terms, n);
   if (bad || env.done || def.action.type !== 'candidates') return bad;
-  for (const c of env.candidates!()) { const b = badVector('candidates()', c, bound); if (b) return b; }
+  for (const c of env.candidates!()) { const b = badVector('candidates() value', c, n, bound); if (b) return b; }
   return null;
 }
 
@@ -46,7 +46,7 @@ function checkRender(def: EnvDefinition, env: Env, when: string, errors: string[
   const draw = new RecordingDraw2D();
   env.render({ kind: '2d', draw, ghost: false });
   if (draw.cmds.length < 1 || draw.cmds.length > 5000) errors.push(`render ${when} produced ${draw.cmds.length} draw commands; it must produce 1 to 5000.`);
-  else if (draw.cmds[0]![0] !== 'c') errors.push(`render ${when} must call draw.clear() first.`);
+  else if (draw.cmds[0]![0] !== 'c') errors.push(`render ${when}: the first draw command must be draw.clear(color).`);
   if (!cmdsFinite(draw.cmds)) errors.push(`render ${when} produced a draw command with a non-finite number.`);
   if (!def.meta.ghosts) return;
   const ghost = new RecordingDraw2D();
@@ -96,8 +96,8 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
     for (let n = 1; n <= steps; n++) {
       try { env.step(randomAction(def, env, rng)); } catch (e) { errors.push(`step ${n} threw: ${message(e)}`); break; }
       report.steps = n; epLen++;
-      const bad = badState(def, env, bound);
-      if (bad) { errors.push(`After step ${n}: ${bad}`); break; }
+      const bad = badState(def, env, n, bound);
+      if (bad) { errors.push(bad); break; }
       for (let k = 0; k < nTerms; k++) if (env.terms[k] !== base[k]) report.termsChanged[k] = true;
       if (env.done || epLen >= maxSteps) {
         if (env.done && epLen < maxSteps) endedEarly = true;
@@ -110,7 +110,7 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
     // 7, 8. Episodes and reward signal
     if (lengths.length > 0 && lengths.every((l) => l < 2)) errors.push('Every episode ended in fewer than 2 steps; the episode must not end immediately.');
     if (!endedEarly) warnings.push(`No episode ended before maxSteps (${maxSteps}).`);
-    if (!report.termsChanged.includes(true)) errors.push(`No reward term changed during ${report.steps} steps; step() must update terms.`);
+    if (!report.termsChanged.includes(true)) errors.push(`no reward term ever changed during ${report.steps} random steps; step() must update terms.`);
 
     // 9. Render
     const r = create();
@@ -127,7 +127,7 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
       const act = randomAction(def, a, ar);
       a.step(act); b.step(act);
       if (JSON.stringify([Array.from(a.observe()), Array.from(a.terms), a.done]) !== JSON.stringify([Array.from(b.observe()), Array.from(b.terms), b.done])) {
-        errors.push(`Not deterministic: two instances with the same seed and actions differ after step ${n}; use only the seeded rng.`);
+        errors.push(`the environment is not deterministic: the same seed and actions gave different results at step ${n}; use only the seeded rng and keep all state inside the instance.`);
         break;
       }
     }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultReward } from '../env/reward';
 import { reach1d } from '../envs/reach1d';
+import { FETCHES, GOOD } from '../gen/fixtures';
 import { resolveConfig } from '../learner/config';
 import { createHost } from './host';
 import type { FromWorker } from './protocol';
@@ -8,7 +9,8 @@ import { fakeSched } from './testSched';
 
 const setup = () => {
   const msgs: FromWorker[] = []; const f = fakeSched();
-  return { msgs, f, host: createHost((m) => msgs.push(m), f.sched) };
+  const scope: Record<string, unknown> = { fetch: () => 1 };   // stands in for the worker global that lockdown strips
+  return { msgs, f, scope, host: createHost((m) => msgs.push(m), f.sched, undefined, scope) };
 };
 
 describe('worker host', () => {
@@ -33,7 +35,30 @@ describe('worker host', () => {
     await host({ t: 'init', env: { kind: 'builtin', id: 'nope' } });
     expect(msgs[1]).toMatchObject({ t: 'error', message: expect.stringContaining('unknown environment') });
     await host({ t: 'init', env: { kind: 'generated', id: 'gen-x', source: '', meta: {} } });
-    expect(msgs[2]).toMatchObject({ t: 'error', message: expect.stringContaining('C7') });
+    expect(msgs[2]).toMatchObject({ t: 'error', message: expect.stringContaining('name must be') });
+  });
+  it('runs generated environments after locking the worker down', async () => {
+    const { msgs, f, scope, host } = setup();
+    await host({ t: 'init', env: { kind: 'generated', id: 'gen-reach-0001', source: GOOD.source, meta: GOOD.meta } });
+    const ready = msgs[0] as Extract<FromWorker, { t: 'ready' }>;
+    expect(ready.spec.meta).toMatchObject({ id: 'gen-reach-0001', generated: true });
+    expect(() => (scope.fetch as () => void)()).toThrow(/sandbox/);
+    const learner = resolveConfig('neat', ready.spec, { populationSize: 10, episodesPerGenome: 1 });
+    await host({ t: 'train/start', learner, reward: defaultReward(ready.spec), seed: 1, speed: { mode: 'max' }, ghosts: false });
+    f.drain(50);
+    expect(msgs.some((m) => m.t === 'iteration')).toBe(true);
+    expect(msgs.some((m) => m.t === 'error')).toBe(false);
+  });
+  it('refuses generated modules that fail the static scan', async () => {
+    const { msgs, host } = setup();
+    await host({ t: 'init', env: { kind: 'generated', id: 'gen-x-0001', source: FETCHES.source, meta: FETCHES.meta } });
+    expect(msgs[0]).toMatchObject({ t: 'error', message: expect.stringContaining('fetch') });
+  });
+  it('validates without a prior init', async () => {
+    const { msgs, scope, host } = setup();
+    await host({ t: 'validate', source: GOOD.source, meta: GOOD.meta });
+    expect(msgs[0]).toMatchObject({ t: 'validated', report: { ok: true } });
+    expect(() => (scope.fetch as () => void)()).toThrow(/sandbox/);
   });
   it('reports errors thrown later inside scheduled work', async () => {
     const msgs: FromWorker[] = []; const f = fakeSched();

@@ -1,9 +1,7 @@
 import type { EnvSpecMsg, RewardConfig, RenderFrame } from '../env/types';
 import type { LearnerConfig } from '../learner/config';
 import type { IterationStats, NetworkSnapshot, PolicySnapshot } from '../learner/types';
-
-/** Declared here until chunk C7 creates src/gen/validator.ts and moves it. */
-export interface ValidationReport { ok: boolean; errors: string[]; warnings: string[]; stats?: { steps: number; episodes: number; ms: number } }
+import type { ValidationReport } from '../gen/validator';
 
 export type EnvRef =
   | { kind: 'builtin'; id: string }
