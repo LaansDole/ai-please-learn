@@ -13,12 +13,15 @@ Measured with `npm run bench` (headless, seed 1, default reward preset; spec sec
 | NEAT Walker | pop 60 | 40 | 2.37 | 275.46 | +5 and champion replay >= 1.0 m | 25.3 | budget 300 s; population mean -6.07 -> 19.79; champion replay: 27.12 m in the full 15 s episode, upright 10.9 s, no fall |
 | DQN Pong | env defaults (1 episode per round) | 160,000 env steps, 86 episodes | first 20% of episodes: mean -10.61 | last 20%: mean 11.81 | +5 (last 20% vs first 20%) | 6.1 | budget 240 s; steps doubled from the spec's 80,000, see below |
 | PPO Car | env defaults (8 envs, rollout 128) | 150 updates | first 10 updates: mean -2.32 | last 10: mean 106.62 | +10 (last 10 vs first 10) | 7.0 | budget 240 s; no tuning needed |
+| PPO reach1d (unit test `src/learner/ppoLearner.test.ts`) | env defaults with `train.ppo.gamma = 0.95` | 40 updates | first update: mean 5.0 | last 5: mean 10.6 | +3 | 1.3 | gamma lowered from 0.99, see below |
 
 ## Changes from spec
 
 No NEAT benchmark iteration count was changed and no margin was lowered. The Car assertion was made stricter (see below). Walker passes at the spec's margin and distance; its physics knobs differ from the spec (see below).
 
 DQN Pong (spec section 14.2): the step budget was doubled, 80,000 -> 160,000 env steps, the first tuning step the spec allows. At 80,000 steps seed 1 measured -10.85 -> -7.77 over 55 episodes (+3.1, below the +5 margin): the paddle had only just begun to track the ball. At 160,000 steps: seed 1 -10.61 -> 11.81, seed 2 -10.45 -> 8.53. Margin, seed, hyperparameters and reward are unchanged. PPO Car passed as specified.
+
+PPO reach1d (spec section 14.2): `src/envs/reach1d.ts` sets `train.ppo.gamma = 0.95` (default 0.99), an env `train` override; the test still uses `resolveConfig('ppo', reach1d)`. With the default, seed 1 improved by +2.7 against the +3 required: the observation has no clock, so the value net cannot predict a long-horizon return and its loss stayed near 0.9. With 0.95, first update -> last 5: seed 1 5.0 -> 10.6, seed 2 4.0 -> 11.4, seed 3 4.4 -> 11.2.
 
 Car track (spec section 10.4): three control points were moved, `(650,330) (700,430) (540,450)` -> `(700,330) (670,415) (550,450)`. The spec's list produced a hairpin with a 17 px radius of curvature at the bottom right, below the 45 px minimum that `src/envs/car/track.test.ts` requires for a drivable track. The Car benchmark was measured on the adjusted track.
 
