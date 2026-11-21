@@ -27,6 +27,11 @@ test('concept from text: repair once, then play, train, and find it in the galle
     await page.getByTestId('btn-start').click();
     await expect.poll(async () => Number(await page.getByTestId('fitness-chart').getAttribute('data-points')), { timeout: 60000 }).toBeGreaterThanOrEqual(2);
     await expect(page.getByTestId('error-banner')).toBeHidden();
+    // Generated envs run in the locked-down worker; MAX must leave the main thread as responsive as for built-ins.
+    await page.waitForTimeout(5000);
+    const t0 = Date.now();
+    await page.getByTestId('speed-1').click({ timeout: 60000 });
+    expect(Date.now() - t0).toBeLessThan(1000);
     await page.goto('/');
     const card = page.locator('[data-testid^="card-gen-reach-the-target-"]').first();
     await expect(card.getByTestId('badge-generated')).toBeVisible();
