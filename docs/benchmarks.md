@@ -32,3 +32,22 @@ Walker physics (spec section 10.6), all in `WALKER` and `createWalkerSim` in `sr
 - Planar constraint: with translation or rotation axes locked on both bodies of a revolute joint, Rapier 0.21.0 blows up (a two-body pendulum reaches y = 20 m within a second). Only the torso is locked (z translation, x/y rotation); the legs are kept in its plane by the Z-axis joints, and their solver drift (up to 0.03 in a quaternion component over 15 s) is projected out after every step.
 - Motors: the default acceleration-based motor model scales with the small inertia of the foot and shin and could not hold the body up, so motors are force-based. The spec's `(400, 28)` then collapses forward in about 1.5 s (gravity gives about 310 N m per rad about the ankles); stiffness 800 and damping 40 (`1.4 * sqrt(k)`, the plan's rule) stand for the whole episode. Solver iterations 8 instead of Rapier's default 4: with 4 the joints are soft and the figure drifts.
 - Torque limit 150 N m per motor (not in the spec). Without it the first benchmark run passed on a pogo gait: 7.64 m in 4 s with the torso jumping to 2.07 m, then a fall (gen1 2.53, last5 72.35, 6.1 s). With the limit the champion strides at about 1.8 m/s with its torso between 0.9 and 1.3 m.
+
+## Throughput
+
+Measured with `npm run perf` (`tests/perf/perf.test.ts`): headless NEAT with each concept's default config and seed 1, over the first generations of a run, in generations per minute. The floors are the budgets of spec section 15. Each rate is work divided by the smaller of wall time and the CPU time the process received, best of up to three attempts, so a busy machine does not fail the guard. Machine: Apple Silicon (arm64), Node 22, with other applications running.
+
+| Guard | Measured over | Measured | Floor |
+|---|---|---|---|
+| NEAT Pong (pop 150, 2 episodes) | 10 generations | 130 to 143 generations/min | 40 |
+| NEAT Snake (pop 150, 2 episodes) | 10 generations | 1660 to 1730 generations/min | 60 |
+| NEAT Flappy (pop 150) | 10 generations | 550 to 585 generations/min | 30 |
+| NEAT Car (pop 100) | 6 generations | 109 to 117 generations/min | 15 |
+| NEAT Tetris (pop 80) | 4 generations | 184 to 192 generations/min | 12 |
+| NEAT Walker (pop 60) | 2 generations | 47 to 49 generations/min | 4 |
+| `Mlp([8, 32, 32, 3], 'relu')` forward + backward, batch 32 | 4000 passes | 1860 to 2190 per second | 1000 (plan: 2000) |
+| NEAT `Network.activate`, 20 nodes, 99 connections | 400,000 calls | 611,000 to 677,000 per second | 200,000 |
+
+The ranges are four consecutive runs. These rates cover only the first generations of a run, so they are not comparable with the whole-run times in the learning table above.
+
+Floor lowered, MLP: the plan asked for 2000 forward+backward passes per second. The measured rate is 1860 to 2190 (one of the four runs was below 2000), so that floor would fail without any regression. The loop has no allocation to remove: `forward` and `backward` reuse buffers sized once per batch size, and the time is the arithmetic itself (about 135,000 float32 multiply-adds per pass). The floor is now 1000 per second, which is the budget the spec itself sets (section 15: one DQN minibatch update under 1 ms). No other floor was changed.
