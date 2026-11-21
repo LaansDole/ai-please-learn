@@ -1,0 +1,107 @@
+{
+  "format": "evolab-concept",
+  "version": 1,
+  "id": "gen-juggle-the-ball-39cf",
+  "name": "Juggle the Ball",
+  "prompt": "learn to juggle a ball",
+  "meta": {
+    "name": "Juggle the Ball",
+    "tagline": "Keep the ball bouncing by getting the paddle underneath it.",
+    "description": "Move a paddle to bounce a falling ball back into the air. Each bounce can send the ball sideways depending on where it lands, so track its motion and keep repositioning the paddle. The episode ends when the ball is missed or the time limit is reached.",
+    "fps": 30,
+    "maxSteps": 1800,
+    "observation": {
+      "labels": [
+        "ball horizontal position",
+        "ball height",
+        "ball horizontal velocity",
+        "ball vertical velocity",
+        "paddle horizontal position",
+        "ball horizontal distance from paddle",
+        "ball is descending"
+      ]
+    },
+    "action": {
+      "type": "discrete",
+      "labels": [
+        "move left",
+        "hold",
+        "move right"
+      ]
+    },
+    "rewardTerms": [
+      {
+        "key": "height",
+        "kind": "reward",
+        "description": "Accumulated ball height above the paddle, scaled by the episode limit.",
+        "defaultWeight": 8
+      },
+      {
+        "key": "bounces",
+        "kind": "reward",
+        "description": "Number of successful paddle bounces.",
+        "defaultWeight": 0.2
+      },
+      {
+        "key": "misses",
+        "kind": "penalty",
+        "description": "Ball missed and the episode ended.",
+        "defaultWeight": 3
+      },
+      {
+        "key": "movement",
+        "kind": "penalty",
+        "description": "Fraction of steps spent moving the paddle.",
+        "defaultWeight": 0.3
+      }
+    ],
+    "presets": [
+      {
+        "name": "default",
+        "description": "Build height while keeping the ball in play.",
+        "weights": {
+          "height": 8,
+          "bounces": 0.2,
+          "misses": 3,
+          "movement": 0.3
+        }
+      },
+      {
+        "name": "aggressive",
+        "description": "Prioritize scoring as many bounces as possible.",
+        "weights": {
+          "height": 5,
+          "bounces": 0.5,
+          "misses": 2,
+          "movement": 0.1
+        }
+      },
+      {
+        "name": "survivalist",
+        "description": "Favor safe, high bounces and avoid risky movement.",
+        "weights": {
+          "height": 10,
+          "bounces": 0.1,
+          "misses": 6,
+          "movement": 0.7
+        }
+      }
+    ],
+    "human": {
+      "hint": "Use the left and right arrow keys to move the paddle.",
+      "keys": [
+        {
+          "code": "ArrowLeft",
+          "label": "move left"
+        },
+        {
+          "code": "ArrowRight",
+          "label": "move right"
+        }
+      ]
+    }
+  },
+  "source": "function createEnv(sdk) {\n  var LIMIT = 1800;\n  var PADDLE_Y = 450;\n  var PADDLE_W = 112;\n  var BALL_R = 10;\n  var CATCH_Y = PADDLE_Y - 9 - BALL_R;\n  var rng, bx, by, vx, vy, px, steps, done;\n  var terms = [0, 0, 0, 0];\n  var obs = [0, 0, 0, 0, 0, 0, 0];\n\n  function resetTerms() {\n    for (var i = 0; i < terms.length; i++) terms[i] = 0;\n  }\n\n  return {\n    reset: function (seed) {\n      rng = sdk.rng(seed);\n      bx = 400 + rng.range(-110, 110);\n      by = 285;\n      vx = rng.range(-1.2, 1.2);\n      vy = 0;\n      px = 400;\n      steps = 0;\n      done = false;\n      resetTerms();\n    },\n\n    step: function (action) {\n      if (done) return;\n\n      var move = action === 0 ? -1 : (action === 2 ? 1 : 0);\n      px = sdk.clamp(px + move * 6.5, PADDLE_W / 2, 800 - PADDLE_W / 2);\n      if (move !== 0) terms[3] += 1 / LIMIT;\n\n      var oldY = by;\n      vx = sdk.clamp(vx, -5.5, 5.5);\n      vy += 0.24;\n      bx += vx;\n      by += vy;\n\n      if (bx < BALL_R) {\n        bx = BALL_R;\n        vx = Math.abs(vx);\n      } else if (bx > 800 - BALL_R) {\n        bx = 800 - BALL_R;\n        vx = -Math.abs(vx);\n      }\n\n      if (vy > 0 && oldY <= CATCH_Y && by >= CATCH_Y &&\n          Math.abs(bx - px) <= PADDLE_W / 2 + BALL_R) {\n        by = CATCH_Y;\n        var offset = sdk.clamp((bx - px) / (PADDLE_W / 2), -1, 1);\n        vx = sdk.clamp(vx + offset * 2.8, -5.5, 5.5);\n        vy = -8.5 + Math.abs(offset) * 0.4;\n        terms[1] += 1;\n      }\n\n      var height = sdk.clamp((CATCH_Y - by) / 270, 0, 1);\n      terms[0] += height / LIMIT;\n\n      steps += 1;\n      if (by > 490) {\n        terms[2] += 1;\n        done = true;\n      }\n      if (steps >= LIMIT) done = true;\n    },\n\n    observe: function () {\n      obs[0] = sdk.clamp((bx - 400) / 400, -1, 1);\n      obs[1] = sdk.clamp((250 - by) / 250, -1, 1);\n      obs[2] = sdk.clamp(vx / 6, -1, 1);\n      obs[3] = sdk.clamp(vy / 10, -1, 1);\n      obs[4] = sdk.clamp((px - 400) / 400, -1, 1);\n      obs[5] = sdk.clamp((bx - px) / 400, -1, 1);\n      obs[6] = vy > 0 ? 1 : -1;\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        draw.line(0, PADDLE_Y + 12, 800, PADDLE_Y + 12, sdk.colors.dim, 2);\n        draw.text(\"Bounces: \" + terms[1], 24, 32, sdk.colors.fg, 18);\n      }\n      draw.rect(px - PADDLE_W / 2, PADDLE_Y - 9, PADDLE_W, 18, sdk.colors.accent);\n      if (!ghost) {\n        draw.circle(bx, by, BALL_R, sdk.colors.good);\n      }\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
+  "model": "gpt-6-luna",
+  "createdAt": 1795274954730
+}

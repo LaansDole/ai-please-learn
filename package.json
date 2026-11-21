@@ -10,7 +10,8 @@
     "test": "vitest run",
     "bench": "vitest run --config vitest.bench.config.ts tests/bench",
     "perf": "vitest run --config vitest.bench.config.ts tests/perf",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "llm-trial": "node -e \"import('vite').then((v) => v.runnerImport('./scripts/llm-trial.ts', { configFile: false })).catch((e) => { console.error(e); process.exit(1); })\" --"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

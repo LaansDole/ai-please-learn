@@ -1,0 +1,113 @@
+{
+  "format": "evolab-concept",
+  "version": 1,
+  "id": "gen-apple-basket-6447",
+  "name": "Apple Basket",
+  "prompt": "catch apples in a basket",
+  "meta": {
+    "name": "Apple Basket",
+    "tagline": "Move the basket to catch falling apples.",
+    "description": "Apples fall from above at changing horizontal positions. Slide the basket under them to catch as many as you can before they reach the ground. The observations show the basket and four apple slots, including which slots are active.",
+    "fps": 30,
+    "maxSteps": 500,
+    "observation": {
+      "labels": [
+        "basket x",
+        "apple 1 x",
+        "apple 1 y",
+        "apple 1 active",
+        "apple 2 x",
+        "apple 2 y",
+        "apple 2 active",
+        "apple 3 x",
+        "apple 3 y",
+        "apple 3 active",
+        "apple 4 x",
+        "apple 4 y",
+        "apple 4 active"
+      ]
+    },
+    "action": {
+      "type": "discrete",
+      "labels": [
+        "left",
+        "stay",
+        "right"
+      ]
+    },
+    "rewardTerms": [
+      {
+        "key": "alignment",
+        "kind": "reward",
+        "description": "Average shaped reward for lining the basket up with falling apples, weighted more strongly as they approach.",
+        "defaultWeight": 8
+      },
+      {
+        "key": "catches",
+        "kind": "reward",
+        "description": "Number of apples caught.",
+        "defaultWeight": 2
+      },
+      {
+        "key": "misses",
+        "kind": "penalty",
+        "description": "Number of apples that reach the ground uncaught.",
+        "defaultWeight": 2
+      },
+      {
+        "key": "movement",
+        "kind": "penalty",
+        "description": "Fraction of steps spent moving the basket.",
+        "defaultWeight": 0.15
+      }
+    ],
+    "presets": [
+      {
+        "name": "default",
+        "description": "Catch apples while avoiding unnecessary movement.",
+        "weights": {
+          "alignment": 8,
+          "catches": 2,
+          "misses": 2,
+          "movement": 0.15
+        }
+      },
+      {
+        "name": "aggressive",
+        "description": "Prioritize catching every apple.",
+        "weights": {
+          "alignment": 6,
+          "catches": 4,
+          "misses": 3,
+          "movement": 0
+        }
+      },
+      {
+        "name": "survivalist",
+        "description": "Focus on steady alignment and limit movement.",
+        "weights": {
+          "alignment": 10,
+          "catches": 1,
+          "misses": 1,
+          "movement": 0.6
+        }
+      }
+    ],
+    "human": {
+      "hint": "Use the left and right arrow keys to move the basket.",
+      "keys": [
+        {
+          "code": "ArrowLeft",
+          "label": "move left"
+        },
+        {
+          "code": "ArrowRight",
+          "label": "move right"
+        }
+      ]
+    }
+  },
+  "source": "function createEnv(sdk) {\n  var STEPS = 500;\n  var SLOT_COUNT = 4;\n  var rng, basketX, apples, tick, done;\n  var terms = [0, 0, 0, 0];\n  var obs = new Array(13);\n\n  function spawnApple() {\n    var i;\n    for (i = 0; i < SLOT_COUNT; i += 1) {\n      if (!apples[i].active) {\n        apples[i].active = true;\n        apples[i].x = rng.range(65, 735);\n        apples[i].y = 24;\n        apples[i].speed = rng.range(3.0, 3.8);\n        return;\n      }\n    }\n  }\n\n  function basketLeft() {\n    return basketX - 48;\n  }\n\n  return {\n    reset: function (seed) {\n      rng = sdk.rng(seed);\n      basketX = 400;\n      tick = 0;\n      done = false;\n      terms[0] = 0;\n      terms[1] = 0;\n      terms[2] = 0;\n      terms[3] = 0;\n      apples = [];\n      var i;\n      for (i = 0; i < SLOT_COUNT; i += 1) {\n        apples.push({ active: false, x: 0, y: 0, speed: 0 });\n      }\n      spawnApple();\n    },\n\n    step: function (action) {\n      if (done) return;\n\n      var move = 0;\n      if (action === 0) move = -1;\n      else if (action === 2) move = 1;\n\n      if (move !== 0) {\n        basketX = sdk.clamp(basketX + move * 7, 52, 748);\n        terms[3] += 1 / STEPS;\n      }\n\n      var i;\n      for (i = 0; i < SLOT_COUNT; i += 1) {\n        var apple = apples[i];\n        if (!apple.active) continue;\n\n        var dx = Math.abs(apple.x - basketX);\n        var horizontalCloseness = Math.max(0, 1 - dx / 360);\n        var heightWeight = 0.25 + 0.75 * Math.min(1, apple.y / 465);\n        terms[0] += horizontalCloseness * heightWeight / (STEPS * SLOT_COUNT);\n\n        apple.y += apple.speed;\n\n        if (apple.y >= 420 && Math.abs(apple.x - basketX) <= 49) {\n          apple.active = false;\n          terms[1] += 1;\n        } else if (apple.y > 465) {\n          apple.active = false;\n          terms[2] += 1;\n        }\n      }\n\n      tick += 1;\n      if (tick % 42 === 0) spawnApple();\n      if (tick >= STEPS) done = true;\n    },\n\n    observe: function () {\n      obs[0] = (basketX - 400) / 400;\n      var i;\n      for (i = 0; i < SLOT_COUNT; i += 1) {\n        var base = 1 + i * 3;\n        if (apples[i].active) {\n          obs[base] = (apples[i].x - 400) / 400;\n          obs[base + 1] = apples[i].y / 250 - 1;\n          obs[base + 2] = 1;\n        } else {\n          obs[base] = 0;\n          obs[base + 1] = 0;\n          obs[base + 2] = 0;\n        }\n      }\n      return obs;\n    },\n\n    get done() {\n      return done;\n    },\n\n    terms: terms,\n\n    render: function (draw, ghost) {\n      if (!ghost) {\n        draw.clear(sdk.colors.bg);\n        draw.line(25, 472, 775, 472, sdk.colors.dim, 2);\n        var i;\n        for (i = 0; i < SLOT_COUNT; i += 1) {\n          if (apples[i].active) {\n            draw.circle(apples[i].x, apples[i].y, 10, sdk.colors.bad);\n            draw.line(apples[i].x, apples[i].y - 8, apples[i].x + 5, apples[i].y - 13, sdk.colors.good, 3);\n          }\n        }\n        draw.text(\"Catches: \" + terms[1], 24, 32, sdk.colors.fg, 18);\n      }\n\n      draw.poly([\n        basketLeft(), 426,\n        basketX + 48, 426,\n        basketX + 38, 460,\n        basketX - 38, 460\n      ], sdk.colors.accent, true);\n      draw.line(basketX - 48, 426, basketX + 48, 426, sdk.colors.good, 4);\n    },\n\n    humanAct: function (input) {\n      if (input.held.has(\"ArrowLeft\")) return 0;\n      if (input.held.has(\"ArrowRight\")) return 2;\n      return 1;\n    }\n  };\n}\n",
+  "model": "gpt-6-luna",
+  "createdAt": 1795275086463
+}
