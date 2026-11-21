@@ -1,4 +1,4 @@
-import { defaultReward } from '../env/reward';
+import { loadReward, saveReward } from '../persist/storage';
 import type { EnvSpecMsg, RewardConfig } from '../env/types';
 import type { LearnerConfig } from '../learner/config';
 import type { IterationStats, PolicySnapshot } from '../learner/types';
@@ -61,7 +61,7 @@ export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike 
   const history: HistoryEntry[] = [], hof: HofEntry[] = [], rewardMarkers: number[] = [];
   const listeners = new Map<string, Set<(m: FromWorker) => void>>(), changeFns = new Set<() => void>();
   let state: Session['state'] = 'idle', speed: Speed = { mode: 'live', mult: 1 }, viewing: Viewing = { kind: 'live' };
-  let reward = defaultReward(spec), ghosts = true, run: RunInfo | null = null;
+  let reward = loadReward(spec), ghosts = true, run: RunInfo | null = null;
   let autoReplay: number | null = null, stageBusy = false, stepping = false, lastVersion = 0;
   let loopTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -148,6 +148,7 @@ export async function openSession(ref: EnvRef, deps: { makeClient(): ClientLike 
     },
     setReward(cfg) {
       reward = cfg;
+      saveReward(cfg);
       train.send({ t: 'train/reward', reward: cfg });
       stage.send({ t: 'stage/reward', reward: cfg });
       changed();

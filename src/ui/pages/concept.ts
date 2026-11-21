@@ -2,6 +2,7 @@ import { listEnvs } from '../../env/registry';
 import { iterationLabel } from '../../learner/types';
 import { h } from '../dom';
 import { createPlayPanel } from '../panels/play';
+import { createRewardPanel } from '../panels/rewards';
 import { createStage } from '../panels/stage';
 import { formatRoute, type PageFn, type Step } from '../router';
 import { openSession, type Session } from '../session';
@@ -14,6 +15,7 @@ function buildStep(step: Step, session: Session): StepView {
     const p = createPlayPanel(session);
     return { side: p.el, dispose: () => { p.dispose(); session.backToLive(); } };   // sends stage/stop
   }
+  if (step === 2) { const p = createRewardPanel(session); return { side: p.el, dispose: p.dispose }; }
   return { side: h('section', { class: 'panel' }, h('h3', null, STEPS[step - 1]![1])), dispose() {} };
 }
 
