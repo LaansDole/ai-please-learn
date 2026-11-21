@@ -35,14 +35,36 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
       { key: 'smoothed', label: 'smoothed', color: '--text' },
     ],
   });
-  const species = createStackedArea({ testid: 'species-chart', title: 'Species (share of population)' });
+  const species = createStackedArea({
+    testid: 'species-chart', title: 'Species',
+    note: 'Each band is a species: a family of networks alike enough to breed. Its height is its share of the population.',
+  });
   const rlPanels = createRlPanels(session);
   const discrete = spec.action.type === 'discrete';
   const outputs = createOutputsBar(spec.action.type === 'candidates' ? [spec.action.scoreLabel] : spec.action.labels);
-  const outputsTitle = h('h3', null, 'Outputs');
+  const outputsTitle = h('h3', null, 'Outputs'), outputsNote = h('p', { class: 'chart-note' });
   const hof = createHallOfFame(session);
-  const bottom = h('div', { class: 'learn-row' }, hof.el, h('section', { class: 'panel' }, outputsTitle, outputs.el));
-  const lower = h('div', { class: 'learn' }, speedBar.el, stats.el, h('div', { class: 'learn-row' }, fitness.el, species.el, rlPanels.el), bottom);
+  const hint = h('p', { class: 'learn-hint', testid: 'learn-hint' });
+  const bottom = h('div', { class: 'learn-row' }, hof.el, h('section', { class: 'panel chart' }, outputsTitle, outputsNote, outputs.el));
+  const keysHint = h('p', { class: 'keys-hint' }, 'Keyboard:', h('kbd', null, 'Space'), 'pause or resume', h('kbd', null, '.'), 'one step', h('kbd', null, '['), h('kbd', null, ']'), 'slower or faster');
+  const lower = h('div', { class: 'learn' }, hint, speedBar.el, stats.el, h('div', { class: 'learn-row' }, fitness.el, species.el, rlPanels.el), bottom, keysHint);
+  // Plain-language reading aids, worded for the method in use.
+  const describe = (kind: 'neat' | 'dqn' | 'ppo') => {
+    hint.hidden = session.state !== 'idle' || session.history.length > 0;
+    if (!hint.hidden) {
+      const text = kind === 'neat' ? 'Nothing has learned yet. Start evolving to create a population of random networks. Every generation, the best are kept, bred and mutated.'
+        : kind === 'dqn' ? 'Nothing has learned yet. Start learning and one network plays round after round, correcting itself from its own memories.'
+          : 'Nothing has learned yet. Start learning and one network plays several copies of the game at once, correcting itself after every batch.';
+      if (hint.textContent !== text) hint.textContent = text;
+    }
+    fitness.setNote(kind === 'neat' ? 'Fitness is the weighted sum of the rewards from step 2. Best is each generation\'s champion; mean and median are the whole crowd. Up is better.'
+      : 'Fitness is the weighted sum of the rewards from step 2. Each dot is one finished episode; the white line is their running average. Up is better.');
+    const out = kind === 'neat' ? 'What the network on stage wants to do right now.'
+      : kind === 'dqn' ? 'How good the network expects each action to be from here.'
+        : discrete ? 'How likely the network is to take each action from here.' : 'The value the network sets for each control right now.';
+    const text = discrete ? `${out} The marked row is the action it takes.` : out;
+    if (outputsNote.textContent !== text) outputsNote.textContent = text;
+  };
 
   // DQN/PPO: one x position per finished episode. Appended to as history grows; a new run starts over.
   const rl = { run: null as RunInfo | null, n: 0, seen: false, smooth: 0, x: [] as number[], episode: [] as Column, smoothed: [] as Column, best: [] as Column, mean: [] as Column, median: [] as Column };
@@ -76,11 +98,12 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
       return { x, label: markerLabels.get(x)! };
     });
     species.el.hidden = kind !== 'neat'; rlPanels.el.hidden = kind === 'neat';
+    describe(kind);
     outputsTitle.textContent = kind === 'neat' ? 'Output activations' : kind === 'dqn' ? 'Q-values' : discrete ? 'Action probabilities' : 'Action means';
     if (kind !== 'neat') {
       extendRl();
       fitness.setData(rl.x, { episode: rl.episode, smoothed: rl.smoothed, best: rl.best, mean: rl.mean, median: rl.median }, markers);
-      rlPanels.update();
+      rlPanels.update(kind);
       return;
     }
     fitness.setData(hist.map((s) => s.iteration), { best: hist.map((s) => s.best), mean: hist.map((s) => s.mean), median: hist.map((s) => s.median) }, markers);

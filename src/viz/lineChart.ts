@@ -6,6 +6,8 @@ export interface ChartMarker { x: number; label: string }
 export interface LineChart {
   el: HTMLElement;
   setData(x: number[], ys: Record<string, (number | null)[]>, markers?: ChartMarker[]): void;
+  /** One plain sentence under the title saying how to read the chart. */
+  setNote(text: string): void;
 }
 
 const PAD = { l: 46, r: 64, t: 10, b: 22 }, DECIMATE_ABOVE = 2000;
@@ -31,7 +33,9 @@ export function createLineChart(opts: { testid: string; title: string; series: S
   }
   const el = document.createElement('section');
   el.className = 'panel chart';
-  el.append(head, c.wrap);
+  const note = document.createElement('p');
+  note.className = 'chart-note';
+  el.append(head, note, c.wrap);
 
   const value = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) || (log && v <= 0) ? NaN : log ? Math.log10(v) : v);
   const xRange = (): [number, number] => { const a = xs[0] ?? 0, b = xs.at(-1) ?? 1; return b > a ? [a, b] : [a - 1, a + 1]; };
@@ -40,10 +44,10 @@ export function createLineChart(opts: { testid: string; title: string; series: S
   function draw(): void {
     const line = c.token('--line'), muted = c.token('--muted'), mono = c.token('--font-mono');
     const plotH = c.h - PAD.t - PAD.b, right = c.w - PAD.r;
-    ctx.font = `10px ${mono}`; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
+    ctx.font = `11px ${mono}`; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
     if (xs.length === 0) {
       ctx.fillStyle = muted; ctx.textAlign = 'center';
-      ctx.fillText('No data yet', c.w / 2, c.h / 2);
+      ctx.fillText('Nothing to plot yet', c.w / 2, c.h / 2);
       return;
     }
     let lo = Infinity, hi = -Infinity;
@@ -69,7 +73,7 @@ export function createLineChart(opts: { testid: string; title: string; series: S
       const x = Math.round(xPos(m.x)) + 0.5;
       ctx.strokeStyle = warn; ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
       ctx.fillStyle = warn; ctx.fillRect(x, PAD.t, 11, 11);
-      ctx.fillStyle = c.token('--bg'); ctx.font = `bold 9px ${mono}`; ctx.fillText('R', x + 5.5, PAD.t + 6); ctx.font = `10px ${mono}`;
+      ctx.fillStyle = c.token('--bg'); ctx.font = `bold 9px ${mono}`; ctx.fillText('R', x + 5.5, PAD.t + 6); ctx.font = `11px ${mono}`;
     }
 
     const ends: { y: number; label: string; color: string }[] = [];
@@ -124,6 +128,7 @@ export function createLineChart(opts: { testid: string; title: string; series: S
 
   return {
     el,
+    setNote(text) { if (note.textContent !== text) note.textContent = text; },
     setData(x, ys, m = []) {
       xs = x; data = ys; markers = m;
       c.canvas.dataset.points = String(x.length); c.canvas.dataset.markers = String(m.length);

@@ -6,15 +6,23 @@ import type { Session } from '../session';
 
 /** One row of labelled mono readouts for the latest completed iteration (spec section 11.5); the cells depend on the learning method. */
 export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLElement; refresh(): void; dispose(): void } {
-  const cell = (id: string, label: string) => {
+  const cell = (id: string, label: string, help: string) => {
     const name = h('span', { class: 'stat-label' }, label), value = h('span', { class: 'num stat-value' }, '-');
-    return { el: h('div', { class: 'stat', testid: `stat-${id}` }, name, value), name, value };
+    return { el: h('div', { class: 'stat', testid: `stat-${id}`, title: help }, name, value), name, value };
   };
   const cells = {
-    iteration: cell('iteration', 'Generation'), population: cell('population', 'Population'), species: cell('species', 'Species'),
-    explore: cell('explore', 'Epsilon'), best: cell('best', 'Best'), mean: cell('mean', 'Mean'),
-    nodes: cell('nodes', 'Nodes'), conns: cell('conns', 'Connections'), params: cell('params', 'Parameters'), sps: cell('sps', 'Steps / s'),
+    iteration: cell('iteration', 'Generation', 'How many rounds of learning have finished'),
+    population: cell('population', 'Population', 'Networks playing at once'),
+    species: cell('species', 'Species', 'Families of similar networks, protected so new ideas get time to improve'),
+    explore: cell('explore', 'Epsilon', 'How much the network still experiments instead of doing what it thinks is best'),
+    best: cell('best', 'Best', 'Fitness of the best network in the latest iteration'), mean: cell('mean', 'Mean', 'Average fitness in the latest iteration'),
+    nodes: cell('nodes', 'Nodes', 'Neurons in the champion, inputs and outputs included'), conns: cell('conns', 'Connections', 'Enabled connections in the champion'),
+    params: cell('params', 'Parameters', 'Adjustable numbers (weights and biases) in the network'), sps: cell('sps', 'Steps / s', 'Game steps simulated per second, all networks together'),
   };
+  // The heartbeat of a run: the iteration counter flashes on every tick, the best score only when it sets a record.
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const flash = (el: HTMLElement) => { if (el.getAnimations().length === 0) el.animate([{ color: accent, offset: 0 }], { duration: 600, easing: 'ease-out' }); };
+  let record = -Infinity;
   const el = h('section', { class: 'panel stats', 'aria-label': 'Run statistics' }, ...Object.values(cells).map((c) => c.el));
   let ticksPerSec = 0;
   // Measured env steps per second between the last two iterations; ticks x population overstates it once agents die.
@@ -22,7 +30,10 @@ export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLE
   const sync = () => {
     const s = session.history.at(-1), run = session.run, cfg = run?.learner, kind = cfg?.kind ?? prefs.learner, neat = kind === 'neat';
     cells.iteration.name.textContent = iterationLabel(kind);
-    cells.iteration.value.textContent = String(s?.iteration ?? 0);
+    const iteration = String(s?.iteration ?? 0);
+    if (cells.iteration.value.textContent !== iteration) { cells.iteration.value.textContent = iteration; if (s) flash(cells.iteration.value); }
+    if (!s) record = -Infinity;
+    else if (s.best > record) { if (record > -Infinity) flash(cells.best.value); record = s.best; }
     // NEAT: population, species, champion size. PPO: envs, entropy, parameters. DQN: epsilon, parameters (buffer fill is not reported).
     cells.population.el.hidden = kind === 'dqn'; cells.species.el.hidden = !neat; cells.explore.el.hidden = neat;
     cells.nodes.el.hidden = cells.conns.el.hidden = !neat; cells.params.el.hidden = neat;

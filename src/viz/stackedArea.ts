@@ -6,20 +6,22 @@ const PAD = { l: 46, r: 12, t: 10, b: 22 }, LABELS = 6, LABEL_MIN_HEIGHT = 14;
  * Stacked population shares: one band per species id (never hue alone: the largest current species carry their id). Spec section 11.4.
  * `rows` may be a sample of the run; `total` is the real number of generations (axis label, data-points).
  */
-export function createStackedArea(opts: { testid: string; title: string }): { el: HTMLElement; setData(ids: number[], rows: number[][], total?: number): void } {
+export function createStackedArea(opts: { testid: string; title: string; note: string }): { el: HTMLElement; setData(ids: number[], rows: number[][], total?: number): void } {
   let ids: number[] = [], rows: number[][] = [], total = 0;
   const c = createChartCanvas(opts.testid, draw), { ctx } = c;
   c.canvas.dataset.points = '0';
   c.canvas.setAttribute('role', 'img'); c.canvas.setAttribute('aria-label', opts.title);
   const title = document.createElement('h3'), el = document.createElement('section');
   title.textContent = opts.title; el.className = 'panel chart';
-  el.append(title, c.wrap);
+  const note = document.createElement('p');
+  note.className = 'chart-note'; note.textContent = opts.note;
+  el.append(title, note, c.wrap);
 
   function draw(): void {
     const muted = c.token('--muted'), mono = c.token('--font-mono'), bg = c.token('--bg');
     const n = rows.length, plotW = c.w - PAD.l - PAD.r, plotH = c.h - PAD.t - PAD.b;
-    ctx.font = `10px ${mono}`; ctx.textBaseline = 'middle';
-    if (n === 0) { ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText('No data yet', c.w / 2, c.h / 2); return; }
+    ctx.font = `11px ${mono}`; ctx.textBaseline = 'middle';
+    if (n === 0) { ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText('Nothing to plot yet', c.w / 2, c.h / 2); return; }
     // One generation is drawn as a full-width column so the first result is already visible.
     const x = (g: number) => PAD.l + (n === 1 ? g : g / (n - 1)) * plotW;
     const y = (share: number) => PAD.t + (1 - share) * plotH;
@@ -48,7 +50,7 @@ export function createStackedArea(opts: { testid: string; title: string }): { el
     const now = n - 1;
     const current = ids.map((id, k) => ({ id, k, size: top(now, k) - bottom(now, k) })).filter((s) => s.size > 0)
       .sort((a, b) => b.size - a.size).slice(0, LABELS);
-    ctx.textAlign = 'center'; ctx.font = `bold 10px ${mono}`;
+    ctx.textAlign = 'center'; ctx.font = `bold 11px ${mono}`;
     const placed: { x: number; y: number }[] = [];
     for (const { id, k } of current) {
       let best = 0, bestH = 0;
@@ -63,7 +65,7 @@ export function createStackedArea(opts: { testid: string; title: string }): { el
       ctx.fillStyle = bg; ctx.fillRect(px - half, py - 7, half * 2, 14);
       ctx.fillStyle = colours[id % 8]!; ctx.fillText(text, px, py + 0.5);
     }
-    ctx.fillStyle = muted; ctx.font = `10px ${mono}`; ctx.textAlign = 'right';
+    ctx.fillStyle = muted; ctx.font = `11px ${mono}`; ctx.textAlign = 'right';
     for (const share of [0, 0.5, 1]) ctx.fillText(`${share * 100}%`, PAD.l - 6, y(share));
     ctx.textAlign = 'center';
     ctx.fillText('1', PAD.l, c.h - PAD.b / 2);
