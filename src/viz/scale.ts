@@ -10,6 +10,12 @@ export function niceTicks(min: number, max: number, target = 5): number[] {
   return out;
 }
 
+/** Axis and tooltip number: three significant digits without padding zeros ("0.005", not "0.00500", which overflows the axis gutter). */
+export function tickLabel(v: number): string {
+  const a = Math.abs(v);
+  return a >= 10000 ? `${(v / 1000).toFixed(0)}k` : a >= 100 || Number.isInteger(v) ? v.toFixed(0) : String(Number(v.toPrecision(3)));
+}
+
 /** Min/max bucketing: at most about 2 * maxPoints points, endpoints kept, extremes kept. Non-finite y values are never picked. */
 export function decimate(xs: number[], ys: number[], maxPoints: number): { xs: number[]; ys: number[] } {
   const n = xs.length;

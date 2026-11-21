@@ -1,5 +1,5 @@
 import { createChartCanvas } from './canvas';
-import { decimate, niceTicks } from './scale';
+import { decimate, niceTicks, tickLabel as short } from './scale';
 
 export interface SeriesSpec { key: string; label: string; color: string; dash?: number[]; dots?: boolean }   // color: a CSS colour or a '--token'
 export interface ChartMarker { x: number; label: string }
@@ -9,7 +9,6 @@ export interface LineChart {
 }
 
 const PAD = { l: 46, r: 64, t: 10, b: 22 }, DECIMATE_ABOVE = 2000;
-const short = (v: number) => (Math.abs(v) >= 10000 ? `${(v / 1000).toFixed(0)}k` : Math.abs(v) >= 100 || Number.isInteger(v) ? v.toFixed(0) : v.toPrecision(3));
 
 /** Line chart with nice ticks, directly labelled series, reward-change markers and a hover crosshair (spec section 11.4). */
 export function createLineChart(opts: { testid: string; title: string; series: SeriesSpec[]; logToggle?: boolean }): LineChart {

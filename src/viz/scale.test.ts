@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimate, ema, niceTicks, sampleEvenly, stackShares } from './scale';
+import { decimate, ema, niceTicks, sampleEvenly, stackShares, tickLabel } from './scale';
 
 describe('chart scales', () => {
   it('picks nice ticks covering the range', () => {
@@ -30,5 +30,20 @@ describe('chart scales', () => {
   });
   it('smooths with an exponential moving average', () => {
     expect(ema([0, 10, 10], 0.5)).toEqual([0, 5, 7.5]);
+  });
+});
+
+describe('tickLabel', () => {
+  it('fits the 40 px axis gutter: no padding zeros on small values', () => {
+    expect(tickLabel(0.005)).toBe('0.005');           // was "0.00500", clipped at the left edge of the loss chart
+    expect(tickLabel(0.5)).toBe('0.5');
+    expect(tickLabel(0.0125)).toBe('0.0125');
+    expect(tickLabel(-7.25)).toBe('-7.25');
+  });
+  it('keeps integers and large values short', () => {
+    expect(tickLabel(0)).toBe('0');
+    expect(tickLabel(40)).toBe('40');
+    expect(tickLabel(123.4)).toBe('123');
+    expect(tickLabel(25000)).toBe('25k');
   });
 });
