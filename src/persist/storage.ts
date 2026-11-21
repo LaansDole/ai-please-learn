@@ -19,10 +19,10 @@ let store = defaultStore();
 export function setStorage(s: Store): void { store = s; }
 
 /** Undefined for missing or corrupt values (spec section 13: they are replaced with defaults). */
-function read(key: string): unknown {
+export function read(key: string): unknown {
   try { const raw = store.getItem(key); return raw === null ? undefined : JSON.parse(raw); } catch { return undefined; }
 }
-function write(key: string, value: unknown): void {
+export function write(key: string, value: unknown): void {
   try { store.setItem(key, JSON.stringify(value)); } catch { /* quota or blocked storage: preferences just do not persist */ }
 }
 
