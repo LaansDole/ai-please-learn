@@ -88,7 +88,8 @@ test('the Demo tab opens the recorded demo, whose top bar is the app\'s and lead
   await step.focus();
   await page.keyboard.press('Enter');
   await expect(step).toHaveAttribute('aria-current', 'step');
-  await expect.poll(() => page.getByTestId('demo-video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThanOrEqual(96);
+  const target = Number(await step.getAttribute('data-t'));
+  await expect.poll(() => page.getByTestId('demo-video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThanOrEqual(target);
 
   for (const [tab, testid, path] of [['nav-settings', 'settings', 'settings'], ['nav-create', 'create', 'create'], ['nav-gallery', 'gallery', '']] as const) {
     await page.getByTestId(tab).click();

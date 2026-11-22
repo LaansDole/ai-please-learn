@@ -55,7 +55,7 @@ function createCard(): HTMLElement {
 function demoLink(): HTMLElement {
   const a = h('a', { class: 'demo-link', href: `${import.meta.env.BASE_URL}demo/`, testid: 'gallery-demo' });
   a.innerHTML = '<svg viewBox="5 4 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
-  a.append('Watch the 6-minute demo');
+  a.append('Watch the 5-minute demo');
   return a;
 }
 
