@@ -37,11 +37,11 @@ function create(): Env {
       if (view.kind !== '2d') return;
       const d = view.draw, px = (v: number) => 400 + v * 340;
       if (!view.ghost) {
-        d.clear('#0d121b');
-        d.line(60, 250, 740, 250, '#2a3446', 2);
-        d.circle(px(target), 250, 16, '#2a3446'); d.circle(px(target), 250, 10, '#82d173');
+        d.clear('#f9faf5');
+        d.line(60, 250, 740, 250, '#c2cabb', 2);
+        d.circle(px(target), 250, 16, '#c2cabb'); d.circle(px(target), 250, 10, '#1d6b4f');
       }
-      d.circle(px(x), 250, 8, '#4de1c1');
+      d.circle(px(x), 250, 8, '#1b4f9c');
     },
     // 7. humanAct: translate held keys into the same action shape step() takes.
     humanAct(input: HumanInput) { return input.held.has('ArrowLeft') ? 0 : input.held.has('ArrowRight') ? 2 : 1; },

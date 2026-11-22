@@ -13,7 +13,7 @@ export interface ThreeStage {
   dispose(): void;
 }
 
-const BG = '#0a0e14', GROUND = '#10161f', GRID = '#2f3b4f', GRID_5M = '#566784', START = '#4de1c1', LABEL = '#9aa7bd', DEFAULT_COLOR = '#d7e0ee';
+const BG = '#eef1e8', GROUND = '#e3e8db', GRID = '#c2cabb', GRID_5M = '#8a968c', START = '#1d4a3b', LABEL = '#4b5a51', DEFAULT_COLOR = '#16241d';
 // The spec's camera (0, 1.4, 4.5) looked along the ground, so the grid and the far leg were invisible: it now sits higher and a little
 // behind the figure. CAMERA is the followed point (x eases to the figure); the eye is CAMERA + EYE_X and looks ahead by LOOK_X.
 const CAMERA: Vec3 = [0, 2.0, 4.6], EYE_X = -0.9, LOOK_X = 0.4, LOOK_Y = 0.75, LERP = 0.08, SNAP = 6;
@@ -48,7 +48,7 @@ function markerSprite(): { sprite: Sprite; set(metres: number): void } {
       if (metres === shown) return;
       shown = metres;
       ctx.clearRect(0, 0, 128, 64);
-      ctx.font = '600 34px ui-monospace, Menlo, Consolas, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '34px "Gill Sans", "Gill Sans MT", "Trebuchet MS", Candara, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = metres === 0 ? START : LABEL;
       ctx.fillText(`${metres} m`, 64, 34);
       texture.needsUpdate = true;
@@ -69,7 +69,7 @@ export function createThreeStage(canvas: HTMLCanvasElement): ThreeStage {
   let cam: Vec3 = [...CAMERA], placed = false;
   const edge = new Vector3();
 
-  scene.add(new HemisphereLight('#cfe0ff', GROUND, 1.2), new AmbientLight('#ffffff', 0.25));
+  scene.add(new HemisphereLight('#ffffff', GROUND, 1.2), new AmbientLight('#ffffff', 0.25));
   const sun = new DirectionalLight('#ffffff', 2.2);
   sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.5, far: 20 });

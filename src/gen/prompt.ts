@@ -42,7 +42,7 @@ sdk:
   sdk.rng(seed) -> { next() in [0,1), range(a, b), int(n) in 0..n-1, gaussian(), pick(array) }
   sdk.clamp(v, lo, hi), sdk.lerp(a, b, t)
   sdk.vec: add(a,b), sub(a,b), scale(a,s), dot(a,b), len(a), dist(a,b), norm(a), rot(a, radians)   // vectors are [x, y]
-  sdk.colors: { bg, fg, dim, accent, good, bad, warn }   // CSS colour strings; use these, the app is dark themed
+  sdk.colors: { bg, fg, dim, accent, good, bad, warn }   // CSS colour strings; use these, the app is light themed (dark ink on pale paper)
   sdk.W = 800, sdk.H = 500
 draw:
   draw.clear(color), draw.rect(x, y, w, h, color), draw.circle(x, y, r, color), draw.line(x1, y1, x2, y2, color, width),

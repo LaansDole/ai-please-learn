@@ -11,7 +11,7 @@ const DT = 1 / 60, CAR_R = 9, MAX_SPEED = 260, RAY_MAX = 300, STALL_STEPS = 240,
 const GRIP = 220;
 const RAY_ANGLES = [-90, -50, -25, 0, 25, 50, 90].map((deg) => (deg * Math.PI) / 180);
 const CHECKPOINT = 0, LAP = 1, CRASH = 2, STALL = 3, SPEED = 4, WOBBLE = 5;
-const BG = '#0d121b', FG = '#d7e0ee', DIM = '#2a3446', ACCENT = '#4de1c1', WARN = '#ffc857';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#dde2d6', ACCENT = '#1d4a3b', WARN = '#a65a3a';
 
 // Static geometry, built once. The surface is one polygon: the left wall forwards, then the right wall backwards (a ring).
 const LEFT: number[] = [], RIGHT: number[] = [], SURFACE: number[] = [];
@@ -105,8 +105,8 @@ export const car: EnvDefinition = {
   ],
   presets: [
     { name: 'default', description: 'Make progress around the track and do not crash.', weights: { checkpoint: 1, lap: 20, crash: 5, stall: 2, speed: 0.1, wobble: 0.05 } },
-    { name: 'aggressive', description: 'Fast laps; crashes are cheap.', weights: { checkpoint: 1, lap: 30, crash: 2, stall: 5, speed: 0.5, wobble: 0 } },
-    { name: 'survivalist', description: 'Never touch a wall; speed is irrelevant.', weights: { checkpoint: 1, lap: 10, crash: 20, stall: 1, speed: 0, wobble: 0.1 } },
+    { name: 'aggressive', description: 'Fast laps. Crashes are cheap.', weights: { checkpoint: 1, lap: 30, crash: 2, stall: 5, speed: 0.5, wobble: 0 } },
+    { name: 'survivalist', description: 'Never touch a wall. Speed is irrelevant.', weights: { checkpoint: 1, lap: 10, crash: 20, stall: 1, speed: 0, wobble: 0.1 } },
   ],
   human: {
     hint: 'Left and right arrows steer, up accelerates, down brakes and reverses.',

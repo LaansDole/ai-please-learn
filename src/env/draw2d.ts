@@ -43,7 +43,7 @@ export function playDrawCmds(ctx: Ctx2D, cmds: DrawCmd[]): void {
         if (c[3]) { ctx.fillStyle = c[2]; ctx.fill(); } else { ctx.strokeStyle = c[2]; ctx.lineWidth = 1; ctx.stroke(); }
         break;
       }
-      case 't': ctx.fillStyle = c[4]; ctx.font = `${c[5]}px system-ui, -apple-system, "Segoe UI", sans-serif`; ctx.fillText(c[1], c[2], c[3]); break;
+      case 't': ctx.fillStyle = c[4]; ctx.font = `${c[5]}px "Gill Sans", "Gill Sans MT", "Trebuchet MS", Candara, system-ui, sans-serif`; ctx.fillText(c[1], c[2], c[3]); break;
       case 'a': ctx.globalAlpha = c[1]; break;
     }
   }

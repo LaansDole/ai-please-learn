@@ -4,7 +4,7 @@ import { COLS, PIECES, ROWS, bag, emptyBoard, features, holes, place, placements
 
 const CELL = 25, X0 = (800 - COLS * CELL) / 2, START_X = 3;
 const LINES = 0, TETRIS = 1, PIECE = 2, HOLES = 3, TOPOUT = 4;
-const BG = '#0d121b', FG = '#d7e0ee', DIM = '#2a3446', ACCENT = '#4de1c1', WARN = '#ffc857', WELL = '#111825';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#9aa79c', ACCENT = '#1d4a3b', WARN = '#a65a3a', WELL = '#eef1e8';
 
 function create(): Env {
   let board = emptyBoard(), scratch = emptyBoard();

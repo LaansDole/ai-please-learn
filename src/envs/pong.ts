@@ -5,7 +5,7 @@ import type { Env, EnvDefinition, HumanInput, RenderView } from '../env/types';
 const W = 800, H = 500, PW = 12, PH = 80, AX = 30, OX = 770, BR = 7, DT = 1 / 60;
 const AGENT_SPEED = 360, OPP_SPEED = 230, OPP_DEAD = 12, SERVE_SPEED = 300, MAX_SPEED = 700, WIN = 5, TRAIL = 6;
 const HIT = 0, SCORE = 1, CONCEDE = 2, TRACKING = 3, JITTER = 4;
-const BG = '#0d121b', FG = '#d7e0ee', DIM = '#2a3446', ACCENT = '#4de1c1', WARN = '#ffc857';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#c2cabb', MUTED = '#7f8b82', ACCENT = '#1d4a3b', WARN = '#a65a3a';
 
 function create(): Env {
   let py = H / 2, oy = H / 2, bx = W / 2, by = H / 2, bvx = 0, bvy = 0, my = 0, opp = 0, done = false;
@@ -63,7 +63,7 @@ function create(): Env {
       if (!view.ghost) {
         d.clear(BG);
         for (let y = 10; y < H; y += 30) d.line(W / 2, y, W / 2, y + 15, DIM, 2);
-        d.text(String(my), W / 2 - 70, 64, DIM, 48); d.text(String(opp), W / 2 + 44, 64, DIM, 48);
+        d.text(String(my), W / 2 - 70, 64, MUTED, 48); d.text(String(opp), W / 2 + 44, 64, MUTED, 48);
         d.rect(OX - PW / 2, oy - PH / 2, PW, PH, FG);
         for (let i = 0; i < trail.length; i += 2) d.circle(trail[i]!, trail[i + 1]!, 2 + i / 4, DIM);
       }
@@ -92,7 +92,7 @@ export const pong: EnvDefinition = {
   presets: [
     { name: 'default', description: 'Return the ball, win points, stay level with it.', weights: { hit: 1, score: 5, concede: 3, tracking: 0.2, jitter: 0.01 } },
     { name: 'aggressive', description: 'Only winning points matters.', weights: { hit: 0.5, score: 10, concede: 1, tracking: 0, jitter: 0 } },
-    { name: 'survivalist', description: 'Never let a ball past; scoring is irrelevant.', weights: { hit: 2, score: 0, concede: 10, tracking: 0.5, jitter: 0.05 } },
+    { name: 'survivalist', description: 'Never let a ball past. Scoring is irrelevant.', weights: { hit: 2, score: 0, concede: 10, tracking: 0.5, jitter: 0.05 } },
   ],
   human: { hint: 'Arrow keys move your paddle (left side). First to five points wins.', keys: [{ code: 'ArrowUp', label: 'up' }, { code: 'ArrowDown', label: 'down' }] },
   train: { neat: { episodesPerGenome: 2 }, dqn: { episodesPerIteration: 1 } },

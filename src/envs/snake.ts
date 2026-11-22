@@ -5,7 +5,7 @@ const N = 12, CELLS = N * N, CELL = 40, OFF_X = 160, OFF_Y = 10;
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];   // 0 right, 1 down, 2 left, 3 up (screen y grows downward, so +1 is a right turn)
 const FOOD = 0, APPROACH = 1, RETREAT = 2, DEATH = 3, STARVE = 4, SURVIVE = 5;
 const ARROWS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'];   // indexed by direction
-const BG = '#0d121b', DIM = '#2a3446', MUTED = '#7d8aa3', ACCENT = '#4de1c1', WARN = '#ffc857', HEAD = '#b9f6e7';
+const BG = '#f9faf5', DIM = '#c2cabb', MUTED = '#4b5a51', ACCENT = '#1d4a3b', WARN = '#a65a3a', HEAD = '#16241d';
 
 function create(): Env {
   let body: number[] = [];                    // cell indices, head first
@@ -121,8 +121,8 @@ export const snake: EnvDefinition = {
   ],
   presets: [
     { name: 'default', description: 'Eat, and head toward the food.', weights: { food: 10, approach: 0.1, retreat: 0.1, death: 5, starve: 5, survive: 0 } },
-    { name: 'aggressive', description: 'Food above all; dying is cheap.', weights: { food: 20, approach: 0.2, retreat: 0, death: 1, starve: 10, survive: 0 } },
-    { name: 'survivalist', description: 'Stay alive; food is a bonus.', weights: { food: 5, approach: 0, retreat: 0, death: 20, starve: 2, survive: 0.05 } },
+    { name: 'aggressive', description: 'Food above all. Dying is cheap.', weights: { food: 20, approach: 0.2, retreat: 0, death: 1, starve: 10, survive: 0 } },
+    { name: 'survivalist', description: 'Stay alive. Food is a bonus.', weights: { food: 5, approach: 0, retreat: 0, death: 20, starve: 2, survive: 0.05 } },
   ],
   human: {
     hint: 'Arrow keys steer the snake. It cannot reverse.',

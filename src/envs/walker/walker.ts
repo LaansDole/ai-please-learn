@@ -4,7 +4,7 @@ import { JOINTS, LIMITS, WALKER, createWalkerSim, initRapier, mapFromLimits, map
 
 const DT = WALKER.dt, CLOCK_PERIOD = 0.8, OBS_BOUND = 5;
 const DISTANCE = 0, UPRIGHT = 1, ENERGY = 2, FALL = 3;
-const TORSO = '#4de1c1', LEFT = '#7aa2ff', RIGHT = '#c792ea', HEAD_R = 0.1, HEAD_UP = 0.37;
+const TORSO = '#16241d', LEFT = '#1b4f9c', RIGHT = '#a65a3a', HEAD_R = 0.1, HEAD_UP = 0.37;
 /** [joint index, key that drives it to +1, key that drives it to -1]; ankles hold 0. */
 const HUMAN_KEYS: [number, string, string][] = [[0, 'KeyQ', 'KeyA'], [1, 'KeyW', 'KeyS'], [3, 'KeyE', 'KeyD'], [4, 'KeyR', 'KeyF']];
 

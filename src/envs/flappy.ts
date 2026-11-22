@@ -4,7 +4,7 @@ import type { Env, EnvDefinition, HumanInput, RenderView } from '../env/types';
 
 const W = 800, H = 500, BX = 200, R = 12, G = 1400, FLAP = -380, PIPE_W = 60, SPACING = 260, GAP = 150, SPEED = 170, DT = 1 / 60;
 const PIPE = 0, ALIVE = 1, CRASH = 2, FLAPS = 3;
-const BG = '#0d121b', FG = '#d7e0ee', DIM = '#2a3446', ACCENT = '#4de1c1', WARN = '#ffc857';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#c2cabb', ACCENT = '#1d4a3b', WARN = '#a65a3a';
 
 interface Pipe { x: number; gapY: number; passed: boolean }
 
@@ -82,7 +82,7 @@ function create(): Env {
 export const flappy: EnvDefinition = {
   meta: {
     id: 'flappy', name: 'Flappy', tagline: 'Flap through the gaps in an endless row of pipes.',
-    description: 'A bird falls under gravity and can only flap upward. It learns when to flap so it threads the gap in each pipe; touching a pipe, the floor or the ceiling ends the run.',
+    description: 'A bird falls under gravity and can only flap upward. It learns when to flap so it threads the gap in each pipe. Touching a pipe, the floor or the ceiling ends the run.',
     dims: '2d', fps: 60, maxSteps: 6000, learners: ['neat', 'dqn', 'ppo'], ghosts: true,
   },
   observation: { labels: ['bird y', 'bird vy', 'next pipe distance', 'next gap offset', 'following gap offset'] },
@@ -96,7 +96,7 @@ export const flappy: EnvDefinition = {
   presets: [
     { name: 'default', description: 'Pass pipes, stay alive, do not flap needlessly.', weights: { pipe: 5, alive: 0.6, crash: 1, flap: 0.005 } },
     { name: 'aggressive', description: 'Only pipes count.', weights: { pipe: 10, alive: 0, crash: 0, flap: 0 } },
-    { name: 'survivalist', description: 'Staying in the air matters most; crashing is costly.', weights: { pipe: 1, alive: 2, crash: 10, flap: 0.02 } },
+    { name: 'survivalist', description: 'Staying in the air matters most. Crashing is costly.', weights: { pipe: 1, alive: 2, crash: 10, flap: 0.02 } },
   ],
   human: { hint: 'Press Space to flap. Fly through the gaps.', keys: [{ code: 'Space', label: 'flap' }] },
   create,
