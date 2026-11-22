@@ -55,10 +55,11 @@ export function rlVerdict(means: readonly number[], unit: string, start = 0): Ve
   if (scored === 0) return { state: 'learning', text: 'Still learning - no episode has finished yet' };
   const look = Math.min(RL_LOOK, avg.length - 1), then = avg[avg.length - 1 - look]!;
   if (scored < RL_MIN || !Number.isFinite(then)) return { state: 'learning', text: 'Still learning - too early to tell' };
-  // Two standard deviations of the difference between two readings of the average, from how far single iterations fall from it.
+  // One standard deviation of the average itself, from how far single iterations fall from it. Stricter (two, or the spread of
+  // a difference) calls a visibly rising DQN Pong run stalled: the deviations already contain the trend the average lags behind.
   let sq = 0, count = 0;
   for (let i = avg.length - look; i < avg.length; i++) if (dev[i] !== undefined) { sq += dev[i]! ** 2; count++; }
-  const noise = 2 * Math.sqrt((sq / Math.max(1, count)) * ((2 * RL_ALPHA) / (2 - RL_ALPHA)));
+  const noise = Math.sqrt((sq / Math.max(1, count)) * (RL_ALPHA / (2 - RL_ALPHA)));
   const delta = e - then, units = `the last ${look} ${unit}s`;
   return delta > noise ? { state: 'learning', text: `Still learning - average up ${Number(delta.toPrecision(2))} over ${units}` }
     : { state: 'stalled', text: `Stalled - average has not risen over ${units}` };
