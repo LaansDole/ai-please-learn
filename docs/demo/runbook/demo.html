@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI, Please Learn (EvoLab): demo</title>
+<link rel="canonical" href="https://laansdole.github.io/ai-please-learn/demo/">
+<style>
+  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  header { padding:28px 36px 8px; }
+  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
+  .sub { color:var(--muted); }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:24px; padding:20px 36px 40px; }
+  video { width:100%; border-radius:10px; background:#000; border:1px solid var(--line); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
+  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+  .steps { list-style:none; margin:0; padding:0; }
+  .steps li { padding:7px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:44px 1fr; gap:6px; border-left:3px solid transparent; }
+  .steps li:hover { background:#24242d; }
+  .steps li.active { background:#22304a; border-left-color:var(--accent); }
+  .steps .t { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .steps .chapter { margin-top:10px; padding:6px 10px 2px; cursor:pointer; font-weight:700; color:#fff; display:block; }
+  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; background:#1f2f4a; color:#9cc0ff; }
+  .tag.good, .tag.low { background:#1f3a2a; color:#8fd6a5; } .tag.warn, .tag.adv { background:#4a1f1f; color:#ffa49b; } .tag.collab { background:#1f2f4a; color:#9cc0ff; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:14px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
+  td.nw, th.nw { white-space:nowrap; }
+  .below { padding:0 36px 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:24px; }
+  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; }
+  pre code { white-space:pre; background:none; padding:0; }
+  a { color:#8ab4ff; }
+  .note { color:var(--muted); font-size:13px; }
+  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
+  @media (max-width: 1180px) { .wrap { grid-template-columns:1fr; } }
+  @media (max-width: 1400px) { .below { grid-template-columns:1fr; } }
+  @media (max-width: 600px) { header, .wrap, .below, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI, Please Learn (EvoLab): demo</h1>
+  <div class="sub">One continuous recording of the live site in a fresh browser. You play Snake and crash, set the rewards, then watch NEAT and DQN learn it, a 3D stick figure learn to walk, and gpt-6-luna write a new game from one sentence that NEAT then trains. Captions quote the numbers on screen at that moment. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
+</header>
+
+<div class="wrap">
+  <div>
+    <video id="v" controls preload="metadata" src="ai-please-learn-demo.mp4"></video>
+    <p class="note">Recorded 2026-11-22 on https://laansdole.github.io/ai-please-learn/ at commit 2246ccc, fresh Chrome profile, OpenAI gpt-6-luna. Click any step in the list to jump there.</p>
+  </div>
+  <div class="panel">
+    <h2>Runbook steps in the video</h2>
+    <ul class="steps" id="steps">
+      <span class="chapter" data-t="0.0">Intro</span>
+      <span class="chapter" data-t="6.9">Play it yourself</span>
+      <li data-t="6.9"><span class="t"></span><span>1 Open the gallery</span></li>
+      <li data-t="12.9"><span class="t"></span><span>2 Open Snake</span></li>
+      <li data-t="18.2"><span class="t"></span><span>2.1 Play: crash into the wall</span></li>
+      <li data-t="18.9"><span class="t"></span><span>2.2 R restarts</span></li>
+      <span class="chapter" data-t="22.1">Teach it</span>
+      <li data-t="22.1"><span class="t"></span><span>3 Set the rewards</span></li>
+      <li data-t="27.6"><span class="t"></span><span>4 Choose NEAT</span></li>
+      <span class="chapter" data-t="34.2">NEAT learns Snake</span>
+      <li data-t="34.2"><span class="t"></span><span>5 Learn at MAX speed</span></li>
+      <li data-t="79.7"><span class="t"></span><span>5.1 Watch the champion at 1x</span></li>
+      <span class="chapter" data-t="96.1">DQN learns Snake</span>
+      <li data-t="96.1"><span class="t"></span><span>6 Switch to DQN</span></li>
+      <span class="chapter" data-t="152.7">NEAT learns to walk</span>
+      <li data-t="152.7"><span class="t"></span><span>7 3D walker learns</span></li>
+      <li data-t="203.7"><span class="t"></span><span>7.1 Watch it walk</span></li>
+      <span class="chapter" data-t="221.0">Make your own game</span>
+      <li data-t="221.0"><span class="t"></span><span>8 Settings: OpenAI</span></li>
+      <li data-t="226.2"><span class="t"></span><span>8.1 Paste the key</span></li>
+      <li data-t="229.2"><span class="t"></span><span>9 Describe a game</span></li>
+      <li data-t="240.1"><span class="t"></span><span>9.1 The LLM writes it</span></li>
+      <li data-t="293.7"><span class="t"></span><span>9.2 Apple Basket opens</span></li>
+      <span class="chapter" data-t="300.6">NEAT learns the new game</span>
+      <li data-t="300.6"><span class="t"></span><span>10 Train the new game</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="below">
+  <div class="panel">
+    <h2>What each run did (from the app&#x27;s own stats strip)</h2>
+<div class="table-wrap"><table>
+<tr><th>Run</th><th>Method</th><th class="nw">Early</th><th class="nw">Later</th><th>Network</th></tr>
+<tr><td>Snake</td><td>NEAT, 150 per generation</td><td class="nw">gen 131: best 253, mean 35.2</td><td class="nw">gen 358: best 370, mean 62.5</td><td>20 nodes / 51 connections -> 30 / 91</td></tr>
+<tr><td>Snake</td><td>DQN</td><td class="nw">episode 175: best 145, mean 78.7</td><td class="nw">episode 238: best 189, mean 115</td><td>1475 parameters, epsilon 0.05</td></tr>
+<tr><td>3D walker</td><td>NEAT, 60 per generation</td><td class="nw">gen 7: best 32.9, mean 0.01</td><td class="nw">gen 12: best 221, mean 14.4</td><td>27 nodes / 126 connections</td></tr>
+<tr><td>Apple Basket<br><span class="note">written by gpt-6-luna in 52 s</span></td><td>NEAT, 150 per generation</td><td class="nw">gen 67: best 80.4, mean 13.9</td><td class="nw">gen 133: best 80.4, mean 13.6</td><td>14 / 29 -> 18 / 43</td></tr>
+</table></div>
+<p class="note">Best and mean are per generation (or per episode for DQN), so they move up and down. The generated Apple Basket game climbs in its first ~25 generations and then stays at 80.4: a real run, shown as it happened. A dry run 7 minutes earlier generated a different Apple Basket (best 250 at gen 144, 248 at gen 400): generated games vary from run to run.</p>
+  </div>
+  <div class="panel">
+    <h2>Run it yourself</h2>
+    <pre><code># nothing to install: open the live site
+open https://laansdole.github.io/ai-please-learn/
+
+# or run it locally (git clone https://github.com/LaansDole/ai-please-learn)
+npm install
+npm run dev</code></pre>
+    <p>Then follow the steps in the list above. For the Create step, open Settings, keep OpenAI selected and paste your own API key (it stays in your browser), or pick LM Studio or Ollama for a local model. Full instructions: <a href="https://github.com/LaansDole/ai-please-learn/blob/main/docs/demo/runbook/README.md">runbook</a>.</p>
+  </div>
+</div>
+
+<footer>Source: <a href="https://github.com/LaansDole/ai-please-learn/tree/main/docs/demo/runbook">docs/demo/runbook</a>. App: <a href="https://laansdole.github.io/ai-please-learn/">laansdole.github.io/ai-please-learn</a>. Inspired by <a href="https://www.youtube.com/@CodeBullet">Code Bullet</a>.</footer>
+
+<script>
+  const v = document.getElementById('v');
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const items = [...document.querySelectorAll('#steps [data-t]')];
+  items.forEach(el => {
+    const t = parseFloat(el.dataset.t);
+    const slot = el.querySelector('.t'); if (slot) slot.textContent = fmt(t);
+    el.addEventListener('click', () => { v.currentTime = t; v.play(); });
+  });
+  const lis = items.filter(el => el.tagName === 'LI');
+  v.addEventListener('timeupdate', () => {
+    let cur = null;
+    for (const el of lis) if (parseFloat(el.dataset.t) <= v.currentTime + 0.2) cur = el;
+    lis.forEach(el => el.classList.toggle('active', el === cur));
+  });
+</script>
+</body>
+</html>

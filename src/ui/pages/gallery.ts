@@ -51,7 +51,7 @@ function demoLink(): HTMLElement {
   const a = h('a', { class: 'demo-link', href: `${import.meta.env.BASE_URL}demo/`, testid: 'gallery-demo' });
   a.innerHTML = '<svg viewBox="5 4 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
   a.append(h('span', null,
-    h('b', null, 'Watch the 3-minute demo'),
+    h('b', null, 'Watch the 6-minute demo'),
     h('span', null, 'A real recorded run: play, set rewards, watch NEAT learn, and generate a game from a sentence.')));
   return a;
 }
