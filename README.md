@@ -2,7 +2,8 @@
 
 Watch neural networks learn to play games in your browser, with no backend and no account.
 
-**Live app** at <https://laansdole.github.io/ai-please-learn/>
+**Live app** at <https://laansdole.github.io/ai-please-learn/>\
+Demo video: https://laansdole.github.io/ai-please-learn/demo/
 
 ![A population of stick-figure walkers learning to walk, with the champion's network, fitness and species charts](docs/screenshots/08-walker-learn.png)
 

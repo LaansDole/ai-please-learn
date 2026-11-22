@@ -21,7 +21,7 @@ describe('router', () => {
     expect(formatRoute({ page: 'create' })).toBe('/create');
   });
   it('sends unknown paths to the not-found view', () => {
-    for (const p of ['/create/extra', '/settings/2', '/pong/2/x', '/Pong', '/favicon.svg', '/c/pong/1/2'])
+    for (const p of ['/create/extra', '/settings/2', '/pong/2/x', '/Pong', '/favicon.svg', '/c/pong/1/2', '/demo/', '/demo'])
       expect(parseRoute(p), p).toEqual({ page: 'notfound' });
   });
   it('works under a sub-path base', () => {

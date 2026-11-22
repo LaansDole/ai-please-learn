@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - "Make your own" has its own Create page.
 - Favicon.
 - DEVELOPER.md, CHANGELOG.md and docs/guide.md.
+- Demo video page linked from the gallery.
 
 ### Changed
 

@@ -142,5 +142,13 @@ test('static sub-path build: deep links boot through 404.html, old hash links re
     await expect(page).toHaveURL(`${origin}/ai-please-learn/`);
     await expect(page.getByTestId('gallery')).toBeVisible();
   }
+
+  // The demo is a file beside the app: its link is a page load, not a route. (No demo file in this build, so 404.html answers.)
+  await page.evaluate(() => { document.body.dataset.same = '1'; });
+  await expect(page.getByTestId('gallery-demo')).toHaveAttribute('href', '/ai-please-learn/demo/');
+  await page.getByTestId('gallery-demo').click();
+  await expect(page).toHaveURL(`${origin}/ai-please-learn/demo/`);
+  await expect(page.getByTestId('not-found')).toBeVisible();
+  await expect(page.locator('body')).not.toHaveAttribute('data-same');
   expect(errors).toEqual([]);
 });

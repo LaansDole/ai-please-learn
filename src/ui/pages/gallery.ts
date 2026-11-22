@@ -46,6 +46,16 @@ function createCard(): HTMLElement {
       h('p', null, 'Describe a game in a sentence and a language model writes it, or import a concept file.')));
 }
 
+/** The recorded demo is a static file beside the app (`RESERVED_IDS` has "demo"), so the router leaves this link to the browser. */
+function demoLink(): HTMLElement {
+  const a = h('a', { class: 'demo-link', href: `${import.meta.env.BASE_URL}demo/`, testid: 'gallery-demo' });
+  a.innerHTML = '<svg viewBox="5 4 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  a.append(h('span', null,
+    h('b', null, 'Watch the 3-minute demo'),
+    h('span', null, 'A real recorded run: play, set rewards, watch NEAT learn, and generate a game from a sentence.')));
+  return a;
+}
+
 export const galleryPage: PageFn = (root) => {
   let gone = false;
   const cards = listEnvs().filter((d) => !d.meta.hidden).map((def) => {
@@ -81,7 +91,8 @@ export const galleryPage: PageFn = (root) => {
       h('section', { class: 'hero' },
         h('div', { class: 'hero-text' },
           h('h1', null, 'Watch a neural network learn to play.'),
-          h('p', { class: 'lede' }, 'EvoLab trains small neural networks live in your browser. Pick a game below and see them go from flailing to competent, one generation at a time.')),
+          h('p', { class: 'lede' }, 'EvoLab trains small neural networks live in your browser. Pick a game below and see them go from flailing to competent, one generation at a time.'),
+          demoLink()),
         h('ol', { class: 'hero-steps', 'aria-label': 'Every concept has four steps' },
           ...steps.map(([name, what]) => h('li', null, h('b', null, name), h('span', null, what))))),
       h('section', { class: 'gallery-section' },
