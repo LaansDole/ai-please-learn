@@ -3,7 +3,7 @@ import { resolveConfig } from '../../learner/config';
 import type { NetworkSnapshot } from '../../learner/types';
 import type { RunPrefs } from '../../persist/storage';
 import { createNnGraph } from '../../viz/nnGraph';
-import { initialMlpSnapshot, initialNeatSnapshot } from '../../viz/nnLayout';
+import { initialMlpSnapshot, initialNeatSnapshot, strongCutoff, STRONG_EDGES } from '../../viz/nnLayout';
 import { h } from '../dom';
 import type { Session } from '../session';
 import { createMethodPicker } from './method';
@@ -33,9 +33,14 @@ export function createNetworkPanel(session: Session, prefs: RunPrefs, opts: { li
   const { spec } = session, graph = createNnGraph();
   const outputs = spec.action.type === 'candidates' ? 1 : spec.action.labels.length;
   const counts = h('span', { class: 'num' });
+  const reading = h('p', { class: 'chart-note', testid: 'network-reading' });
   const show = (net: NetworkSnapshot, animate: boolean) => {
     graph.setNetwork(net, animate);
-    counts.textContent = `nodes ${net.nodes.length}, connections ${net.edges.filter((e) => e.enabled).length}`;
+    const enabled = net.edges.filter((e) => e.enabled).length;
+    counts.textContent = `nodes ${net.nodes.length}, connections ${enabled}`;
+    const full = strongCutoff(net.edges) > 0 ? `The ${STRONG_EDGES} strongest of ${enabled} connections are drawn in full. ` : '';
+    const text = `${full}Solid green excites, dashed russet inhibits. Node fill is activation right now.`;
+    if (reading.textContent !== text) reading.textContent = text;
   };
   const caption = h('p', { class: 'muted', testid: 'network-caption' });
   const showInitial = (kind: LearnerKind) => {
@@ -46,10 +51,11 @@ export function createNetworkPanel(session: Session, prefs: RunPrefs, opts: { li
   const toggle = h('input', { type: 'checkbox', testid: 'nn-show-disabled' });
   toggle.addEventListener('change', () => graph.setShowDisabled(toggle.checked));
   const panel = h('section', { class: 'panel network' },
-    h('h3', null, 'Neural network'),
-    !opts.live && h('p', { class: 'muted' }, 'Inputs on the left are what the agent senses each step. Outputs on the right are what it can do; the strongest one becomes its action.'),
+    h('h3', null, opts.live ? 'Its network' : 'Neural network'),
+    !opts.live && h('p', { class: 'muted' }, 'Inputs on the left are what the agent senses each step. Outputs on the right are what it can do. The strongest one becomes its action.'),
     !opts.live && caption,
     h('div', { class: 'nn-wrap' }, graph.el),
+    opts.live && reading,
     h('div', { class: 'nn-foot' },
       h('label', { class: 'check' }, toggle, 'Show disabled connections'),
       h('span', { class: 'num muted' }, `${spec.observation.labels.length} inputs -> ${outputs} outputs`),

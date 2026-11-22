@@ -1,12 +1,17 @@
 import { createChartCanvas } from './canvas';
 import { decimate, niceTicks, tickLabel as short } from './scale';
 
-/** color: a CSS colour or a '--token'. `faint`: a thin, dimmed line for the raw signal behind a trend line. */
-export interface SeriesSpec { key: string; label: string; color: string; dash?: number[]; dots?: boolean; faint?: boolean }
+/**
+ * color: a CSS colour or a '--token'. `faint`: a thin, dimmed line for the raw signal behind a trend line.
+ * `step`: a heavy stepped line for a value that only changes in jumps (the record).
+ */
+export interface SeriesSpec { key: string; label: string; color: string; dash?: number[]; dots?: boolean; faint?: boolean; step?: boolean }
 export interface ChartMarker { x: number; label: string }
+/** A written note pinned to one point of the plot, like a pencilled annotation on a figure. */
+export interface ChartCallout { x: number; y: number; text: string }
 export interface LineChart {
   el: HTMLElement;
-  setData(x: number[], ys: Record<string, (number | null)[]>, markers?: ChartMarker[]): void;
+  setData(x: number[], ys: Record<string, (number | null)[]>, markers?: ChartMarker[], callout?: ChartCallout): void;
   /** One plain sentence under the title saying how to read the chart. */
   setNote(text: string): void;
   /** What one step along the x axis is ("generation", "episode"): the axis title and the first line of the tooltip. */
@@ -18,6 +23,7 @@ const DECIMATE_ABOVE = 2000, LABEL_GAP = 14;
 /** Line chart with nice ticks, axis titles, directly labelled series, reward-change markers and a hover crosshair (spec section 11.4). */
 export function createLineChart(opts: { testid: string; title: string; series: SeriesSpec[]; logToggle?: boolean; yLabel?: string }): LineChart {
   let xs: number[] = [], data: Record<string, (number | null)[]> = {}, markers: ChartMarker[] = [], hover: number | null = null, log = false, xLabel = '';
+  let callout: ChartCallout | undefined;
   // Room for the y title on the left, the x title below, and (measured on every draw) the longest series label on the right.
   const PAD = { l: opts.yLabel ? 60 : 46, r: 64, t: 10, b: 22 };
   const c = createChartCanvas(opts.testid, draw), { ctx } = c;
@@ -47,10 +53,16 @@ export function createLineChart(opts: { testid: string; title: string; series: S
   const xPos = (x: number) => { const [a, b] = xRange(); return PAD.l + ((x - a) / (b - a)) * (c.w - PAD.l - PAD.r); };
 
   function draw(): void {
-    const line = c.token('--line'), muted = c.token('--muted'), mono = c.token('--font-mono');
-    ctx.font = `11px ${mono}`; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
+    const line = c.token('--line'), muted = c.token('--muted'), font = c.token('--font-ui');
+    ctx.font = `12px ${font}`; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
     PAD.b = xLabel ? 38 : 22;
-    PAD.r = Math.max(40, ...opts.series.filter((s) => data[s.key]?.length).map((s) => Math.ceil(ctx.measureText(s.label).width) + 14));
+    // Each series is labelled at its right end with its name and latest value.
+    const endLabel = (s: SeriesSpec) => {
+      const ys = data[s.key] ?? [];
+      for (let i = ys.length - 1; i >= 0; i--) { const v = ys[i]; if (v !== null && v !== undefined && Number.isFinite(v)) return `${s.label} ${short(v)}`; }
+      return '';
+    };
+    PAD.r = Math.max(40, ...opts.series.map((s) => Math.ceil(ctx.measureText(endLabel(s)).width) + 14));
     const plotH = c.h - PAD.t - PAD.b, right = c.w - PAD.r;
     if (xs.length === 0) {
       ctx.fillStyle = muted; ctx.textAlign = 'center';
@@ -78,12 +90,12 @@ export function createLineChart(opts: { testid: string; title: string; series: S
     if (xLabel) ctx.fillText(xLabel, (PAD.l + right) / 2, c.h - 8);
     if (opts.yLabel) { ctx.save(); ctx.translate(9, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(opts.yLabel, 0, 0); ctx.restore(); }
 
-    const warn = c.token('--warn');
+    const warn = c.token('--warn-ink');
     for (const m of markers) {
       const x = Math.round(xPos(m.x)) + 0.5;
       ctx.strokeStyle = warn; ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + plotH); ctx.stroke();
       ctx.fillStyle = warn; ctx.fillRect(x, PAD.t, 11, 11);
-      ctx.fillStyle = c.token('--bg'); ctx.font = `bold 9px ${mono}`; ctx.fillText('R', x + 5.5, PAD.t + 6); ctx.font = `11px ${mono}`;
+      ctx.fillStyle = c.token('--panel'); ctx.font = `bold 9px ${font}`; ctx.fillText('R', x + 5.5, PAD.t + 6); ctx.font = `12px ${font}`;
     }
 
     const ends: { y: number; label: string; color: string }[] = [];
@@ -91,28 +103,42 @@ export function createLineChart(opts: { testid: string; title: string; series: S
       const raw = (data[s.key] ?? []).map(value);
       const d = xs.length > DECIMATE_ABOVE ? decimate(xs, raw, DECIMATE_ABOVE / 2) : { xs, ys: raw };
       const color = c.token(s.color);
-      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s.faint ? 1 : s.dash ? 1.5 : 2; ctx.setLineDash(s.dash ?? []); ctx.lineJoin = 'round';
-      ctx.globalAlpha = s.faint ? 0.6 : 1;
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s.step ? 2.5 : s.faint ? 1 : s.dash ? 1.5 : 2; ctx.setLineDash(s.dash ?? []); ctx.lineJoin = 'round';
+      ctx.globalAlpha = s.faint ? 0.7 : 1;
       ctx.beginPath();
       let pen = false, last = NaN;
       d.ys.forEach((v, i) => {
         if (Number.isNaN(v)) { pen = false; return; }
-        if (pen) ctx.lineTo(xPos(d.xs[i]!), yPos(v)); else ctx.moveTo(xPos(d.xs[i]!), yPos(v));
+        const x = xPos(d.xs[i]!);
+        if (pen && s.step) ctx.lineTo(x, yPos(last));
+        if (pen) ctx.lineTo(x, yPos(v)); else ctx.moveTo(x, yPos(v));
         pen = true; last = v;
       });
       if (!s.dots) ctx.stroke();
       ctx.setLineDash([]); ctx.globalAlpha = 1;
       // A dots series is a faint scatter (one mark per sample) with no connecting line.
-      if (s.dots) { ctx.globalAlpha = 0.35; d.ys.forEach((v, i) => { if (!Number.isNaN(v)) ctx.fillRect(xPos(d.xs[i]!) - 1.5, yPos(v) - 1.5, 3, 3); }); ctx.globalAlpha = 1; }
+      if (s.dots) { ctx.globalAlpha = 0.45; d.ys.forEach((v, i) => { if (!Number.isNaN(v)) ctx.fillRect(xPos(d.xs[i]!) - 1.5, yPos(v) - 1.5, 3, 3); }); ctx.globalAlpha = 1; }
       else if (d.xs.length === 1 && !Number.isNaN(last)) { ctx.beginPath(); ctx.arc(xPos(d.xs[0]!), yPos(last), 2.5, 0, Math.PI * 2); ctx.fill(); }
-      if (!Number.isNaN(last)) ends.push({ y: yPos(last), label: s.label, color });
+      if (!Number.isNaN(last)) ends.push({ y: yPos(last), label: endLabel(s), color });
     }
     // Direct labels at the right end, spread a full line apart so close series (mean and median) never overlap.
     ends.sort((a, b) => a.y - b.y);
     for (let i = 1; i < ends.length; i++) ends[i]!.y = Math.max(ends[i]!.y, ends[i - 1]!.y + LABEL_GAP);
     const overflow = ends.length ? Math.max(0, ends.at(-1)!.y - (PAD.t + plotH)) : 0;
-    ctx.textAlign = 'left'; ctx.font = `11px ${mono}`;
+    ctx.textAlign = 'left';
     for (const e of ends) { ctx.fillStyle = e.color; ctx.fillText(e.label, right + 6, e.y - overflow); }
+
+    const cy = callout ? value(callout.y) : NaN;
+    if (callout && !Number.isNaN(cy)) {
+      const x = xPos(callout.x), y = yPos(cy), pen = c.token('--rec'), onRight = x > (PAD.l + right) / 2;
+      ctx.fillStyle = c.token('--panel'); ctx.strokeStyle = pen; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.font = `italic 13px ${c.token('--font-prose')}`; ctx.textAlign = onRight ? 'right' : 'left';
+      // Above the point when there is room, otherwise below it, on a plate so the lines behind do not strike through it.
+      const tx = x + (onRight ? -9 : 9), ty = y - PAD.t > 26 ? y - 16 : y + 18, tw = ctx.measureText(callout.text).width;
+      ctx.fillStyle = c.token('--panel'); ctx.fillRect(onRight ? tx - tw - 3 : tx - 3, ty - 9, tw + 6, 18);
+      ctx.fillStyle = pen; ctx.fillText(callout.text, tx, ty);
+    }
 
     if (hover !== null && xs[hover] !== undefined) {
       const x = Math.round(xPos(xs[hover]!)) + 0.5;
@@ -141,8 +167,8 @@ export function createLineChart(opts: { testid: string; title: string; series: S
     el,
     setNote(text) { if (note.textContent !== text) note.textContent = text; },
     setXLabel(text) { if (xLabel !== text) { xLabel = text; c.redraw(); } },
-    setData(x, ys, m = []) {
-      xs = x; data = ys; markers = m;
+    setData(x, ys, m = [], note) {
+      xs = x; data = ys; markers = m; callout = note;
       c.canvas.dataset.points = String(x.length); c.canvas.dataset.markers = String(m.length);
       c.redraw();
     },

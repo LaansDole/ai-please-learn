@@ -4,36 +4,42 @@ import type { RunPrefs } from '../../persist/storage';
 import { fmt, h } from '../dom';
 import type { Session } from '../session';
 
-/** One row of labelled mono readouts for the latest completed iteration (spec section 11.5); the cells depend on the learning method. */
-export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLElement; refresh(): void; dispose(): void } {
+/**
+ * Labelled readouts for the latest completed iteration (spec section 11.5); the cells depend on the learning method.
+ * `head` is the iteration counter, shown large in the run header; `el` is the ruled row of the rest.
+ * `setRecord` is fed by the Learn panel, which owns the record (it restarts when the rewards change).
+ */
+export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLElement; head: HTMLElement; setRecord(value: number, iteration: number | null): void; refresh(): void; dispose(): void } {
   const cell = (id: string, label: string, help: string) => {
     const name = h('span', { class: 'stat-label' }, label), value = h('span', { class: 'num stat-value' }, '-');
     return { el: h('div', { class: 'stat', testid: `stat-${id}`, title: help }, name, value), name, value };
   };
+  const iteration = cell('iteration', 'Generation', 'How many rounds of learning have finished');
   const cells = {
-    iteration: cell('iteration', 'Generation', 'How many rounds of learning have finished'),
-    population: cell('population', 'Population', 'Networks playing at once'),
+    record: cell('record', 'Record', 'The best fitness any network has reached in this run, and when'),
+    best: cell('best', 'Champion', 'Fitness of the best network in the latest iteration'), mean: cell('mean', 'Mean', 'Average fitness in the latest iteration'),
     species: cell('species', 'Species', 'Families of similar networks, protected so new ideas get time to improve'),
+    population: cell('population', 'Population', 'Networks playing at once'),
     explore: cell('explore', 'Epsilon', 'How much the network still experiments instead of doing what it thinks is best'),
-    best: cell('best', 'Best', 'Fitness of the best network in the latest iteration'), mean: cell('mean', 'Mean', 'Average fitness in the latest iteration'),
     nodes: cell('nodes', 'Nodes', 'Neurons in the champion, inputs and outputs included'), conns: cell('conns', 'Connections', 'Enabled connections in the champion'),
-    params: cell('params', 'Parameters', 'Adjustable numbers (weights and biases) in the network'), sps: cell('sps', 'Steps / s', 'Game steps simulated per second, all networks together'),
+    params: cell('params', 'Parameters', 'Adjustable numbers (weights and biases) in the network'), sps: cell('sps', 'Steps per second', 'Game steps simulated per second, all networks together'),
   };
-  // The heartbeat of a run: the iteration counter flashes on every tick, the best score only when it sets a record.
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  const flash = (el: HTMLElement) => { if (el.getAnimations().length === 0) el.animate([{ color: accent, offset: 0 }], { duration: 600, easing: 'ease-out' }); };
-  let record = -Infinity;
-  const el = h('section', { class: 'panel stats', 'aria-label': 'Run statistics' }, ...Object.values(cells).map((c) => c.el));
+  iteration.el.className = 'gen';
+  // The heartbeat of a run: the iteration counter flashes on every tick, the record only when it is beaten.
+  const pen = getComputedStyle(document.documentElement).getPropertyValue('--rec').trim();
+  const flash = (el: HTMLElement) => { if (el.getAnimations().length === 0) el.animate([{ color: pen, offset: 0 }], { duration: 600, easing: 'ease-out' }); };
+  const recordValue = h('span'), recordWhen = h('small');
+  cells.record.value.replaceChildren(recordValue, recordWhen);
+  let record = NaN;
+  const el = h('section', { class: 'stats', 'aria-label': 'Run statistics' }, ...Object.values(cells).map((c) => c.el));
   let ticksPerSec = 0;
   // Measured env steps per second between the last two iterations; ticks x population overstates it once agents die.
   let measured = 0, measuredAt = -Infinity, prev: { t: number; steps: number } | null = null;
   const sync = () => {
     const s = session.history.at(-1), run = session.run, cfg = run?.learner, kind = cfg?.kind ?? prefs.learner, neat = kind === 'neat';
-    cells.iteration.name.textContent = iterationLabel(kind);
-    const iteration = String(s?.iteration ?? 0);
-    if (cells.iteration.value.textContent !== iteration) { cells.iteration.value.textContent = iteration; if (s) flash(cells.iteration.value); }
-    if (!s) record = -Infinity;
-    else if (s.best > record) { if (record > -Infinity) flash(cells.best.value); record = s.best; }
+    iteration.name.textContent = iterationLabel(kind);
+    const count = String(s?.iteration ?? 0);
+    if (iteration.value.textContent !== count) { iteration.value.textContent = count; if (s) flash(iteration.value); }
     // NEAT: population, species, champion size. PPO: envs, entropy, parameters. DQN: epsilon, parameters (buffer fill is not reported).
     cells.population.el.hidden = kind === 'dqn'; cells.species.el.hidden = !neat; cells.explore.el.hidden = neat;
     cells.nodes.el.hidden = cells.conns.el.hidden = !neat; cells.params.el.hidden = neat;
@@ -66,5 +72,15 @@ export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLE
   });
   const offChange = session.onChange(sync);
   sync();
-  return { el, refresh: sync, dispose() { offStatus(); offIteration(); offChange(); } };
+  return {
+    el, head: iteration.el, refresh: sync,
+    setRecord(value, at) {
+      if (at === null) { recordValue.textContent = '-'; recordWhen.textContent = ''; record = NaN; return; }
+      if (value > record) flash(recordValue);
+      record = value;
+      recordValue.textContent = fmt(value);
+      recordWhen.textContent = `${iterationLabel(session.run?.learner.kind ?? prefs.learner).toLowerCase().slice(0, 3)} ${at}`;
+    },
+    dispose() { offStatus(); offIteration(); offChange(); },
+  };
 }

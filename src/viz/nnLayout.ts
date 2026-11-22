@@ -72,3 +72,15 @@ export function initialMlpSnapshot(spec: Pick<EnvSpecMsg, 'observation' | 'actio
   const outs = outputLabels(spec, kind), sizes = [spec.observation.labels.length, ...hidden, outs.length];
   return mlpSnapshot(sizes, new Float32Array(paramCount(sizes)), spec.observation.labels, outs);
 }
+
+export const STRONG_EDGES = 14;
+
+/**
+ * Past `above` enabled links a graph is a hairball: the `n` strongest are drawn in full and the rest faint. Returns the
+ * |weight| a link needs to be drawn in full, or 0 when every link is.
+ */
+export function strongCutoff(edges: readonly Edge[], n = STRONG_EDGES, above = 30): number {
+  const mags = edges.filter((e) => e.enabled).map((e) => Math.abs(e.weight));
+  if (mags.length <= above) return 0;
+  return mags.sort((a, b) => b - a)[n - 1]!;
+}

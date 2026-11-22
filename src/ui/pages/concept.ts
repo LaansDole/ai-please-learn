@@ -15,7 +15,8 @@ import { openSession, type Session } from '../session';
 import type { EnvRef } from '../../trainer/protocol';
 
 const STEPS: [Step, string][] = [[1, 'Play'], [2, 'Rewards'], [3, 'Network'], [4, 'Learn']];
-interface StepView { side: HTMLElement; lower?: HTMLElement; refresh?(): void; dispose(): void }
+/** Learn adds a header above the columns (`upper`), a column before the stage (`tower`) and run controls under the stage (`controls`). */
+interface StepView { side: HTMLElement; lower?: HTMLElement; upper?: HTMLElement; tower?: HTMLElement; controls?: HTMLElement; refresh?(): void; dispose(): void }
 /** Shared by steps 3 and 4: the method picker edits `prefs`, the Learn step starts runs from them. */
 interface RunControl { prefs: RunPrefs; start(): void }
 
@@ -28,7 +29,7 @@ function buildStep(step: Step, session: Session, run: RunControl): StepView {
   const net = createNetworkPanel(session, run.prefs, { live: step === 4, restart: () => { session.stop(); run.start(); } });
   if (step === 3) return { side: net.el, refresh: net.refresh, dispose: net.dispose };
   const learn = createLearnPanel(session, run.prefs, run.start);
-  return { side: net.el, lower: learn.lower, refresh: () => { net.refresh(); learn.refresh(); }, dispose: () => { net.dispose(); learn.dispose(); } };
+  return { side: net.el, lower: learn.lower, upper: learn.upper, tower: learn.tower, controls: learn.controls, refresh: () => { net.refresh(); learn.refresh(); }, dispose: () => { net.dispose(); learn.dispose(); } };
 }
 
 type Unmount = (() => void) & { onStep(step: Step): void };
@@ -63,6 +64,8 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
   const next = h('a', { class: 'btn btn-primary', testid: 'step-next' });
   const stepNav = h('div', { class: 'step-nav' }, next);
   const side = h('div', { class: 'side' }, stepNav), lower = h('div', { class: 'lower' });
+  const stageCol = h('div', { class: 'stage-col' }, stage.el), cols = h('div', { class: 'cols' }, stageCol, side);
+  const main = h('main', { class: 'concept' }, cols, lower);
   const buttons = STEPS.map(([n, label]) => h('button', {
     class: 'step', testid: `step-${n}`, onclick: () => navigate(formatRoute({ page: 'concept', envId: ref.id, step: n })),
   }, h('span', { class: 'step-num num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'step-label' }, label)));
@@ -74,7 +77,7 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
       concept && h('button', { type: 'button', testid: 'view-source', onclick: () => showSource(concept) }, 'View source'),
       topNav()),
     banner,
-    h('main', { class: 'concept' }, h('div', { class: 'cols' }, stage.el, side), lower)));
+    main));
 
   const fail = (message: string) => { banner.textContent = message; banner.hidden = false; };
   const syncStage = () => {
@@ -96,6 +99,7 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
       if (i + 1 === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
       b.dataset.state = i + 1 < step ? 'done' : i + 1 === step ? 'current' : 'todo';
     });
+    main.dataset.step = String(step);
     stepNav.hidden = !session || step === 4;
     if (step < 4) { next.href = formatRoute({ page: 'concept', envId: ref.id, step: (step + 1) as Step }); next.textContent = NEXT[step]!; }
     if (!session) return;
@@ -106,8 +110,11 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
       const v = buildStep(step, session, run!);
       views.set(step, v); side.insertBefore(v.side, stepNav);
       if (v.lower) lower.append(v.lower);
+      if (v.upper) main.prepend(v.upper);
+      if (v.tower) cols.prepend(v.tower);
+      if (v.controls) stageCol.append(v.controls);
     }
-    for (const [n, v] of views) { v.side.hidden = n !== step; if (v.lower) v.lower.hidden = n !== step; }
+    for (const [n, v] of views) for (const el of [v.side, v.lower, v.upper, v.tower, v.controls]) if (el) el.hidden = n !== step;
     views.get(step)?.refresh?.();
     syncStage();
   };

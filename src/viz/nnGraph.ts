@@ -1,5 +1,5 @@
 import type { NetworkSnapshot } from '../learner/types';
-import { diffSnapshots, edgeKey, edgeStyle, layoutNetwork, visibleEdges, type Point } from './nnLayout';
+import { diffSnapshots, edgeKey, edgeStyle, layoutNetwork, strongCutoff, visibleEdges, type Point } from './nnLayout';
 
 export interface NnGraph {
   el: HTMLCanvasElement;
@@ -13,7 +13,7 @@ export interface NnGraph {
 }
 
 const MOVE_MS = 400, EDGE_MS = 600, NODE_MS = 900, FADE_MS = 300, CAPTION_MS = 2000, HEAT_MS = 1500;
-const R = 7, R_DENSE = 3, DENSE = 24, LABEL_GAP = 7, EDGE_GAP = 6, LABEL_SHARE = 0.38, FONT = 11;
+const R = 7, R_DENSE = 3, DENSE = 24, LABEL_GAP = 7, EDGE_GAP = 6, LABEL_SHARE = 0.38, FONT = 13;
 
 /** cubic-bezier(.2, .8, .2, 1) is close to this ease-out; exactness is not visible at these durations. */
 const ease = (t: number) => 1 - (1 - t) ** 3;
@@ -30,15 +30,17 @@ export function createNnGraph(): NnGraph {
   const token = (name: string) => css.getPropertyValue(name).trim();
   const C = {
     pos: token('--w-pos'), neg: token('--w-neg'), faint: token('--faint'), line: token('--line'), text: token('--text'), muted: token('--muted'),
-    heat: token('--heat'), glow: token('--glow'), accent: token('--accent'), panel: token('--panel'), mono: token('--font-mono'),
+    heat: token('--heat'), glow: token('--glow'), accent: token('--accent-2'), panel: token('--panel'), font: token('--font-ui'),
   };
-  const cold = rgb(token('--panel-2')), hot = rgb(C.glow);
+  // Node fill runs from the plate (at rest) to ochre (fully active).
+  const cold = rgb(C.panel), hot = rgb(C.glow);
   const motion = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1;
   /** Progress 0..1 of an animation `ms` long that started at t0; instant under reduced motion. */
   const prog = (now: number, ms: number) => (motion ? Math.min(1, Math.max(0, now - t0) / ms) : 1);   // rAF time can trail performance.now()
 
   let net: NetworkSnapshot | null = null, acts: Float32Array | null = null, showDisabled = false, weightScale = 1;
   let shown: NetworkSnapshot['edges'] = [];    // visibleEdges(net), computed once per snapshot rather than once per frame
+  let strong = 0;                              // strongCutoff(shown): links below it are drawn faint
   let w = 0, h = 0, t0 = 0, raf = 0, hover: number | null = null, caption = '';
   let target = new Map<number, Point>(), from = new Map<number, Point>();
   let addedNodes = new Set<number>(), addedEdges = new Set<string>();
@@ -67,7 +69,7 @@ export function createNnGraph(): NnGraph {
     for (const n of net.nodes) count.set(n.depth, (count.get(n.depth) ?? 0) + 1);
     dense = new Set([...count].filter(([, c]) => c > DENSE).map(([d]) => d));
     // Reserve room for the labels on each side from their measured width, so none is cut at the panel edge.
-    ctx.font = `${FONT}px ${C.mono}`;
+    ctx.font = `${FONT}px ${C.font}`;
     const labelled = net.nodes.filter((n) => n.label && !dense.has(n.depth) && n.type !== 'hidden'), cap = w * LABEL_SHARE;
     const side = (type: 'input' | 'output') => Math.min(cap, Math.max(0, ...labelled.filter((n) => n.type === type).map((n) => ctx.measureText(n.label!).width)));
     labelRoom = { l: Math.ceil(side('input')), r: Math.ceil(side('output')) };
@@ -101,15 +103,16 @@ export function createNnGraph(): NnGraph {
       const bx = a.x + (b.x - a.x) * t, by = a.y + (b.y - a.y) * t;
       const line = () => { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(bx, by); ctx.stroke(); };
       if (!e.enabled) { ctx.globalAlpha = 0.8; ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); line(); continue; }
-      const s = edgeStyle(e.weight, weightScale);
-      ctx.globalAlpha = s.alpha; ctx.strokeStyle = s.dashed ? C.neg : C.pos; ctx.lineWidth = s.width; ctx.setLineDash(s.dashed ? [6, 4] : []);
+      const s = edgeStyle(e.weight, weightScale), full = Math.abs(e.weight) >= strong;
+      ctx.globalAlpha = strong === 0 ? s.alpha : full ? 0.95 : 0.16;
+      ctx.strokeStyle = s.dashed ? C.neg : C.pos; ctx.lineWidth = s.width; ctx.setLineDash(s.dashed && full ? [6, 4] : []);
       line();
       if (e.delta && heat > 0) { ctx.globalAlpha = e.delta * heat; ctx.strokeStyle = C.heat; ctx.setLineDash([]); line(); }
     }
     ctx.setLineDash([]); ctx.lineCap = 'butt';
 
     const pop = prog(now, NODE_MS);
-    ctx.font = `${FONT}px ${C.mono}`; ctx.textBaseline = 'middle';
+    ctx.font = `${FONT}px ${C.font}`; ctx.textBaseline = 'middle';
     net.nodes.forEach((n, i) => {
       const p = at(n.id, now);
       if (!p) return;
@@ -121,14 +124,12 @@ export function createNnGraph(): NnGraph {
       }
       ctx.globalAlpha = 1;
       ctx.fillStyle = `rgb(${cold.map((c, k) => Math.round(c + (hot[k]! - c) * m)).join(',')})`;
-      ctx.shadowColor = C.glow; ctx.shadowBlur = 12 * m;
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = n.id === hover ? C.text : C.line; ctx.lineWidth = 1; ctx.stroke();
-      if (a < -0.05 && r >= R) { ctx.strokeStyle = C.panel; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x - 3, p.y); ctx.lineTo(p.x + 3, p.y); ctx.stroke(); }
+      ctx.strokeStyle = C.text; ctx.lineWidth = n.id === hover ? 2 : 1.25; ctx.stroke();
+      if (a < -0.05 && r >= R) { ctx.strokeStyle = C.text; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x - 3, p.y); ctx.lineTo(p.x + 3, p.y); ctx.stroke(); }
       const text = labels.get(n.id);
       if (!text || n.id === hover) return;
-      ctx.fillStyle = C.muted; ctx.textAlign = n.type === 'input' ? 'right' : 'left';
+      ctx.fillStyle = C.text; ctx.textAlign = n.type === 'input' ? 'right' : 'left';
       ctx.fillText(text, p.x + (n.type === 'input' ? -R - LABEL_GAP : R + LABEL_GAP), p.y);
     });
 
@@ -141,7 +142,7 @@ export function createNnGraph(): NnGraph {
     }
     if (caption && elapsed < CAPTION_MS) {
       ctx.globalAlpha = Math.min(1, (CAPTION_MS - elapsed) / 500);
-      ctx.fillStyle = C.accent; ctx.textAlign = 'center'; ctx.font = `12px ${C.mono}`;
+      ctx.fillStyle = C.accent; ctx.textAlign = 'center'; ctx.font = `italic 14px ${token('--font-prose')}`;
       ctx.fillText(caption, w / 2, h - 10);
       ctx.globalAlpha = 1;
     }
@@ -185,7 +186,7 @@ export function createNnGraph(): NnGraph {
       });
       addedNodes = new Set(d.addedNodes); addedEdges = new Set(d.addedEdges);
       caption = [d.addedNodes.length ? plural(d.addedNodes.length, 'neuron') : '', d.addedEdges.length ? plural(d.addedEdges.length, 'connection') : ''].filter(Boolean).join(', ');
-      net = next; shown = visibleEdges(next); t0 = now;
+      net = next; shown = visibleEdges(next); strong = strongCutoff(shown); t0 = now;
       if (acts && acts.length !== next.nodes.length) acts = null;
       relayout();
       // New nodes start where they will sit; survivors tween from where they are now.

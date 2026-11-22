@@ -9,7 +9,12 @@ const PAD = { l: 52, r: 12, t: 10, b: 22 }, LABEL_MIN_HEIGHT = 14, PALETTE = 7;
  * section 11.4. `rows` may be a sample of the run; `total` is the real number of generations (axis label, data-points);
  * `pooled` is how many species the grey band holds now.
  */
-export function createStackedArea(opts: { testid: string; title: string; note: string }): { el: HTMLElement; setData(ids: number[], rows: number[][], total?: number, pooled?: number): void } {
+export function createStackedArea(opts: { testid: string; title: string; note: string }): {
+  el: HTMLElement;
+  setData(ids: number[], rows: number[][], total?: number, pooled?: number): void;
+  /** The CSS colour of a species' band, for the standings beside the chart. */
+  colour(id: number): string;
+} {
   let ids: number[] = [], rows: number[][] = [], total = 0, legendKey = '';
   const slots = new Map<number, number>();           // species id -> palette slot, kept for the whole run
   const c = createChartCanvas(opts.testid, draw), { ctx } = c;
@@ -24,15 +29,15 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
   el.append(title, note, c.wrap, legend);
 
   function draw(): void {
-    const muted = c.token('--muted'), mono = c.token('--font-mono'), bg = c.token('--bg');
+    const muted = c.token('--muted'), mono = c.token('--font-ui'), bg = c.token('--panel');
     const n = rows.length, plotW = c.w - PAD.l - PAD.r, plotH = c.h - PAD.t - PAD.b;
-    ctx.font = `11px ${mono}`; ctx.textBaseline = 'middle';
+    ctx.font = `12px ${mono}`; ctx.textBaseline = 'middle';
     if (n === 0) { ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.fillText('Nothing to plot yet', c.w / 2, c.h / 2); return; }
     // One generation is drawn as a full-width column so the first result is already visible.
     const x = (g: number) => PAD.l + (n === 1 ? g : g / (n - 1)) * plotW;
     const y = (share: number) => PAD.t + (1 - share) * plotH;
     const top = (g: number, k: number) => rows[g]![k]!, bottom = (g: number, k: number) => (k === 0 ? 0 : rows[g]![k - 1]!);
-    const colour = (id: number) => (id === OTHER ? c.token('--line-strong') : c.token(`--species-${slots.get(id)! + 1}`));
+    const colour = (id: number) => (id === OTHER ? c.token('--species-other') : c.token(`--species-${slots.get(id)! + 1}`));
     ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.lineJoin = 'round';
     for (let k = 0; k < ids.length; k++) {
       ctx.fillStyle = colour(ids[k]!);
@@ -55,7 +60,7 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
       }
     }
     // Each species carries its id where its band is thickest, if the id fits inside it.
-    ctx.textAlign = 'center'; ctx.font = `bold 11px ${mono}`;
+    ctx.textAlign = 'center'; ctx.font = `12px ${mono}`;
     const placed: { x: number; y: number }[] = [];
     ids.forEach((id, k) => {
       if (id === OTHER) return;
@@ -69,9 +74,9 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
       placed.push({ x: px, y: py });
       // A plate behind the id keeps it legible over any band colour.
       ctx.fillStyle = bg; ctx.fillRect(px - half, py - 7, half * 2, 14);
-      ctx.fillStyle = colour(id); ctx.fillText(text, px, py + 0.5);
+      ctx.fillStyle = c.token('--text'); ctx.fillText(text, px, py + 0.5);
     });
-    ctx.fillStyle = muted; ctx.font = `11px ${mono}`; ctx.textAlign = 'right';
+    ctx.fillStyle = muted; ctx.textAlign = 'right';
     for (const share of [0, 0.5, 1]) ctx.fillText(`${share * 100}%`, PAD.l - 6, y(share));
     ctx.textAlign = 'center';
     const axisY = c.h - PAD.b / 2;
@@ -92,7 +97,7 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
     legendKey = key;
     legend.replaceChildren(...items.map((b) => {
       const li = document.createElement('li'), swatch = document.createElement('i'), share = document.createElement('span');
-      swatch.style.background = b.id === OTHER ? 'var(--line-strong)' : `var(--species-${slots.get(b.id)! + 1})`;
+      swatch.style.background = b.id === OTHER ? 'var(--species-other)' : `var(--species-${slots.get(b.id)! + 1})`;
       share.className = 'num'; share.textContent = b.share;
       li.append(swatch, b.id === OTHER ? `${pooled} smaller species` : `species ${b.id}`, share);
       return li;
@@ -101,6 +106,7 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
 
   return {
     el,
+    colour: (id) => (slots.has(id) ? `var(--species-${slots.get(id)! + 1})` : 'var(--species-other)'),
     setData(i, r, t = r.length, pooled = 0) {
       if (t < total) slots.clear();                  // a new run numbers its species from the start again
       ids = i; rows = r; total = t;

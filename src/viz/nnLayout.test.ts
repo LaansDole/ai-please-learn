@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NetworkSnapshot } from '../learner/types';
 import { pong } from '../envs/pong';
-import { diffSnapshots, edgeStyle, initialMlpSnapshot, layoutNetwork, visibleEdges } from './nnLayout';
+import { diffSnapshots, edgeStyle, initialMlpSnapshot, layoutNetwork, strongCutoff, visibleEdges } from './nnLayout';
 
 const net: NetworkSnapshot = {
   maxDepth: 2,
@@ -48,5 +48,19 @@ describe('initialMlpSnapshot', () => {
     expect(s.nodes.filter((n) => n.type === 'output').map((n) => n.label)).toEqual(['up', 'stay', 'down', 'value']);
     expect(s.maxDepth).toBe(3);
     expect(initialMlpSnapshot(pong, 'dqn', [32, 32]).nodes.length).toBe(6 + 32 + 32 + 3);
+  });
+});
+
+describe('strongCutoff', () => {
+  const edges = (ws: number[]) => ws.map((weight, i) => ({ from: 0, to: i + 1, weight, enabled: true }));
+  it('is 0 for a small network: every link is drawn in full', () => {
+    expect(strongCutoff(edges([1, -2, 3]), 2, 3)).toBe(0);
+  });
+  it('is the |weight| of the n-th strongest link past the threshold', () => {
+    expect(strongCutoff(edges([0.1, -5, 3, 0.2, 4]), 2, 3)).toBe(4);
+  });
+  it('ignores disabled links', () => {
+    const e = edges([9, 1, 2, 3, 4]); e[0]!.enabled = false;
+    expect(strongCutoff(e, 1, 3)).toBe(4);
   });
 });
