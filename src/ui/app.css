@@ -92,7 +92,7 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
 .topbar > button:hover:not(:disabled) { background: #16392e; border-color: var(--on-accent); }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
 .panel > h3 { margin-bottom: 8px; }
-.panel > p { max-width: 70ch; }
+.panel > p:not(.chart-note) { max-width: 70ch; }
 .empty-state { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 48px 0; max-width: 56ch; }
 .empty-state p { color: var(--muted); font-size: var(--fs-body); }
 
@@ -337,8 +337,8 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .chart { display: flex; flex-direction: column; gap: 6px; }
 .chart > h3, .chart-head h3 { margin: 0; }
 .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-/* How to read the figure: its caption. */
-.chart-note { max-width: 74ch; font-size: var(--fs-small); line-height: 1.45; color: var(--muted); }
+/* How to read the figure: its caption, as wide as the figure. */
+.chart-note { font-size: var(--fs-small); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
 .chart-note:empty { display: none; }
 /* What the bands are, largest first: swatch, name, share now. */
 .chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-small); color: var(--muted); }
