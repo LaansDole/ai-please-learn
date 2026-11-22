@@ -1,7 +1,8 @@
 import { RESERVED_IDS } from '../env/registry';
 
 export type Step = 1 | 2 | 3 | 4;
-export type Route = { page: 'gallery' } | { page: 'concept'; envId: string; step: Step } | { page: 'settings' } | { page: 'create' } | { page: 'notfound' };
+const PAGES = ['settings', 'create', 'math'] as const;
+export type Route = { page: 'gallery' } | { page: 'concept'; envId: string; step: Step } | { page: (typeof PAGES)[number] } | { page: 'notfound' };
 /** Returns an unmount function. A concept page may attach `onStep` to it: step-only changes then call it instead of remounting. */
 export type PageFn = (root: HTMLElement, route: Route) => (() => void) | void;
 type Unmount = (() => void) & { onStep?(step: Step): void };
@@ -15,7 +16,8 @@ export function parseRoute(pathname: string, base = BASE): Route {
   if (!pathname.startsWith(base)) return { page: 'notfound' };
   const parts = pathname.slice(base.length).split('/').filter(Boolean), [id, step] = parts;
   if (!id || ((id === 'index.html' || id === 'index') && parts.length === 1)) return { page: 'gallery' };
-  if ((id === 'settings' || id === 'create') && parts.length === 1) return { page: id };
+  const own = PAGES.find((p) => p === id);
+  if (own && parts.length === 1) return { page: own };
   if (parts.length <= 2 && /^[a-z][a-z0-9-]*$/.test(id) && !RESERVED_IDS.has(id)) {
     const n = Number(step ?? 1);
     return { page: 'concept', envId: id, step: n === 2 || n === 3 || n === 4 ? n : 1 };
@@ -25,7 +27,7 @@ export function parseRoute(pathname: string, base = BASE): Route {
 
 /** The URL path of a route; `notfound` has none of its own and formats as the gallery. */
 export function formatRoute(r: Route, base = BASE): string {
-  return r.page === 'concept' ? `${base}${r.envId}/${r.step}` : r.page === 'settings' || r.page === 'create' ? `${base}${r.page}` : base;
+  return r.page === 'concept' ? `${base}${r.envId}/${r.step}` : r.page === 'gallery' || r.page === 'notfound' ? base : `${base}${r.page}`;
 }
 
 /** Links shared before the History API router: "#/c/pong/3", "#/settings", "#/". Returns the clean path, or null for any other hash. */

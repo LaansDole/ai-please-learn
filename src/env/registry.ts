@@ -7,7 +7,7 @@ const registry = new Map<string, EnvDefinition>();
  * deployment put there (assets, demo), the dev server's own paths (api, src, public) and the old "/c/" prefix.
  * Generated ids always start with "gen-", so only built-in ids can collide.
  */
-export const RESERVED_IDS: ReadonlySet<string> = new Set(['create', 'settings', 'assets', 'demo', 'api', 'src', 'public', 'index', 'c']);
+export const RESERVED_IDS: ReadonlySet<string> = new Set(['create', 'settings', 'math', 'assets', 'demo', 'api', 'src', 'public', 'index', 'c']);
 
 function staticErrors(def: EnvDefinition): string[] {
   const errors: string[] = [];

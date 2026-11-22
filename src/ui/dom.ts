@@ -30,14 +30,14 @@ function repoLink(): HTMLAnchorElement {
 }
 
 /** The tabs that end every top bar; the page that is open carries `aria-current`. */
-export function topNav(active?: 'gallery' | 'create' | 'settings'): HTMLElement {
+export function topNav(active?: 'gallery' | 'create' | 'math' | 'settings'): HTMLElement {
   const tab = (id: string, href: string, label: string) =>
     h('a', { class: id === 'gallery' && 'nav-home', href, testid: `nav-${id}`, 'aria-current': active === id && 'page' }, label);
   return h('nav', { class: 'topnav', 'aria-label': 'Main' },
     tab('gallery', HOME, 'Gallery'), tab('create', formatRoute({ page: 'create' }), 'Create'),
     // The recorded demo is a static page beside the app (`RESERVED_IDS` has "demo"): the router leaves this link to the browser,
     // and that page carries the same bar with Demo marked as open.
-    tab('demo', `${HOME}demo/`, 'Demo'),
+    tab('demo', `${HOME}demo/`, 'Demo'), tab('math', formatRoute({ page: 'math' }), 'Math'),
     tab('settings', formatRoute({ page: 'settings' }), 'Settings'), repoLink());
 }
 

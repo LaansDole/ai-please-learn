@@ -18,13 +18,16 @@ describe('router', () => {
     expect(parseRoute('/pong/9')).toEqual({ page: 'concept', envId: 'pong', step: 1 });
     expect(parseRoute('/settings')).toEqual({ page: 'settings' });
     expect(parseRoute('/create')).toEqual({ page: 'create' });
+    expect(parseRoute('/math')).toEqual({ page: 'math' });
+    expect(parseRoute('/math/')).toEqual({ page: 'math' });
     expect(formatRoute({ page: 'concept', envId: 'snake', step: 3 })).toBe('/snake/3');
     expect(formatRoute({ page: 'gallery' })).toBe('/');
     expect(formatRoute({ page: 'settings' })).toBe('/settings');
     expect(formatRoute({ page: 'create' })).toBe('/create');
+    expect(formatRoute({ page: 'math' })).toBe('/math');
   });
   it('sends unknown paths to the not-found view', () => {
-    for (const p of ['/create/extra', '/settings/2', '/pong/2/x', '/Pong', '/favicon.svg', '/c/pong/1/2', '/demo/', '/demo'])
+    for (const p of ['/create/extra', '/settings/2', '/math/2', '/pong/2/x', '/Pong', '/favicon.svg', '/c/pong/1/2', '/demo/', '/demo'])
       expect(parseRoute(p), p).toEqual({ page: 'notfound' });
   });
   it('works under a sub-path base', () => {
@@ -32,10 +35,13 @@ describe('router', () => {
     expect(parseRoute('/ai-please-learn', '/ai-please-learn/')).toEqual({ page: 'gallery' });
     expect(parseRoute('/ai-please-learn/pong/2', '/ai-please-learn/')).toEqual({ page: 'concept', envId: 'pong', step: 2 });
     expect(parseRoute('/ai-please-learn/create', '/ai-please-learn/')).toEqual({ page: 'create' });
+    expect(parseRoute('/ai-please-learn/math', '/ai-please-learn/')).toEqual({ page: 'math' });
     expect(parseRoute('/elsewhere/pong', '/ai-please-learn/')).toEqual({ page: 'notfound' });
     expect(formatRoute({ page: 'concept', envId: 'pong', step: 2 }, '/ai-please-learn/')).toBe('/ai-please-learn/pong/2');
     expect(formatRoute({ page: 'gallery' }, '/ai-please-learn/')).toBe('/ai-please-learn/');
     expect(formatRoute({ page: 'settings' }, '/ai-please-learn/')).toBe('/ai-please-learn/settings');
+    expect(formatRoute({ page: 'math' }, '/ai-please-learn/')).toBe('/ai-please-learn/math');
+    expect(formatRoute({ page: 'math' }, '/')).toBe('/math');
   });
   it('maps old hash links to clean paths', () => {
     expect(legacyHashPath('#/c/pong')).toBe('/pong');
@@ -48,10 +54,11 @@ describe('router', () => {
   });
   it('reserved top-level names are never concepts', () => {
     for (const name of RESERVED_IDS) expect(parseRoute(`/${name}/1`).page, name).not.toBe('concept');
-    for (const name of ['create', 'settings', 'assets', 'demo', 'api', 'src']) expect(RESERVED_IDS.has(name), name).toBe(true);
+    for (const name of ['create', 'settings', 'math', 'assets', 'demo', 'api', 'src']) expect(RESERVED_IDS.has(name), name).toBe(true);
     registerBuiltins();
     for (const def of listEnvs()) expect(parseRoute(formatRoute({ page: 'concept', envId: def.meta.id, step: 1 })).page, def.meta.id).toBe('concept');
     expect(validateDefinition({ ...reach1d, meta: { ...reach1d.meta, id: 'create' } }).join(' ')).toMatch(/reserved/);
+    expect(validateDefinition({ ...reach1d, meta: { ...reach1d.meta, id: 'math' } }).join(' ')).toMatch(/reserved/);
     expect(validateDefinition(reach1d)).toEqual([]);
     expect(RESERVED_IDS.has(slugId('create', () => 0))).toBe(false);
     expect([...RESERVED_IDS].filter((n) => n.startsWith('gen-'))).toEqual([]);
