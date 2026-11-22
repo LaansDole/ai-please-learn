@@ -48,7 +48,7 @@ export function createRewardPanel(session: Session): { el: HTMLElement; dispose(
 
   const el = h('section', { class: 'panel rewards' },
     h('h3', null, 'Rewards and penalties'),
-    h('p', null, 'The machine only knows its fitness score. Each reward below adds to it and each penalty takes away; raise a weight to make that behaviour matter more.'),
+    h('p', null, 'The machine only knows its fitness score. Each reward below adds to it and each penalty takes away. Raise a weight to make that behaviour matter more.'),
     h('p', { class: 'mono formula' }, 'fitness = sum(weight x term)'),
     h('div', { class: 'preset-row' }, h('span', { class: 'muted' }, 'Presets'), ...presets),
     note,

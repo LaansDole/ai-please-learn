@@ -41,7 +41,7 @@ function genomeError(g: unknown, nIn: number, nOut: number): string | null {
     ids.add(n.id as number);
     if (n.type === 'input') ins++; else if (n.type === 'output') outs++;
   }
-  if (ins !== nIn || outs !== nOut) return `This concept expects ${nIn} inputs and ${nOut} outputs; the genome has ${ins} and ${outs}.`;
+  if (ins !== nIn || outs !== nOut) return `This concept expects ${nIn} inputs and ${nOut} outputs. The genome has ${ins} and ${outs}.`;
   for (const c of g.conns as unknown[]) {
     if (!isObj(c) || !Number.isInteger(c.innov) || !num(c.weight) || typeof c.enabled !== 'boolean' || !ids.has(c.from as number) || !ids.has(c.to as number)) return 'The genome has a malformed connection.';
   }
@@ -58,7 +58,7 @@ export function parseExport(json: unknown, spec: EnvSpecMsg): { ok: true; value:
   const nOut = spec.action.type === 'candidates' ? 1 : spec.action.labels.length;
   if (env.id !== spec.meta.id) errors.push(`This champion is for "${String(env.id)}", not "${spec.meta.id}".`);
   else {
-    if (env.observationSize !== nIn) errors.push(`This concept has ${nIn} observations; the file was made with ${String(env.observationSize)}.`);
+    if (env.observationSize !== nIn) errors.push(`This concept has ${nIn} observations. The file was made with ${String(env.observationSize)}.`);
     if (JSON.stringify(env.action) !== JSON.stringify(spec.action)) errors.push('The actions in the file do not match this concept.');
   }
   if (!isObj(json.stats) || !num(json.stats.best)) errors.push('"stats.best" must be a number.');
@@ -71,7 +71,7 @@ export function parseExport(json: unknown, spec: EnvSpecMsg): { ok: true; value:
   } else if (isObj(p) && p.kind === 'mlp') {
     const sizes = p.sizes, params = p.params;
     if (!Array.isArray(sizes) || sizes.length < 2 || !sizes.every((s) => Number.isInteger(s) && s > 0)) errors.push('"policy.sizes" must list at least two positive layer sizes.');
-    else if (sizes[0] !== nIn) errors.push(`The network expects ${String(sizes[0])} inputs; this concept has ${nIn}.`);
+    else if (sizes[0] !== nIn) errors.push(`The network expects ${String(sizes[0])} inputs. This concept has ${nIn}.`);
     else if ((p.algo !== 'dqn' && p.algo !== 'ppo') || (p.hidden !== 'tanh' && p.hidden !== 'relu')) errors.push('"policy.algo" must be dqn or ppo and "policy.hidden" tanh or relu.');
     else {
       let expected = 0;

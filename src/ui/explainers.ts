@@ -4,7 +4,7 @@ import type { EnvSpecMsg, LearnerKind } from '../env/types';
 export const EXPLAINERS: Record<LearnerKind, { title: string; text: string }> = {
   neat: {
     title: 'NEAT: evolve a population',
-    text: 'Starts with a crowd of tiny random brains. Each one plays; the best are kept, bred and mutated. Mutations can add neurons and wires, so the brain itself grows over generations. No gradients: just survival.',
+    text: 'Starts with a crowd of tiny random brains. Each one plays. The best are kept, bred and mutated. Mutations can add neurons and wires, so the brain itself grows over generations. No gradients: just survival.',
   },
   dqn: {
     title: 'DQN: learn from memories',
@@ -21,7 +21,7 @@ export function compatibility(spec: Pick<EnvSpecMsg, 'meta' | 'action'>): Record
   const type = spec.action.type;
   const check = (kind: LearnerKind): { ok: boolean; reason?: string } => {
     if (kind === 'dqn' && type !== 'discrete') {
-      return { ok: false, reason: `DQN needs a small set of distinct actions; this concept uses ${type === 'continuous' ? 'continuous dials' : 'placement scoring'}.` };
+      return { ok: false, reason: `DQN needs a small set of distinct actions. This concept uses ${type === 'continuous' ? 'continuous dials' : 'placement scoring'}.` };
     }
     if (kind === 'ppo' && type === 'candidates') return { ok: false, reason: 'PPO cannot score candidate placements.' };
     return spec.meta.learners.includes(kind) ? { ok: true } : { ok: false, reason: 'Not available for this concept.' };

@@ -24,11 +24,11 @@ export function scanSource(src: string): string[] {
   const errors: string[] = [];
   if (src.length > 40000) errors.push(`source is too long (${src.length} > 40000 characters)`);
   const code = stripCommentsAndStrings(src);
-  if (code.includes('`')) errors.push('template literals (backticks) are not allowed; use string concatenation');
-  if (/\bMath\s*\.\s*random\b/.test(code)) errors.push('Math.random is not allowed; use sdk.rng(seed)');
+  if (code.includes('`')) errors.push('template literals (backticks) are not allowed - use string concatenation');
+  if (/\bMath\s*\.\s*random\b/.test(code)) errors.push('Math.random is not allowed - use sdk.rng(seed)');
   for (const name of FORBIDDEN) {
     const re = new RegExp(`(^|[^A-Za-z0-9_$])${name.replace(/[$_]/g, '\\$&')}(?![A-Za-z0-9_$])`);
-    if (re.test(code)) errors.push(`"${name}" is not available in EvoLab environments; remove it`);
+    if (re.test(code)) errors.push(`"${name}" is not available in EvoLab environments - remove it`);
   }
   return errors;
 }

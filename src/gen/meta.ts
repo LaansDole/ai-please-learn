@@ -60,7 +60,7 @@ export function validateMeta(meta: unknown): string[] {
       const f = `rewardTerms[${i}]`;
       if (!isObj(t)) { errors.push(`${f} must be an object (got ${got(t)})`); return; }
       if (typeof t.key !== 'string' || !/^[a-z][a-zA-Z0-9]*$/.test(t.key)) errors.push(`${f}.key must be a camelCase identifier (got ${got(t.key)})`);
-      else if (weights.has(t.key)) errors.push(`${f}.key "${t.key}" is used twice; term keys must be unique`);
+      else if (weights.has(t.key)) errors.push(`${f}.key "${t.key}" is used twice - term keys must be unique`);
       if (t.kind !== 'reward' && t.kind !== 'penalty') errors.push(`${f}.kind must be "reward" or "penalty" (got ${got(t.kind)})`);
       text(t.description, `${f}.description`);
       const w = t.defaultWeight;
@@ -86,7 +86,7 @@ export function validateMeta(meta: unknown): string[] {
         else if (typeof w !== 'number' || !Number.isFinite(w) || w < 0) errors.push(`${f}.weights.${k} must be a finite number >= 0 (got ${got(w)})`);
         else if (p.name === 'default' && w !== weights.get(k)) errors.push(`${f}.weights.${k} is ${w} but the "default" preset must equal the defaultWeight (${weights.get(k)})`);
       }
-      if (p.name === 'default') for (const k of weights.keys()) if (!(k in p.weights)) errors.push(`${f}.weights.${k} is missing; the "default" preset must list every term with its defaultWeight`);
+      if (p.name === 'default') for (const k of weights.keys()) if (!(k in p.weights)) errors.push(`${f}.weights.${k} is missing - the "default" preset must list every term with its defaultWeight`);
     });
   }
 

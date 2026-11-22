@@ -57,6 +57,6 @@ export function validateModule(source: string, meta: unknown, now: () => number 
     try { errors.push(...checkLearnability(def)); } catch (e) { errors.push(`random play threw: ${message(e)}`); }
   }
   const ms = now() - t0;
-  if (ms > BUDGET_MS) errors.unshift(`validation took too long (${Math.round(ms)} ms); make step() and render() cheaper`);
+  if (ms > BUDGET_MS) errors.unshift(`validation took too long (${Math.round(ms)} ms) - make step() and render() cheaper`);
   return { ok: errors.length === 0, errors: errors.slice(0, MAX_ERRORS), warnings: rep.warnings, stats: { steps: rep.steps, episodes: rep.episodes, ms } };
 }

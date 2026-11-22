@@ -40,20 +40,20 @@ function checkRender(def: EnvDefinition, env: Env, when: string, errors: string[
   if (def.meta.dims === '3d') {
     const scene = new RecordingScene3D();
     env.render({ kind: '3d', scene, ghost: false });
-    if (scene.bodies.length < 1) errors.push(`render ${when} added no bodies; add at least one.`);
+    if (scene.bodies.length < 1) errors.push(`render ${when} added no bodies. Add at least one.`);
     else if (!scene.bodies.every((b) => [...b.size, ...b.pos, ...b.quat].every(Number.isFinite))) errors.push(`render ${when} produced a body with a non-finite number.`);
     return;
   }
   const draw = new RecordingDraw2D();
   env.render({ kind: '2d', draw, ghost: false });
-  if (draw.cmds.length < 1 || draw.cmds.length > 5000) errors.push(`render ${when} produced ${draw.cmds.length} draw commands; it must produce 1 to 5000.`);
+  if (draw.cmds.length < 1 || draw.cmds.length > 5000) errors.push(`render ${when} produced ${draw.cmds.length} draw commands. It must produce 1 to 5000.`);
   else if (draw.cmds[0]![0] !== 'c') errors.push(`render ${when}: the first draw command must be draw.clear(color).`);
   if (!cmdsFinite(draw.cmds)) errors.push(`render ${when} produced a draw command with a non-finite number.`);
   if (!def.meta.ghosts) return;
   const ghost = new RecordingDraw2D();
   env.render({ kind: '2d', draw: ghost, ghost: true });
   if (ghost.cmds.some((c) => c[0] === 'c')) errors.push(`render ${when} with ghost = true must not call draw.clear().`);
-  if (ghost.cmds.length > 500) errors.push(`render ${when} with ghost = true produced ${ghost.cmds.length} draw commands; the limit is 500.`);
+  if (ghost.cmds.length > 500) errors.push(`render ${when} with ghost = true produced ${ghost.cmds.length} draw commands. The limit is 500.`);
   if (!cmdsFinite(ghost.cmds)) errors.push(`render ${when} with ghost = true produced a draw command with a non-finite number.`);
 }
 
@@ -109,9 +109,9 @@ export function checkConformance(def: EnvDefinition, opts: { steps?: number; see
     if (errors.length) return report;
 
     // 7, 8. Episodes and reward signal
-    if (lengths.length > 0 && lengths.every((l) => l < 2)) errors.push('Every episode ended in fewer than 2 steps; the episode must not end immediately.');
+    if (lengths.length > 0 && lengths.every((l) => l < 2)) errors.push('Every episode ended in fewer than 2 steps. The episode must not end immediately.');
     if (!endedEarly) warnings.push(`No episode ended before maxSteps (${maxSteps}).`);
-    if (!report.termsChanged.includes(true)) errors.push(`no reward term ever changed during ${report.steps} random steps; step() must update terms.`);
+    if (!report.termsChanged.includes(true)) errors.push(`no reward term ever changed during ${report.steps} random steps. step() must update terms.`);
 
     // 9. Render
     const r = create();
@@ -204,8 +204,8 @@ export function checkLearnability(def: EnvDefinition, opts: { maxTotalSteps?: nu
 
   const fmt = (v: number) => String(Math.round(v * 100) / 100);
   if (random.best - Math.min(...random.fits) < 1e-9) {
-    return [`all ${random.n} random-play episodes scored exactly the same fitness (${fmt(random.best)}), so there is no signal to learn from; `
-      + 'at least one reward term must depend on how well the agent plays (progress, accuracy or time survived).'];
+    return [`all ${random.n} random-play episodes scored exactly the same fitness (${fmt(random.best)}), so there is no signal to learn from. `
+      + 'At least one reward term must depend on how well the agent plays (progress, accuracy or time survived).'];
   }
   const canFail = random.full < random.n || nets.full < nets.n;
   const harder = 'Make it harder: ramp the difficulty up over time (faster, denser or narrower) until untrained play always fails well before maxSteps, '
