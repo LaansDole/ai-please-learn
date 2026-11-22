@@ -1,8 +1,9 @@
-import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Connect, type Plugin } from 'vite';
 import { byteRange } from './tools/byteRange';
 import { llmProxy } from './tools/llmProxy';
+import { renderMathDoc } from './tools/mathDoc';
 
 export const CSP =
   "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self'; " +
@@ -70,8 +71,26 @@ const demoPage = (): Plugin => {
   };
 };
 
+/**
+ * The Math page is docs/math.md, rendered here and not in the browser: `import html from '.../math.md?html'` is the finished
+ * HTML with every equation typeset by KaTeX, so the page ships KaTeX's stylesheet and fonts but none of its code. Browsers
+ * that read the stylesheet all read woff2, so the two older font formats are dropped from it.
+ */
+const mathDoc = (): Plugin => ({
+  name: 'evolab-math-doc', enforce: 'pre',
+  load(id) {
+    if (!id.endsWith('.md?html')) return null;
+    const file = id.slice(0, -5);
+    this.addWatchFile(file);
+    return `export default ${JSON.stringify(renderMathDoc(readFileSync(file, 'utf8')))};`;
+  },
+  transform(code, id) {
+    return id.endsWith('katex.min.css') ? code.replace(/,url\([^)]+\.(woff|ttf)\) format\("[^"]+"\)/g, '') : null;
+  },
+});
+
 export default defineConfig({
-  plugins: [llmProxy(), staticCsp(), spaFallback(), demoPage()],
+  plugins: [llmProxy(), staticCsp(), spaFallback(), demoPage(), mathDoc()],
   // EVOLAB_BASE: sub-path hosting (GitHub Pages builds use /ai-please-learn/).
   base: process.env.EVOLAB_BASE ?? '/',
   // EVOLAB_STATIC=1: the build goes to a host that only serves files, so the app must not probe for the LLM proxy
@@ -83,7 +102,8 @@ export default defineConfig({
   // Only workers simulate. The page imports the walker definition for its metadata, and with it the dynamic import of Rapier
   // that it never executes: left to the bundler, that emitted a second 4.3 MB copy of the chunk. This option covers the page
   // bundle only (workers build with `worker.rolldownOptions`), so the worker still bundles Rapier.
-  build: { rolldownOptions: { external: ['@dimforge/rapier3d-compat'] } },
+  // Fonts stay files: the page's policy has no `data:` font source, and KaTeX's smallest fonts are below the inlining limit.
+  build: { rolldownOptions: { external: ['@dimforge/rapier3d-compat'] }, assetsInlineLimit: (file) => (file.endsWith('.woff2') ? false : undefined) },
   // Rapier ships its WASM inlined as base64; pre-bundling it for a module worker is slow and unnecessary (spec section 16).
   optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
 });

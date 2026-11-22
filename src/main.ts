@@ -4,12 +4,13 @@ import { registerBuiltins } from './envs/index';
 import { conceptPage } from './ui/pages/concept';
 import { createPage } from './ui/pages/create';
 import { galleryPage } from './ui/pages/gallery';
+import { mathPage } from './ui/pages/math';
 import { settingsPage } from './ui/pages/settings';
 import { pageNotFound } from './ui/dom';
 import { startRouter } from './ui/router';
 
 registerBuiltins();
 startRouter(document.getElementById('app')!, {
-  gallery: galleryPage, concept: conceptPage, settings: settingsPage, create: createPage,
+  gallery: galleryPage, concept: conceptPage, settings: settingsPage, create: createPage, math: mathPage,
   notfound: pageNotFound,
 });

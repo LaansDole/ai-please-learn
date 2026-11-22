@@ -73,7 +73,7 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
 .topnav a:hover { color: #fff; }
 .topnav a[aria-current="page"] { color: #fff; border-bottom-color: var(--warn); }
 .repo-link svg { flex: none; }
-/* Five tabs beside a concept's crumb and stepper: on a small laptop the GitHub tab keeps its mark and drops the word. */
+/* Six tabs beside a concept's crumb and stepper: on a small laptop the GitHub tab keeps its mark and drops the word. */
 @media (max-width: 1280px) { .repo-link span { display: none; } }
 /* Narrow bars: the brand already leads to the gallery, so its tab gives way to the page name. */
 @media (max-width: 720px) {
@@ -449,6 +449,63 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .source-modal pre { max-height: none; flex: none; }
 /* Stays in view while the source scrolls, so Close is always reachable. */
 .modal-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 -16px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+
+/* Math: the report. Contents beside a reading column; equations and tables span the column, prose keeps a 72ch measure. */
+.math { width: 100%; max-width: 1280px; margin: 0 auto; padding: 48px var(--pad) 96px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px 64px; }
+.math-toc { align-self: start; }
+.math-toc h2 { padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: 1.25rem; }
+.math-toc ol { margin: 0; padding: 0; list-style: none; columns: 2 220px; column-gap: 32px; }
+.math-toc a { display: block; padding: 7px 0 6px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.9375rem; text-decoration: none; break-inside: avoid; transition: color 150ms var(--ease); }
+.math-toc a:hover { color: var(--text); }
+/* The section being read carries the top bar's ochre rule. */
+.math-toc a[aria-current] { color: var(--text); border-bottom-color: var(--warn); box-shadow: inset 0 -2px 0 var(--warn); }
+@media (min-width: 1100px) {
+  .math { grid-template-columns: 224px minmax(0, 900px); }
+  .math-toc { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; scrollbar-width: thin; }
+  .math-toc ol { columns: auto; }
+}
+.math-doc { min-width: 0; }
+.math-doc p, .math-doc li { max-width: 72ch; font-size: 1.0625rem; line-height: 1.6; }
+.math-doc li { font-family: var(--font-prose); }
+.math-doc p { margin-top: 14px; }
+.math-doc > p { color: var(--muted); }
+.math-doc > p:first-of-type { margin-top: 20px; font-size: 1.1875rem; line-height: 1.55; color: var(--text); }
+.math-doc section { margin-top: 64px; }
+.math-doc h2 { padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: 1.625rem; scroll-margin-top: 24px; }
+.math-doc h3 { margin-top: 36px; font-size: 1.25rem; scroll-margin-top: 24px; }
+.math-doc .anchor { margin-left: 4px; color: var(--muted); text-decoration: none; opacity: 0; transition: opacity 150ms var(--ease); }
+.math-doc :is(h2, h3):hover .anchor, .math-doc .anchor:focus-visible { opacity: 1; }
+@media (hover: none) { .math-doc .anchor { opacity: 1; } }
+.math-doc ul, .math-doc ol { margin: 12px 0 0; padding-left: 24px; }
+.math-doc li + li { margin-top: 6px; }
+.math-doc li::marker { font-family: var(--font-ui); color: var(--muted); }
+.math-doc strong { font-weight: 700; }
+.math-doc .katex { font-size: 1.08em; }
+/* A plate for each displayed equation: it scrolls sideways on a narrow screen instead of widening the page. */
+.math-eq { margin-top: 16px; padding: 16px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.math-eq .katex-display { margin: 0; }
+.table-wrap { margin-top: 18px; overflow-x: auto; scrollbar-width: thin; }
+.math-doc table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; line-height: 1.4; font-variant-numeric: tabular-nums lining-nums; }
+.math-doc th { padding: 4px 16px 6px 0; border-bottom: 1px solid var(--text); font-size: var(--fs-label); font-weight: 400; color: var(--muted); text-align: left; vertical-align: bottom; }
+.math-doc td { padding: 7px 16px 7px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.math-doc :is(th, td):last-child { padding-right: 0; }
+.math-doc :is(th, td).n { text-align: right; white-space: nowrap; }
+/* Room for improvement: one plate per limitation. Its first line holds the effort and impact marks. */
+.math-doc section:has(> #room-for-improvement) article { margin-top: 20px; padding: 20px 24px 8px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.math-doc section:has(> #room-for-improvement) h3 { margin-top: 0; }
+.math-doc article > p:first-of-type:has(> code:first-child) { display: flex; gap: 8px; margin-top: 10px; }
+.math-doc article > p:first-of-type > code:first-child, .math-doc article > p:first-of-type > code:first-child ~ code { padding: 3px 7px; background: none; border: 1px solid var(--line-strong); border-radius: var(--radius); font: var(--fs-label)/1 var(--font-ui); }
+.math-doc section:has(> #room-for-improvement) article ul { margin-top: 14px; padding: 0; list-style: none; }
+.math-doc section:has(> #room-for-improvement) article li { max-width: calc(72ch + 9rem); margin: 0; padding: 12px 0 12px 9rem; border-top: 1px solid var(--line); font-size: 1rem; line-height: 1.55; }
+.math-doc section:has(> #room-for-improvement) article li > strong:first-child { float: left; width: 9rem; margin-left: -9rem; font: 400 0.9375rem/1.65 var(--font-ui); color: var(--muted); }
+@media (max-width: 720px) {
+  .math { padding-top: 28px; }
+  .math-doc section:has(> #room-for-improvement) article { padding: 16px 16px 4px; }
+  .math-doc section:has(> #room-for-improvement) article li { padding-left: 0; }
+  .math-doc section:has(> #room-for-improvement) article li > strong:first-child { float: none; display: block; width: auto; margin: 0; }
+}
+/* References: a tighter list. */
+.math-doc section:has(> #references) li { font-size: 0.9375rem; line-height: 1.5; max-width: 84ch; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
