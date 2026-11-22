@@ -22,7 +22,7 @@ export function drawThumbnail(canvas: HTMLCanvasElement, def: EnvDefinition): vo
     return;
   }
   const css = getComputedStyle(document.documentElement);
-  ctx.fillStyle = css.getPropertyValue('--panel-2'); ctx.fillRect(0, 0, w, hgt);
+  ctx.fillStyle = css.getPropertyValue('--panel'); ctx.fillRect(0, 0, w, hgt);
   if (def.meta.dims === '3d' && !def.meta.generated) {
     // A stick figure mid-stride on a ground line with metre ticks (drawn, not simulated: the physics engine is not loaded here).
     const u = hgt / 400, gx = w / 2, gy = 300 * u, line = (pts: number[], color: string, width: number) => {
@@ -33,10 +33,10 @@ export function drawThumbnail(canvas: HTMLCanvasElement, def: EnvDefinition): vo
     };
     line([-300, 0, 300, 0], css.getPropertyValue('--line'), 3);
     for (let x = -240; x <= 240; x += 80) line([x, 0, x, -10], css.getPropertyValue('--faint'), 3);
-    line([0, 120, -34, 62, -60, 4, -36, 0], css.getPropertyValue('--series-median'), 14);    // far leg, trailing
+    line([0, 120, -34, 62, -60, 4, -36, 0], css.getPropertyValue('--russet'), 14);           // far leg, trailing
     line([0, 120, 40, 70, 34, 4, 60, 0], css.getPropertyValue('--accent-2'), 14);            // near leg, leading
-    line([0, 120, 10, 196], css.getPropertyValue('--accent'), 26);                           // torso
-    ctx.fillStyle = css.getPropertyValue('--accent');
+    line([0, 120, 10, 196], css.getPropertyValue('--text'), 26);                             // torso
+    ctx.fillStyle = css.getPropertyValue('--text');
     ctx.beginPath(); ctx.arc(gx + 14 * u, gy - 232 * u, 22 * u, 0, Math.PI * 2); ctx.fill();
     return;
   }
@@ -50,7 +50,7 @@ export function drawInitials(canvas: HTMLCanvasElement, name: string): void {
   const css = getComputedStyle(document.documentElement), w = canvas.width, hgt = canvas.height;
   ctx.fillStyle = css.getPropertyValue('--panel-2'); ctx.fillRect(0, 0, w, hgt);
   ctx.fillStyle = css.getPropertyValue('--muted');
-  ctx.font = `600 ${hgt * 0.3}px ${css.getPropertyValue('--font-mono')}`;
+  ctx.font = `${hgt * 0.3}px ${css.getPropertyValue('--font-ui')}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(name.split(/\s+/).map((s) => s[0]).join('').slice(0, 3).toUpperCase(), w / 2, hgt / 2);
 }

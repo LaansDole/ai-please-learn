@@ -1,23 +1,31 @@
+/* "Field guide": a naturalist's plate book. Paper ground, plate panels, ink text, a shell-green binding, pen-blue notes. */
 :root {
-  --bg: #0a0e14;  --panel: #10161f;  --panel-2: #161d29;  --line: #232c3b;
-  /* --line separates panels; --line-strong (3:1 on --panel and --bg) bounds form controls, where the edge is the affordance. */
-  --line-strong: #556480;
-  --text: #d7e0ee;  --muted: #7d8aa3;  --faint: #4a566b;
-  --accent: #4de1c1;  --accent-2: #7aa2ff;  --warn: #ffc857;  --danger: #ff5d73;
-  --on-accent: #06231c;  --on-warn: #2b1d00;  --stage-bg: #0d121b;
-  --w-pos: #4de1c1;  --w-neg: #ff5d73;  --glow: #fff3b0;  --heat: #ffb347;
-  --series-best: #4de1c1;  --series-mean: #7aa2ff;  --series-median: #c792ea;
-  --species-1: #4de1c1; --species-2: #7aa2ff; --species-3: #c792ea; --species-4: #ffc857;
-  --species-5: #ff8a65; --species-6: #82d173; --species-7: #f078b4; --species-8: #9aa7bd;
-  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  /* Type roles. rem, so the browser's font-size setting scales them. */
-  --fs-label: 0.6875rem;                                  /* 11 px: uppercase panel labels, badges */
-  --fs-small: 0.75rem;                                    /* 12 px: help text, chart notes, code */
-  --fs-body: 0.875rem;                                    /* 14 px: everything else */
-  --fs-lead: 1rem;                                        /* 16 px: card titles, ledes, the breadcrumb */
-  --fs-title: 1.25rem;                                    /* 20 px: page and section titles, readouts */
-  --fs-display: clamp(1.875rem, 1.1rem + 2.6vw, 3rem);    /* the gallery headline only */
-  --radius: 4px;  --gap: 12px;  --pad: 20px;  --ease: cubic-bezier(.2, .8, .2, 1);
+  --bg: #eef1e8;  --panel: #f9faf5;  --panel-2: #e3e8db;  --line: #c2cabb;
+  /* --line separates panels and rows. --line-strong (3:1 on --panel and --bg) bounds form controls, where the edge is the affordance. */
+  --line-strong: #77837a;
+  --text: #16241d;  --muted: #4b5a51;  --faint: #7f8b82;
+  --accent: #1d4a3b;  --accent-2: #1b4f9c;  --warn: #d2a53c;  --danger: #a8442a;
+  /* Ochre is a fill. Text that means "warning" uses --warn-ink (7:1 on --panel). */
+  --warn-ink: #6f5208;  --russet: #a65a3a;
+  --on-accent: #f9faf5;  --on-accent-muted: #b9cdbf;  --on-warn: #16241d;  --stage-bg: #f9faf5;
+  /* Timing code, the same everywhere: a new record, better than its recent average, no gain. Always paired with a shape or a word. */
+  --rec: #1b4f9c;  --imp: #1d4a3b;  --flat: #d2a53c;
+  --w-pos: #1d6b4f;  --w-neg: #a8442a;  --glow: #d2a53c;  --heat: #1b4f9c;
+  --series-best: #1b4f9c;  --series-mean: #1d6b4f;  --series-median: #a65a3a;
+  --species-1: #1d4a3b; --species-2: #6c9a76; --species-3: #d2a53c; --species-4: #a65a3a;
+  --species-5: #4674a8; --species-6: #7c8440; --species-7: #c9917a; --species-8: #5f717b;  --species-other: #bcc3b6;
+  /* Gill Sans carries titles, labels and numbers. Charter carries prose. Both fall back to faces of the same build off the Mac. */
+  --font-ui: "Gill Sans", "Gill Sans MT", Seravek, "Trebuchet MS", sans-serif;
+  --font-prose: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Type roles. rem, so the browser's font-size setting scales them. Gill Sans has a small x-height: one step up from the usual. */
+  --fs-label: 0.8125rem;                                  /* 13 px: column heads, stat labels, badges */
+  --fs-small: 0.875rem;                                   /* 14 px: captions, help text, chart notes */
+  --fs-body: 1rem;                                        /* 16 px: everything else */
+  --fs-lead: 1.125rem;                                    /* 18 px: plate titles, ledes, the breadcrumb */
+  --fs-title: 1.375rem;                                   /* 22 px: section titles, readouts */
+  --fs-display: clamp(2rem, 1.3rem + 1.6vw, 2.5rem);      /* page headlines */
+  --radius: 3px;  --gap: 16px;  --pad: 32px;  --ease: cubic-bezier(.2, .8, .2, 1);
 }
-@media (max-width: 720px) { :root { --pad: 12px; } }
+@media (max-width: 1100px) { :root { --pad: 20px; } }
+@media (max-width: 720px) { :root { --pad: 12px; --gap: 12px; } }

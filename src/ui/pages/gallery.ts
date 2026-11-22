@@ -12,21 +12,26 @@ function download(name: string, text: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** The last line of a plate's caption: the methods it can learn with, then its tags. */
+function cardMeta(dims: string, learners: readonly string[], generated = false): HTMLElement {
+  return h('div', { class: 'card-meta' },
+    h('span', { class: 'muted' }, learners.join(', ')),
+    h('span', null,
+      generated && h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated'), generated && ' ',
+      h('span', { class: 'badge badge-dim' }, dims)));
+}
+
 /** Buttons sit outside the link so they can be reached and pressed on their own. */
 function generatedCard(c: StoredConcept, onDeleted: () => void): HTMLElement {
   const canvas = h('canvas', { width: 640, height: 400, class: 'card-thumb', 'aria-hidden': 'true' });
   drawInitials(canvas, c.name);
-  const learners = c.meta.action.type === 'continuous' ? ['NEAT', 'PPO'] : ['NEAT', 'DQN', 'PPO'];
   return h('div', { class: 'card', testid: `card-${c.id}` },
     h('a', { class: 'card-link', href: formatRoute({ page: 'gallery' }) + c.id },
       canvas,
       h('div', { class: 'card-body' },
         h('h2', null, c.name),
         h('p', null, c.meta.tagline),
-        h('div', { class: 'badges' },
-          h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated'),
-          h('span', { class: 'badge badge-dim' }, '2D'),
-          ...learners.map((l) => h('span', { class: 'badge' }, l))))),
+        cardMeta('2D', c.meta.action.type === 'continuous' ? ['NEAT', 'PPO'] : ['NEAT', 'DQN', 'PPO'], true))),
     h('div', { class: 'card-actions' },
       h('button', { type: 'button', testid: `card-source-${c.id}`, onclick: () => showSource(c) }, 'View source'),
       h('button', { type: 'button', testid: `card-export-${c.id}`, onclick: () => download(`${c.id}.evolab-concept.json`, toConceptFile(c)) }, 'Export'),
@@ -49,12 +54,17 @@ function createCard(): HTMLElement {
 /** The recorded demo is a static file beside the app (`RESERVED_IDS` has "demo"), so the router leaves this link to the browser. */
 function demoLink(): HTMLElement {
   const a = h('a', { class: 'demo-link', href: `${import.meta.env.BASE_URL}demo/`, testid: 'gallery-demo' });
-  a.innerHTML = '<svg viewBox="5 4 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
-  a.append(h('span', null,
-    h('b', null, 'Watch the 6-minute demo'),
-    h('span', null, 'A real recorded run: play, set rewards, watch NEAT learn, and generate a game from a sentence.')));
+  a.innerHTML = '<svg viewBox="5 4 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  a.append('Watch the 6-minute demo');
   return a;
 }
+
+const STEPS: [string, string][] = [
+  ['Play', 'Take the controls yourself and see what the game asks for.'],
+  ['Rewards', 'Decide what counts as good, and how much.'],
+  ['Network', 'See what it senses and choose how it learns.'],
+  ['Learn', 'Watch generations improve, live.'],
+];
 
 export const galleryPage: PageFn = (root) => {
   let gone = false;
@@ -66,11 +76,8 @@ export const galleryPage: PageFn = (root) => {
       h('div', { class: 'card-body' },
         h('h2', null, def.meta.name),
         h('p', null, def.meta.tagline),
-        h('div', { class: 'badges' },
-          h('span', { class: 'badge badge-dim' }, def.meta.dims.toUpperCase()),
-          ...def.meta.learners.map((l) => h('span', { class: 'badge' }, l.toUpperCase())))));
+        cardMeta(def.meta.dims.toUpperCase(), def.meta.learners.map((l) => l.toUpperCase()))));
   });
-  const grid = h('div', { class: 'card-grid' }, ...cards);
   const libraryError = h('p', { class: 'errors-line', role: 'alert' });
   const ownGrid = h('div', { class: 'card-grid' }, createCard());
   let generated: HTMLElement[] = [];
@@ -79,28 +86,29 @@ export const galleryPage: PageFn = (root) => {
     for (const el of generated) el.remove();
     generated = list.map((c) => generatedCard(c, refresh));
     ownGrid.append(...generated);
-  }, () => { libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
+  }, () => { libraryError.textContent = 'Generated concepts are unavailable. This browser blocks IndexedDB.'; });
   void refresh();
 
-  const steps: [string, string][] = [['Play', 'Try the game yourself.'], ['Rewards', 'Decide what counts as good.'], ['Network', 'Choose how it learns.'], ['Learn', 'Watch it get there.']];
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
       h('a', { class: 'brand', href: formatRoute({ page: 'gallery' }) }, 'EvoLab'),
+      h('span', { class: 'brand-tag' }, 'ai, please learn'),
       topNav('gallery')),
     h('main', { class: 'gallery' },
-      h('section', { class: 'hero' },
-        h('div', { class: 'hero-text' },
+      h('div', { class: 'gal' },
+        h('section', { class: 'intro' },
           h('h1', null, 'Watch a neural network learn to play.'),
-          h('p', { class: 'lede' }, 'EvoLab trains small neural networks live in your browser. Pick a game below and see them go from flailing to competent, one generation at a time.'),
-          demoLink()),
-        h('ol', { class: 'hero-steps', 'aria-label': 'Every concept has four steps' },
-          ...steps.map(([name, what]) => h('li', null, h('b', null, name), h('span', null, what))))),
-      h('section', { class: 'gallery-section' },
-        h('h2', { class: 'section-title' }, 'Pick a concept'),
-        grid),
-      h('section', { class: 'gallery-section' },
-        h('h2', { class: 'section-title' }, 'Your concepts'),
-        h('p', { class: 'section-note' }, 'Concepts you create or import appear here. They are stored in this browser only.'),
+          h('p', { class: 'lede' }, 'EvoLab trains small neural networks live in your browser. Pick a game and see them go from flailing to competent, one generation at a time.'),
+          h('h2', null, 'How a session goes'),
+          h('ol', { class: 'hero-steps' }, ...STEPS.map(([name, what]) => h('li', null, h('b', null, name), h('span', null, what)))),
+          h('div', { class: 'cta' },
+            h('a', { class: 'btn btn-primary', href: formatRoute({ page: 'concept', envId: 'snake', step: 1 }), testid: 'gallery-start' }, 'Start with Snake'),
+            demoLink())),
+        h('section', { class: 'card-grid', 'aria-label': 'Concepts' }, ...cards)),
+      h('section', { class: 'own' },
+        h('div', { class: 'own-head' },
+          h('h2', null, 'Your concepts'),
+          h('p', null, 'Concepts you create or import appear here. They are stored in this browser only.')),
         libraryError, ownGrid))));
   return () => { gone = true; };
 };
