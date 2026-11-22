@@ -50,4 +50,11 @@ describe('champion export/import', () => {
     } else throw new Error('expected an MLP policy');
     expect(errorsOf(mlp(26)).join(' ')).toContain('27');
   });
+
+  it('an unscored champion (NaN stats: no episode finished yet) still exports a file that imports', async () => {
+    const e = await exported();
+    const nan = toExport(spec, { learner, seed: 1, reward: defaultReward(reach1d) }, { iteration: 1, best: NaN, mean: NaN, median: NaN }, e.policy as never, NOW);
+    expect(nan.stats).toEqual({ best: 0, mean: 0, median: 0 });
+    expect(parseExport(JSON.parse(JSON.stringify(nan)), spec).ok).toBe(true);
+  });
 });

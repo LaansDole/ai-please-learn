@@ -33,17 +33,19 @@ export function legacyHashPath(hash: string, base = BASE): string | null {
   return hash.startsWith('#/') ? base + hash.slice(2).replace(/^c\//, '') : null;
 }
 
+const saveScroll = () => history.replaceState({ ...(history.state as object | null), scrollY: window.scrollY }, '');
+
 /** In-app navigation that adds a history entry. The entry left behind remembers its scroll position for back/forward. */
 export function navigate(path: string): void {
   if (path !== location.pathname) {
-    history.replaceState({ ...(history.state as object | null), scrollY: window.scrollY }, '');
+    saveScroll();
     history.pushState(null, '', path);
   }
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function startRouter(root: HTMLElement, pages: Record<Route['page'], PageFn>): void {
-  let current: Route | null = null, unmount: Unmount | void;
+  let current: Route | null = null, unmount: Unmount | void, raf = 0, saving = 0;
   history.scrollRestoration = 'manual';                // the page is rebuilt on every route: render() restores the position itself
   const render = (e?: Event) => {
     const legacy = legacyHashPath(location.hash);
@@ -59,9 +61,20 @@ export function startRouter(root: HTMLElement, pages: Record<Route['page'], Page
     current = next;
     unmount = pages[next.page](root, next);
     // Back and forward (a real popstate) return to where the reader was; a link opens its page at the top.
-    window.scrollTo(0, e?.isTrusted ? (history.state as { scrollY?: number } | null)?.scrollY ?? 0 : 0);
+    // Cards and concept pages can arrive after this frame (IndexedDB): until the page is tall enough the position clamps,
+    // so it is set again each frame, for at most 600 ms.
+    const y = e?.isTrusted ? (history.state as { scrollY?: number } | null)?.scrollY ?? 0 : 0, t0 = performance.now();
+    cancelAnimationFrame(raf);
+    const restore = () => {
+      window.scrollTo(0, y);
+      raf = window.scrollY < y - 1 && performance.now() - t0 < 600 ? requestAnimationFrame(restore) : 0;
+    };
+    restore();
   };
   window.addEventListener('popstate', render);       // back/forward, navigate(), and a hash typed into the address bar
+  // navigate() saves the position of the page it leaves; Back leaves a page without it, so Forward needs it saved while scrolling.
+  // Not while a restore is pending: the position is still clamped then, and saving it would overwrite the one being restored.
+  window.addEventListener('scroll', () => { clearTimeout(saving); saving = window.setTimeout(() => { if (!raf) saveScroll(); }, 150); }, { passive: true });
   // Plain left-clicks on links to a page of the app navigate without a page load. New tabs, downloads, other sites, in-page
   // anchors and files that sit next to the app (assets, the demo) stay with the browser.
   document.addEventListener('click', (e) => {

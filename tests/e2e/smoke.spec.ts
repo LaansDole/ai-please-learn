@@ -56,9 +56,15 @@ test('router: the open page\'s own tab keeps the page, Back returns to where the
   await page.getByTestId('card-create').click();
   await expect(page.getByTestId('create')).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);                                      // a link opens its page at the top
+  await page.mouse.wheel(0, 60);                                                                  // scrolled with no navigate(): only the scroll listener can remember it
+  await expect.poll(() => page.evaluate(() => (history.state as { scrollY?: number } | null)?.scrollY ?? 0)).toBeGreaterThan(0);
+  const yCreate = await page.evaluate(() => window.scrollY);
   await page.goBack();
   await expect(page.getByTestId('gallery')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y);
+  await page.goForward();
+  await expect(page.getByTestId('create')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(yCreate);
 });
 
 test('the Demo tab opens the recorded demo, whose top bar is the app\'s and leads back', async ({ page }) => {

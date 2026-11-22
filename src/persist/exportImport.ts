@@ -15,11 +15,13 @@ export function toExport(
   spec: EnvSpecMsg, run: { learner: LearnerConfig; seed: number; reward: RewardConfig },
   stats: Pick<IterationStats, 'iteration' | 'best' | 'mean' | 'median'>, policy: PolicySnapshot, now: Date,
 ): ChampionExport {
+  // A PPO champion saved before any episode ended has no score (NaN). JSON would write null, which import rejects: write 0.
+  const fin = (v: number) => (Number.isFinite(v) ? v : 0);
   return {
     format: 'evolab-champion', version: 1, exportedAt: now.toISOString(),
     env: { id: spec.meta.id, observationSize: spec.observation.labels.length, action: spec.action },
     learner: run.learner, reward: run.reward, seed: run.seed, iteration: stats.iteration,
-    stats: { best: stats.best, mean: stats.mean, median: stats.median },
+    stats: { best: fin(stats.best), mean: fin(stats.mean), median: fin(stats.median) },
     policy: policy.kind === 'neat' ? policy : { ...policy, params: Array.from(policy.params) },
   };
 }

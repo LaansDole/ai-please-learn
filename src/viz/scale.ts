@@ -21,20 +21,24 @@ export function tickLabel(v: number): string {
   return a >= 10000 ? `${(v / 1000).toFixed(0)}k` : a >= 100 || Number.isInteger(v) ? v.toFixed(0) : String(Number(v.toPrecision(3)));
 }
 
-/** Min/max bucketing: at most about 2 * maxPoints points, endpoints kept, extremes kept. Non-finite y values are never picked. */
+/**
+ * Min/max bucketing: at most about 3 * maxPoints points, endpoints kept, extremes kept. A non-finite y is never picked as
+ * an extreme, but a bucket that holds one keeps it as a gap, so the line still lifts its pen there.
+ */
 export function decimate(xs: number[], ys: number[], maxPoints: number): { xs: number[]; ys: number[] } {
   const n = xs.length;
   if (n <= maxPoints) return { xs, ys };
   const keep = new Set<number>([0, n - 1]), buckets = maxPoints - 1;
   for (let b = 0; b < buckets; b++) {
     const a = Math.floor((b * n) / buckets), end = Math.floor(((b + 1) * n) / buckets);
-    let lo = -1, hi = -1;
+    let lo = -1, hi = -1, gap = -1;
     for (let i = a; i < end; i++) {
-      if (!Number.isFinite(ys[i])) continue;
+      if (!Number.isFinite(ys[i])) { if (gap < 0) gap = i; continue; }
       if (lo < 0 || ys[i]! < ys[lo]!) lo = i;
       if (hi < 0 || ys[i]! > ys[hi]!) hi = i;
     }
     if (lo >= 0) { keep.add(lo); keep.add(hi); }
+    if (gap >= 0) keep.add(gap);
   }
   const idx = [...keep].sort((a, b) => a - b);
   return { xs: idx.map((i) => xs[i]!), ys: idx.map((i) => ys[i]!) };

@@ -19,6 +19,16 @@ describe('chart scales', () => {
     expect(Math.max(...d.ys)).toBe(Math.max(...ys)); expect(Math.min(...d.ys)).toBe(Math.min(...ys));
     expect(decimate([1, 2], [3, 4], 500)).toEqual({ xs: [1, 2], ys: [3, 4] });
   });
+  it('keeps a gap through decimation so the line lifts its pen', () => {
+    const xs = Array.from({ length: 1000 }, (_, i) => i), ys = xs.map((i) => (i >= 400 && i < 600 ? NaN : i));
+    const d = decimate(xs, ys, 50), first = d.ys.findIndex(Number.isNaN), last = d.ys.length - 1 - [...d.ys].reverse().findIndex(Number.isNaN);
+    expect(first).toBeGreaterThan(0);
+    expect(d.ys[first - 1]).toBeLessThan(400); expect(d.ys[last + 1]).toBeGreaterThanOrEqual(600);
+    expect(d.ys.slice(first, last + 1).every(Number.isNaN)).toBe(true);
+    // A single missing sample inside a bucket is a gap too, in its place between the neighbours.
+    const one = decimate(xs, xs.map((i) => (i === 505 ? NaN : i)), 50), at = one.ys.findIndex(Number.isNaN);
+    expect(one.xs[at]).toBe(505); expect(one.ys[at - 1]).toBeLessThan(505); expect(one.ys[at + 1]).toBeGreaterThan(505);
+  });
   it('stacks species shares in order of first appearance', () => {
     expect(speciesBands([{ species: [{ id: 1, size: 30 }, { id: 2, size: 10 }] }, { species: [{ id: 2, size: 20 }, { id: 3, size: 20 }] }]))
       .toEqual({ ids: [1, 2, 3], rows: [[0.75, 1, 1], [0, 0.5, 1]], pooled: 0 });
