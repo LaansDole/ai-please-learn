@@ -45,14 +45,16 @@ export const OTHER = -1;
 
 /**
  * What the species chart draws. NEAT makes and loses species every few generations, and one band per species is unreadable:
- * only species that reach `minShare` of the population are kept (the `maxBands` largest of them, in order of first
- * appearance, oldest at the bottom), and everything else is pooled into one `OTHER` band on top. Shares are averaged over
- * neighbouring generations on long runs, so a band changes shape with the trend and not with every reshuffle.
- * rows[g][k] is the cumulative upper bound in [0, 1] of band ids[k] at generation g; the last band always ends at 1.
+ * every generation draws its own `top` largest species (ties go to the older one) and pools the rest into one `OTHER` band
+ * on top, so that band is never more than what the largest leave over. Bands are stacked in order of first appearance,
+ * oldest at the bottom. Shares are averaged over neighbouring generations on long runs, so a band changes shape with the
+ * trend and not with every reshuffle; the window shrinks towards both ends, so the first and last columns are exact.
+ * rows[g][k] is the cumulative upper bound in [0, 1] of band ids[k] at generation g (a species outside that generation's
+ * largest has no height there); the last band ends at 1.
  * `pooled` counts the species alive in the last generation that are inside `OTHER`.
  */
 export function speciesBands(
-  history: readonly { species: { id: number; size: number }[] }[], { minShare = 0.06, maxBands = 7 } = {},
+  history: readonly { species: { id: number; size: number }[] }[], { top = 6 } = {},
 ): { ids: number[]; rows: number[][]; pooled: number } {
   const all: number[] = [], index = new Map<number, number>(), n = history.length;
   for (const g of history) for (const s of g.species) if (!index.has(s.id)) { index.set(s.id, all.length); all.push(s.id); }
@@ -63,36 +65,43 @@ export function speciesBands(
   });
   // Centred moving average; the same window for every species, so a column still sums to 1.
   const radius = Math.min(4, Math.floor(n / 12));
-  const smooth = radius === 0 ? raw : raw.map((_, g) => {
-    const a = Math.max(0, g - radius), b = Math.min(n - 1, g + radius);
-    return all.map((_, k) => { let sum = 0; for (let i = a; i <= b; i++) sum += raw[i]![k]!; return sum / (b - a + 1); });
+  const smooth = raw.map((own, g) => {
+    const r = Math.min(radius, g, n - 1 - g);
+    return r === 0 ? own : all.map((_, k) => { let sum = 0; for (let i = g - r; i <= g + r; i++) sum += raw[i]![k]!; return sum / (2 * r + 1); });
   });
-  const peak = all.map((_, k) => smooth.reduce((m, row) => Math.max(m, row[k]!), 0));
-  const area = all.map((_, k) => smooth.reduce((sum, row) => sum + row[k]!, 0));
-  const kept = all.map((_, k) => k).filter((k) => peak[k]! >= minShare).sort((a, b) => area[b]! - area[a]!).slice(0, maxBands).sort((a, b) => a - b);
-  const other = kept.length < all.length;
-  const rows = smooth.map((row) => {
-    let acc = 0;
-    const out = kept.map((k) => (acc += row[k]!));
-    if (other) out.push(1); else if (out.length) out[out.length - 1] = 1;
+  let other = false;
+  const largest = smooth.map((row) => {
+    const alive = row.flatMap((share, k) => (share > 0 ? [k] : []));
+    other ||= alive.length > top;
+    return new Set(alive.sort((a, b) => row[b]! - row[a]! || a - b).slice(0, top));
+  });
+  const kept = all.flatMap((_, k) => (largest.some((set) => set.has(k)) ? [k] : []));
+  const rows = smooth.map((row, g) => {
+    let acc = 0, last = -1;
+    const out = kept.map((k, j) => { if (largest[g]!.has(k)) { acc += row[k]!; last = j; } return acc; });
+    // Without a pooled band the largest species fill the column: close it at exactly 1, rounding aside.
+    if (other) out.push(1); else if (last >= 0) out.fill(1, last);
     return out;
   });
-  const shown = new Set(kept.map((k) => all[k]!));
-  return { ids: [...kept.map((k) => all[k]!), ...(other ? [OTHER] : [])], rows, pooled: history.at(-1)?.species.filter((s) => s.size > 0 && !shown.has(s.id)).length ?? 0 };
+  const now = smooth.at(-1)?.filter((share) => share > 0).length ?? 0;
+  return { ids: [...kept.map((k) => all[k]!), ...(other ? [OTHER] : [])], rows, pooled: now - (largest.at(-1)?.size ?? 0) };
 }
 
 /**
  * Palette slots for the bands in `ids`. A species keeps the slot it was first given (`slots` outlives the call), and a new
- * one takes a slot that no band beside it uses. At most `palette` real ids at a time.
+ * one takes a slot that no band drawn in the same generation uses.
  */
-export function assignColours(ids: readonly number[], slots: Map<number, number>, palette: number): void {
-  const used = new Set(ids.flatMap((id) => (slots.has(id) ? [slots.get(id)!] : [])));
-  for (const id of ids) {
-    if (id === OTHER || slots.has(id) || used.size >= palette) continue;
+export function assignColours(ids: readonly number[], rows: readonly number[][], slots: Map<number, number>, palette: number): void {
+  const drawn = (row: number[], k: number) => row[k]! > (k === 0 ? 0 : row[k - 1]!);
+  ids.forEach((id, k) => {
+    if (id === OTHER || slots.has(id)) return;
+    const used = new Set<number>();
+    for (const row of rows) if (drawn(row, k)) ids.forEach((o, j) => { if (slots.has(o) && drawn(row, j)) used.add(slots.get(o)!); });
+    // ponytail: with every slot taken by a species it has met over its life, it shares its own id's slot; the id on the band tells them apart.
     let s = id % palette;
-    while (used.has(s)) s = (s + 1) % palette;
-    slots.set(id, s); used.add(s);
-  }
+    for (let i = 0; i < palette && used.has(s); i++) s = (s + 1) % palette;
+    slots.set(id, s);
+  });
 }
 
 /** The highest value so far at each index: the line that answers "is it improving?". `restart(i)` begins a new record at i. */

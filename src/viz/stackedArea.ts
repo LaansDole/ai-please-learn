@@ -4,10 +4,10 @@ import { assignColours, OTHER } from './scale';
 const PAD = { l: 52, r: 12, t: 10, b: 22 }, LABEL_MIN_HEIGHT = 14, PALETTE = 7;
 
 /**
- * Stacked population shares, one band per species that matters and one grey band for the rest (`speciesBands`). A band is
- * never told apart by hue alone: it carries its id on the chart and in the legend below. Spec section 11.4.
- * `rows` may be a sample of the run; `total` is the real number of generations (axis label, data-points); `pooled` is how
- * many species the grey band holds now.
+ * Stacked population shares, one band per species among a generation's largest and one grey band for the rest
+ * (`speciesBands`). A band is never told apart by hue alone: it carries its id on the chart and in the legend below. Spec
+ * section 11.4. `rows` may be a sample of the run; `total` is the real number of generations (axis label, data-points);
+ * `pooled` is how many species the grey band holds now.
  */
 export function createStackedArea(opts: { testid: string; title: string; note: string }): { el: HTMLElement; setData(ids: number[], rows: number[][], total?: number, pooled?: number): void } {
   let ids: number[] = [], rows: number[][] = [], total = 0, legendKey = '';
@@ -33,17 +33,26 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
     const y = (share: number) => PAD.t + (1 - share) * plotH;
     const top = (g: number, k: number) => rows[g]![k]!, bottom = (g: number, k: number) => (k === 0 ? 0 : rows[g]![k - 1]!);
     const colour = (id: number) => (id === OTHER ? c.token('--line-strong') : c.token(`--species-${slots.get(id)! + 1}`));
+    ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.lineJoin = 'round';
     for (let k = 0; k < ids.length; k++) {
-      ctx.beginPath();
-      if (n === 1) ctx.rect(PAD.l, y(top(0, k)), plotW, y(bottom(0, k)) - y(top(0, k)));
-      else {
-        ctx.moveTo(x(0), y(top(0, k)));
-        for (let g = 1; g < n; g++) ctx.lineTo(x(g), y(top(g, k)));
-        for (let g = n - 1; g >= 0; g--) ctx.lineTo(x(g), y(bottom(g, k)));
-        ctx.closePath();
+      ctx.fillStyle = colour(ids[k]!);
+      // A species is drawn only over the generations where it has a band, and tapers to nothing on either side.
+      for (let a = 0; a < n; a++) {
+        if (!(top(a, k) > bottom(a, k))) continue;
+        let b = a;
+        while (b + 1 < n && top(b + 1, k) > bottom(b + 1, k)) b++;
+        const from = Math.max(a - 1, 0), to = Math.min(b + 1, n - 1);
+        ctx.beginPath();
+        if (n === 1) ctx.rect(PAD.l, y(top(0, k)), plotW, y(bottom(0, k)) - y(top(0, k)));
+        else {
+          ctx.moveTo(x(from), y(top(from, k)));
+          for (let g = from + 1; g <= to; g++) ctx.lineTo(x(g), y(top(g, k)));
+          for (let g = to; g >= from; g--) ctx.lineTo(x(g), y(bottom(g, k)));
+          ctx.closePath();
+        }
+        ctx.fill(); ctx.stroke();                    // the stroke is a hairline between neighbours
+        a = b;
       }
-      ctx.fillStyle = colour(ids[k]!); ctx.fill();
-      ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.lineJoin = 'round'; ctx.stroke();   // a hairline between neighbours
     }
     // Each species carries its id where its band is thickest, if the id fits inside it.
     ctx.textAlign = 'center'; ctx.font = `bold 11px ${mono}`;
@@ -72,18 +81,19 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
     ctx.save(); ctx.translate(9, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('share of population', 0, 0); ctx.restore();
   }
 
-  /** The bands alive now, largest share first, with what the numbers mean. */
+  /** The bands of the latest generation, largest share first and the grey band last, with what the numbers mean. */
   function renderLegend(pooled: number): void {
     const last = rows.at(-1) ?? [];
-    const items = ids.map((id, k) => ({ id, share: Math.round((last[k]! - (k === 0 ? 0 : last[k - 1]!)) * 100) }))
-      .filter((b) => b.share >= 1).sort((a, b) => Number(a.id === OTHER) - Number(b.id === OTHER) || b.share - a.share);
+    const items = ids.map((id, k) => ({ id, height: last[k]! - (k === 0 ? 0 : last[k - 1]!) })).filter((b) => b.height > 0)
+      .sort((a, b) => Number(a.id === OTHER) - Number(b.id === OTHER) || b.height - a.height)
+      .map((b) => ({ id: b.id, share: b.height < 0.005 ? '<1%' : `${Math.round(b.height * 100)}%` }));
     const key = items.map((b) => `${b.id}:${b.share}`).join() + `|${pooled}`;
     if (key === legendKey) return;
     legendKey = key;
     legend.replaceChildren(...items.map((b) => {
       const li = document.createElement('li'), swatch = document.createElement('i'), share = document.createElement('span');
       swatch.style.background = b.id === OTHER ? 'var(--line-strong)' : `var(--species-${slots.get(b.id)! + 1})`;
-      share.className = 'num'; share.textContent = `${b.share}%`;
+      share.className = 'num'; share.textContent = b.share;
       li.append(swatch, b.id === OTHER ? `${pooled} smaller species` : `species ${b.id}`, share);
       return li;
     }));
@@ -94,7 +104,7 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
     setData(i, r, t = r.length, pooled = 0) {
       if (t < total) slots.clear();                  // a new run numbers its species from the start again
       ids = i; rows = r; total = t;
-      assignColours(ids, slots, PALETTE);
+      assignColours(ids, rows, slots, PALETTE);
       c.canvas.dataset.points = String(t); c.canvas.dataset.bands = String(ids.length);
       renderLegend(pooled);
       c.redraw();

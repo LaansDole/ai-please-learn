@@ -67,18 +67,49 @@ describe('running best', () => {
 
 describe('species bands', () => {
   const gen = (...sizes: number[]) => ({ species: sizes.flatMap((size, i) => (size > 0 ? [{ id: i + 1, size }] : [])) });
-  it('keeps the big species in order of first appearance and pools the small ones into "other" on top', () => {
-    const b = speciesBands([gen(60, 30, 4, 3, 3), gen(50, 40, 5, 5, 0)], { minShare: 0.1 });
+  /** Band heights of generation g, by id. */
+  const heights = (b: { ids: number[]; rows: number[][] }, g: number) =>
+    new Map(b.ids.map((id, k) => [id, +(b.rows[g]![k]! - (k === 0 ? 0 : b.rows[g]![k - 1]!)).toFixed(6)]));
+  it('keeps the largest species in order of first appearance and pools the rest into "other" on top', () => {
+    const b = speciesBands([gen(60, 30, 4, 3, 3), gen(50, 40, 5, 5, 0)], { top: 2 });
     expect(b.ids).toEqual([1, 2, OTHER]);
     expect(b.rows[0]!.map((v) => +v.toFixed(4))).toEqual([0.6, 0.9, 1]);
     expect(b.rows[1]!.map((v) => +v.toFixed(4))).toEqual([0.5, 0.9, 1]);
     expect(b.pooled).toBe(2);                        // species 3 and 4 are alive in the last generation
   });
-  it('has no "other" band when nothing is pooled, and caps the number of bands', () => {
+  it('has no "other" band when nothing is pooled', () => {
     expect(speciesBands([gen(50, 50)]).ids).toEqual([1, 2]);
-    const many = speciesBands([gen(...new Array<number>(20).fill(5))], { minShare: 0.01, maxBands: 7 });
-    expect(many.ids).toHaveLength(8);
-    expect(many.pooled).toBe(13);
+  });
+  it('many equal small species: the top six stay visible, "other" is exactly what they leave over', () => {
+    const b = speciesBands(Array.from({ length: 3 }, () => gen(...new Array<number>(20).fill(5))));
+    expect(b.ids).toEqual([1, 2, 3, 4, 5, 6, OTHER]);          // ties go to the older species, the same ones every generation
+    for (let g = 0; g < 3; g++) expect([...heights(b, g).values()]).toEqual([0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.7]);
+    expect(b.pooled).toBe(14);
+  });
+  it('one dominant species: it and the next five are drawn, "other" is the sliver that is left', () => {
+    const b = speciesBands([gen(90, 2, 2, 2, 2, 1, 1)]);
+    expect(b.ids).toEqual([1, 2, 3, 4, 5, 6, OTHER]);
+    expect(heights(b, 0).get(1)).toBe(0.9);
+    expect(heights(b, 0).get(OTHER)).toBe(0.01);
+    expect(b.pooled).toBe(1);
+  });
+  it('species dying and new ones appearing: each generation shows its own largest, never one fixed set', () => {
+    // The old rule kept the species with the largest area over the whole run: by the last generation they were all dead
+    // and the grey band was 100% of the chart.
+    const history = [gen(50, 30, 20), gen(0, 40, 35, 25), gen(0, 0, 0, 10, 45, 45), gen(0, 0, 0, 0, 20, 30, 50)];
+    const b = speciesBands(history, { top: 2 });
+    expect(b.ids).toEqual([1, 2, 3, 5, 6, 7, OTHER]);
+    const want = [{ 1: 0.5, 2: 0.3 }, { 2: 0.4, 3: 0.35 }, { 5: 0.45, 6: 0.45 }, { 6: 0.3, 7: 0.5 }] as Record<number, number>[];
+    want.forEach((top, g) => {
+      const h = heights(b, g), sum = Object.values(top).reduce((a, v) => a + v, 0);
+      for (const id of b.ids) expect(h.get(id), `gen ${g} id ${id}`).toBeCloseTo(id === OTHER ? 1 - sum : top[id] ?? 0);
+    });
+    expect(b.pooled).toBe(1);                        // species 5
+  });
+  it('the last column is the last generation itself, so the legend reads true shares on a long smoothed run', () => {
+    const history = [...Array.from({ length: 59 }, () => gen(70, 30)), gen(0, 25, 60, 15)];
+    const h = heights(speciesBands(history, { top: 2 }), 59);
+    expect([h.get(1), h.get(2), h.get(3), h.get(OTHER)]).toEqual([0, 0.25, 0.6, 0.15]);
   });
   it('smooths long runs without leaving gaps: every column still fills 0..1', () => {
     const history = Array.from({ length: 60 }, (_, g) => (g % 2 ? gen(90, 10) : gen(10, 90)));
@@ -92,11 +123,19 @@ describe('species bands', () => {
   });
   it('gives a species one colour for good, and never shares it with a species shown beside it', () => {
     const slots = new Map<number, number>();
-    assignColours([1, 8, OTHER], slots, 7);          // 1 and 8 both want slot 1
+    assignColours([1, 8, OTHER], [[0.5, 0.9, 1]], slots, 7);          // 1 and 8 both want slot 1
     expect(slots.get(1)).toBe(1); expect(slots.get(8)).not.toBe(1);
     const eight = slots.get(8);
-    assignColours([8, 15, OTHER], slots, 7);
+    assignColours([8, 15, OTHER], [[0.5, 0.9, 1]], slots, 7);
     expect(slots.get(8)).toBe(eight); expect(slots.get(15)).not.toBe(eight);
     expect(slots.has(OTHER)).toBe(false);
+  });
+  it('colours a run with more species than the palette: every band has a slot, neighbours in a generation differ', () => {
+    // Generation g holds species g+1, g+2, g+3: 22 species over the run, three at a time.
+    const history = Array.from({ length: 20 }, (_, g) => ({ species: [1, 2, 3].map((d) => ({ id: g + d, size: 10 * d })) }));
+    const b = speciesBands(history), slots = new Map<number, number>();
+    assignColours(b.ids, b.rows, slots, 7);
+    expect(b.ids.every((id) => slots.get(id)! >= 0 && slots.get(id)! < 7)).toBe(true);
+    for (const g of history) expect(new Set(g.species.map((s) => slots.get(s.id))).size).toBe(3);
   });
 });

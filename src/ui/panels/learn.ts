@@ -40,7 +40,7 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
   const species = createStackedArea({
     testid: 'species-chart', title: 'Species',
     note: 'Each band is a species: a family of networks alike enough to breed. Its height is its share of the population. '
-      + 'The number is the species\' id, counted up as new ones appear. Species that stay small share the grey band.',
+      + 'The number is the species\' id, counted up as new ones appear. Each generation shows its six largest species; the rest share the grey band.',
   });
   const rlPanels = createRlPanels(session);
   const discrete = spec.action.type === 'discrete';
