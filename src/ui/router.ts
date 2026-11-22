@@ -55,11 +55,12 @@ export function startRouter(root: HTMLElement, pages: Record<Route['page'], Page
     window.scrollTo(0, 0);
   };
   window.addEventListener('popstate', render);       // back/forward, navigate(), and a hash typed into the address bar
-  // Plain left-clicks on links into the app navigate without a page load. New tabs, downloads and other sites stay with the browser.
+  // Plain left-clicks on links to a page of the app navigate without a page load. New tabs, downloads, other sites, in-page
+  // anchors and files that sit next to the app (assets, the demo) stay with the browser.
   document.addEventListener('click', (e) => {
     const a = e.target instanceof Element ? e.target.closest('a') : null;
     if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (a.target || a.hasAttribute('download') || a.origin !== location.origin || !a.pathname.startsWith(BASE)) return;
+    if (a.target || a.hasAttribute('download') || a.origin !== location.origin || a.hash || parseRoute(a.pathname).page === 'notfound') return;
     e.preventDefault();
     navigate(a.pathname);
   });
