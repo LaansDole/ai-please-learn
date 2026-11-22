@@ -26,10 +26,13 @@ test('R restarts the game on step 1 after a game over and mid-game, and only the
   // Step 2: the play panel is gone, so R does nothing (the stage keeps its last frame count).
   await page.getByTestId('step-2').click();
   await expect(restart).toHaveCount(0);
-  const frames = await page.getByTestId('stage').getAttribute('data-frames');
+  // A frame that was in flight when the step changed may still land: read the count once it has stopped moving.
+  const stage = page.getByTestId('stage');
+  let frames = '';
+  await expect.poll(async () => { const before = frames; frames = (await stage.getAttribute('data-frames'))!; return frames === before; }, { intervals: [150] }).toBe(true);
   await page.keyboard.press('r');
   await page.waitForTimeout(300);
-  await expect(page.getByTestId('stage')).toHaveAttribute('data-frames', frames!);
+  await expect(stage).toHaveAttribute('data-frames', frames);
 });
 
 test('the walker binds R to a knee, so its restart shortcut falls back to N', async ({ page }) => {
