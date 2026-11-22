@@ -157,6 +157,8 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
 /* The open step takes the page's ground: the tab opens onto the page below it. */
 .step[aria-current="step"], .step[aria-current="step"]:hover { background: var(--bg); color: var(--text); }
 .step[aria-current="step"] .step-num { color: var(--accent-2); }
+/* The top bar's ochre focus ring is 2:1 on the open tab's paper: there the ring is the pen blue. */
+.step[aria-current="step"]:focus-visible { outline-color: var(--accent-2); }
 @media (max-width: 960px) {
   .stepper { order: 3; flex-basis: 100%; }
   .stepper ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
@@ -310,6 +312,8 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .stat-label { font-size: var(--fs-small); color: var(--muted); white-space: nowrap; }
 .stat-value { font-size: 1.625rem; line-height: 1.15; white-space: nowrap; }
 .stat-value small { margin-left: 6px; font-size: var(--fs-small); color: var(--muted); }
+/* The record carries the iteration that set it ("29.2 round 87"): two columns, so the unit is never cut. */
+.stat-wide { grid-column: span 2; }
 /* Timing tower: standings and the last laps, tabular. */
 .tower { display: flex; flex-direction: column; gap: 6px; align-self: start; }
 .tower h3 { display: flex; align-items: baseline; gap: 10px; margin: 0; }
@@ -377,6 +381,8 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .hof-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hof-head h3 { margin: 0; }
 .hof { display: flex; gap: 6px; margin: 0; padding: 2px 2px 8px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.hof li { flex: none; }
+.hof[data-more] { mask-image: linear-gradient(to right, transparent, #000 32px); }
 .hof button { min-height: 30px; padding: 2px 10px; border-color: var(--line-strong); font-size: var(--fs-small); }
 .hof button[aria-pressed="true"] { border-color: var(--text); }
 .file-btn { position: relative; }

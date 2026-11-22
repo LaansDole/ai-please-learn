@@ -4,7 +4,7 @@ import { COLS, PIECES, ROWS, bag, emptyBoard, features, holes, place, placements
 
 const CELL = 25, X0 = (800 - COLS * CELL) / 2, START_X = 3;
 const LINES = 0, TETRIS = 1, PIECE = 2, HOLES = 3, TOPOUT = 4;
-const BG = '#f9faf5', FG = '#16241d', DIM = '#9aa79c', ACCENT = '#1d4a3b', WARN = '#a65a3a', WELL = '#eef1e8';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#9aa79c', SETTLED = '#4b5a51', ACCENT = '#1d4a3b', WARN = '#a65a3a', WELL = '#eef1e8';
 
 function create(): Env {
   let board = emptyBoard(), scratch = emptyBoard();
@@ -59,7 +59,7 @@ function create(): Env {
       d.clear(BG);
       d.rect(X0 - 2, 0, COLS * CELL + 4, ROWS * CELL, DIM); d.rect(X0, 0, COLS * CELL, ROWS * CELL, WELL);
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-        if (board.rows[r]! & (1 << c)) d.rect(X0 + c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2, DIM);
+        if (board.rows[r]! & (1 << c)) d.rect(X0 + c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2, SETTLED);
       }
       for (const [c, r] of lastPlaced) d.rect(X0 + c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2, ACCENT);
       const preview = (piece: number, label: string, y: number) => {

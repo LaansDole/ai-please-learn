@@ -17,7 +17,9 @@ export function createHallOfFame(session: Session): { el: HTMLElement; dispose()
     const entry = selected() ?? session.hof.at(-1);
     if (!entry) return;
     const run = session.run ?? { learner: resolveConfig(spec.meta.learners[0]!, spec), seed: 1 };
-    const stats = session.history.find((s) => s.iteration === entry.iteration) ?? { iteration: 0, best: entry.best, mean: entry.best, median: entry.best };
+    // A PPO update in which no episode ended has no score of its own: the file carries the latest one before it.
+    const at = entry.iteration === 'imported' ? undefined : session.history.filter((s) => s.iteration <= (entry.iteration as number) && Number.isFinite(s.best)).at(-1);
+    const stats = at ? { ...at, iteration: entry.iteration as number } : { iteration: 0, best: entry.best, mean: entry.best, median: entry.best };
     const data = toExport(spec, { ...run, reward: session.reward }, stats, entry.policy, new Date());
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const a = h('a', { href: url, download: exportFileName(data) });
@@ -51,14 +53,16 @@ export function createHallOfFame(session: Session): { el: HTMLElement; dispose()
     const pinned = list.scrollLeft + list.clientWidth >= list.scrollWidth - 8;   // follow the newest unless the user scrolled back
     for (const [entry, chip] of chips) if (!live.has(entry)) { chip.parentElement?.remove(); chips.delete(entry); }
     let best: HofEntry | undefined;
-    for (const e of hof) if (!best || e.best > best.best) best = e;
+    for (const e of hof) if (Number.isFinite(e.best) && (!best || e.best > best.best)) best = e;
     for (const entry of hof) {
       let chip = chips.get(entry);
       if (!chip) {
         chip = h('button', { class: 'num', testid: 'hof-item', dataset: { iteration: String(entry.iteration) }, onclick: () => session.replay(entry) });
         chips.set(entry, chip); list.append(h('li', null, chip));
       }
-      const label = entry.iteration === 'imported' ? 'imported' : `g${entry.iteration} ${entry.best.toFixed(1)}`;
+      // g12 for a NEAT generation, r12 for a DQN round, u12 for a PPO update.
+      const unit = entry.policy.kind === 'neat' ? 'g' : entry.policy.algo === 'dqn' ? 'r' : 'u';
+      const label = entry.iteration === 'imported' ? 'imported' : `${unit}${entry.iteration} ${Number.isFinite(entry.best) ? entry.best.toFixed(1) : '-'}`;
       const text = entry === best ? `\u2605 ${label}` : label;
       if (chip.textContent !== text) chip.textContent = text;
       if (entry === best) chip.title = 'best so far'; else chip.removeAttribute('title');
@@ -68,7 +72,11 @@ export function createHallOfFame(session: Session): { el: HTMLElement; dispose()
     exportBtn.disabled = hof.length === 0;
     back.hidden = session.viewing.kind !== 'replay';
     if (pinned) list.scrollLeft = list.scrollWidth;
+    faded();
   };
+  // Chips scrolled out on the left fade at the edge instead of ending in a hard cut.
+  const faded = () => list.toggleAttribute('data-more', list.scrollLeft > 0);
+  list.addEventListener('scroll', faded, { passive: true });
   const off = session.onChange(() => { if (!raf) raf = requestAnimationFrame(render); });
   render();
   return { el, dispose() { cancelAnimationFrame(raf); off(); } };

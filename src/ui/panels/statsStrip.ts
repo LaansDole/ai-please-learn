@@ -24,7 +24,7 @@ export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLE
     nodes: cell('nodes', 'Nodes', 'Neurons in the champion, inputs and outputs included'), conns: cell('conns', 'Connections', 'Enabled connections in the champion'),
     params: cell('params', 'Parameters', 'Adjustable numbers (weights and biases) in the network'), sps: cell('sps', 'Steps per second', 'Game steps simulated per second, all networks together'),
   };
-  iteration.el.className = 'gen';
+  iteration.el.className = 'gen'; cells.record.el.classList.add('stat-wide');
   // The heartbeat of a run: the iteration counter flashes on every tick, the record only when it is beaten.
   const pen = getComputedStyle(document.documentElement).getPropertyValue('--rec').trim();
   const flash = (el: HTMLElement) => { if (el.getAnimations().length === 0) el.animate([{ color: pen, offset: 0 }], { duration: 600, easing: 'ease-out' }); };
@@ -79,7 +79,7 @@ export function createStatsStrip(session: Session, prefs: RunPrefs): { el: HTMLE
       if (value > record) flash(recordValue);
       record = value;
       recordValue.textContent = fmt(value);
-      recordWhen.textContent = `${iterationLabel(session.run?.learner.kind ?? prefs.learner).toLowerCase().slice(0, 3)} ${at}`;
+      recordWhen.textContent = `${iterationLabel(session.run?.learner.kind ?? prefs.learner).toLowerCase()} ${at}`;
     },
     dispose() { offStatus(); offIteration(); offChange(); },
   };

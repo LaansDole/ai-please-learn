@@ -4,7 +4,7 @@ import type { Env, EnvDefinition, HumanInput, RenderView } from '../env/types';
 
 const W = 800, H = 500, BX = 200, R = 12, G = 1400, FLAP = -380, PIPE_W = 60, SPACING = 260, GAP = 150, SPEED = 170, DT = 1 / 60;
 const PIPE = 0, ALIVE = 1, CRASH = 2, FLAPS = 3;
-const BG = '#f9faf5', FG = '#16241d', DIM = '#c2cabb', ACCENT = '#1d4a3b', WARN = '#a65a3a';
+const BG = '#f9faf5', FG = '#16241d', DIM = '#c2cabb', WALL = '#7f8b82', ACCENT = '#1d4a3b', WARN = '#a65a3a';
 
 interface Pipe { x: number; gapY: number; passed: boolean }
 
@@ -64,7 +64,7 @@ function create(): Env {
         for (let i = 0; i < STARS.length; i += 2) d.circle(((STARS[i]! - travelled * 0.3) % W + W) % W, STARS[i + 1]!, 1.5, DIM);
         for (const p of pipes) {
           const top = p.gapY - GAP / 2, bottom = p.gapY + GAP / 2;
-          d.rect(p.x, 0, PIPE_W, top, DIM); d.rect(p.x, bottom, PIPE_W, H - bottom, DIM);
+          d.rect(p.x, 0, PIPE_W, top, WALL); d.rect(p.x, bottom, PIPE_W, H - bottom, WALL);
           d.rect(p.x - 4, top - 10, PIPE_W + 8, 10, ACCENT); d.rect(p.x - 4, bottom, PIPE_W + 8, 10, ACCENT);
         }
         d.text(String(terms[PIPE]), W / 2 - 14, 64, FG, 48);

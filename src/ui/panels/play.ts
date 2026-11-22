@@ -49,7 +49,9 @@ export function createPlayPanel(session: Session): { el: HTMLElement; dispose():
 
   const keys = new InputTracker(spec.human.keys.map((k) => k.code));
   const send = () => { const s = keys.take(); session.input(s.held, s.pressed); };
-  const typing = (e: Event) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+  // Keys belong to whatever is being typed into or chosen from, and to an open dialog (View source), not to the game behind it.
+  const typing = (e: Event) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement
+    || (e.target instanceof HTMLElement && e.target.isContentEditable) || document.querySelector('dialog[open]') !== null;
   const onDown = (e: KeyboardEvent) => {
     if (typing(e)) return;
     if (keys.down(e.code)) { e.preventDefault(); send(); }

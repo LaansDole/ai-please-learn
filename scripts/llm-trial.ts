@@ -55,7 +55,7 @@ for (const concept of args.concepts.split('|').map((c) => c.trim()).filter(Boole
     const t0 = performance.now();
     const res = await fetch(input, init);
     const body = await res.clone().json().catch(() => null) as { usage?: { prompt_tokens?: number; completion_tokens?: number } } | null;
-    if (!res.ok) return res;                    // a rejected request (e.g. the client's temperature probe) is not a completion
+    if (!res.ok) return res;                    // a rejected request (a 4xx/5xx from the server) is not a completion
     calls++; row.calls++;
     row.latencyMs += performance.now() - t0;
     if (body?.usage) { sawUsage = true; row.promptTokens += body.usage.prompt_tokens ?? 0; row.completionTokens += body.usage.completion_tokens ?? 0; }

@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { RecordingDraw2D, RecordingScene3D, playDrawCmds, type Ctx2D } from './draw2d';
+import { FONT_UI, RecordingDraw2D, RecordingScene3D, playDrawCmds, type Ctx2D } from './draw2d';
 
 describe('draw recorders', () => {
   it('records commands with defaults and replays them on a canvas context', () => {
@@ -35,5 +36,12 @@ describe('draw recorders', () => {
       { id: 'torso', shape: 'box', size: [1, 2, 3], pos: [0, 1, 0], quat: [0, 0, 0, 1], color: '#fff', ghost: false },
       { id: '3:torso', shape: 'sphere', size: [1, 0, 0], pos: [0, 0, 0], quat: [0, 0, 0, 1], color: undefined, ghost: true },
     ]);
+  });
+});
+
+describe('canvas text font', () => {
+  it('is the UI font stack of tokens.css', () => {
+    const css = readFileSync(new URL('../ui/tokens.css', import.meta.url), 'utf8');
+    expect(/--font-ui:\s*([^;]+);/.exec(css)?.[1]).toBe(FONT_UI);
   });
 });

@@ -1,5 +1,8 @@
 import type { Body3D, Draw2D, DrawCmd, Quat, Scene3D, Vec3 } from './types';
 
+/** The font of text painted on a canvas: the value of `--font-ui` in ui/tokens.css (a test keeps the two equal). */
+export const FONT_UI = '"Gill Sans", "Gill Sans MT", Seravek, "Trebuchet MS", sans-serif';
+
 /** Draw2D that records serialisable commands instead of touching a canvas. */
 export class RecordingDraw2D implements Draw2D {
   cmds: DrawCmd[] = [];
@@ -43,7 +46,7 @@ export function playDrawCmds(ctx: Ctx2D, cmds: DrawCmd[]): void {
         if (c[3]) { ctx.fillStyle = c[2]; ctx.fill(); } else { ctx.strokeStyle = c[2]; ctx.lineWidth = 1; ctx.stroke(); }
         break;
       }
-      case 't': ctx.fillStyle = c[4]; ctx.font = `${c[5]}px "Gill Sans", "Gill Sans MT", "Trebuchet MS", Candara, system-ui, sans-serif`; ctx.fillText(c[1], c[2], c[3]); break;
+      case 't': ctx.fillStyle = c[4]; ctx.font = `${c[5]}px ${FONT_UI}`; ctx.fillText(c[1], c[2], c[3]); break;
       case 'a': ctx.globalAlpha = c[1]; break;
     }
   }

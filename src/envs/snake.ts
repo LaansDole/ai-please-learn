@@ -5,7 +5,8 @@ const N = 12, CELLS = N * N, CELL = 40, OFF_X = 160, OFF_Y = 10;
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];   // 0 right, 1 down, 2 left, 3 up (screen y grows downward, so +1 is a right turn)
 const FOOD = 0, APPROACH = 1, RETREAT = 2, DEATH = 3, STARVE = 4, SURVIVE = 5;
 const ARROWS = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'];   // indexed by direction
-const BG = '#f9faf5', DIM = '#c2cabb', MUTED = '#4b5a51', ACCENT = '#1d4a3b', WARN = '#a65a3a', HEAD = '#16241d';
+// The head is the pen blue of the interface: on the dark green body a near-black head reads as one more segment.
+const BG = '#f9faf5', DIM = '#c2cabb', MUTED = '#4b5a51', ACCENT = '#1d4a3b', WARN = '#a65a3a', FG = '#16241d', HEAD = '#1b4f9c';
 
 function create(): Env {
   let body: number[] = [];                    // cell indices, head first
@@ -84,7 +85,7 @@ function create(): Env {
         }
         d.circle(px(food) + CELL / 2, py(food) + CELL / 2, 12, WARN);
         // Score in the left gutter, like Flappy's pipe count: the board fills the full height, so nothing fits above it.
-        d.text(String(terms[FOOD]), 40, 64, HEAD, 48); d.text('food eaten', 40, 88, MUTED, 14);
+        d.text(String(terms[FOOD]), 40, 64, FG, 48); d.text('food eaten', 40, 88, MUTED, 14);
       }
       for (let i = body.length - 1; i >= (view.ghost ? 0 : 1); i--) d.rect(px(body[i]!) + 3, py(body[i]!) + 3, CELL - 6, CELL - 6, ACCENT);
       if (view.ghost) return;

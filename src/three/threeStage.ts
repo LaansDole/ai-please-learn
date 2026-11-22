@@ -3,6 +3,7 @@ import {
   HemisphereLight, LineBasicMaterial, LineSegments, Mesh, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene,
   SphereGeometry, Sprite, SpriteMaterial, Vector3, WebGLRenderer,
 } from 'three';
+import { FONT_UI } from '../env/draw2d';
 import type { Body3D, Vec3 } from '../env/types';
 import { distanceMarkers, focusOf, followCamera } from './follow';
 
@@ -48,7 +49,7 @@ function markerSprite(): { sprite: Sprite; set(metres: number): void } {
       if (metres === shown) return;
       shown = metres;
       ctx.clearRect(0, 0, 128, 64);
-      ctx.font = '34px "Gill Sans", "Gill Sans MT", "Trebuchet MS", Candara, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `34px ${FONT_UI}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = metres === 0 ? START : LABEL;
       ctx.fillText(`${metres} m`, 64, 34);
       texture.needsUpdate = true;
