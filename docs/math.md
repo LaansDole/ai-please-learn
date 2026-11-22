@@ -1,5 +1,13 @@
 # How the learners work
 
+## Purpose of ai-please-learn
+
+EvoLab (the repository is `ai-please-learn`) exists to let you watch neural networks visibly learn games in the browser, in the spirit of [Code Bullet](https://www.youtube.com/@CodeBullet) and [ml-visualized.com](https://ml-visualized.com/). You play the game first, set the rewards, pick NEAT, DQN or PPO, and watch it learn. You can also describe a new game in a sentence and an LLM writes it.
+
+It is for learners and researchers who want to see and poke at learning dynamics. It is not a benchmark suite or a production RL library. It is a personal learning project.
+
+This report is the math behind what you see on the screen, plus the open problems that are left.
+
 A technical report on the mathematics that EvoLab runs. It is written for a reader who knows reinforcement learning and wants to know exactly what this code does, where it follows the papers and where it does not. Every number below is read from the source at the linked file. Nothing is tuned per run behind the scenes.
 
 All three learners are written from scratch in TypeScript: [`src/neat`](../src/neat), [`src/nn`](../src/nn) and [`src/rl`](../src/rl). There is no ML library and no GPU. Networks compute in 32-bit floats.

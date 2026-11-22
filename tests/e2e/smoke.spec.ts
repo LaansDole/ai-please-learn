@@ -102,3 +102,9 @@ test('the Demo tab opens the recorded demo, whose top bar is the app\'s and lead
   await expect(page.getByTestId('gallery')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('the Math page opens with the project\'s purpose, listed in its contents', async ({ page }) => {
+  await page.goto('/math');
+  await expect(page.getByTestId('math-doc').getByRole('heading', { level: 2, name: /Purpose of ai-please-learn/ })).toBeVisible();
+  await expect(page.getByTestId('math-toc').locator('a').first()).toHaveText('Purpose of ai-please-learn');
+});

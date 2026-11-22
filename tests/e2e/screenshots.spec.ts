@@ -45,7 +45,7 @@ test.describe('visual acceptance screenshots', () => {
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await shot(page, '16-settings');
     await page.getByTestId('nav-math').click();
-    await expect(page.getByTestId('math-toc').locator('a')).toHaveCount(12);
+    await expect(page.getByTestId('math-toc').locator('a')).toHaveCount(13);
     await expect(page.locator('.math-doc .katex').first()).toBeVisible();
     await shot(page, '18-math', false);                     // the report is some thirty screens long: its first one
   });
