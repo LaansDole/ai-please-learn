@@ -109,7 +109,7 @@ console.log(`\n${summary}\n\n${table}`);
 const header = '# Concept from text: trials against a real LLM\n\n'
   + 'Each run below is `npm run llm-trial`: the app\'s own prompt, client, parser, static scan, sandbox, validator and repair loop '
   + `(at most ${MAX_REPAIRS} repairs), run headlessly in Node. A concept passes only when the validator accepts the module. `
-  + 'Passing modules are saved next to this file as `.evolab-concept.json` and can be imported in the gallery ("Import concept file").\n';
+  + 'Passing modules are saved next to this file as `.evolab-concept.json` and can be imported on the Create page ("Import concept file").\n';
 const previous = existsSync(RESULTS) ? readFileSync(RESULTS, 'utf8') : header;
 mkdirSync(DIR, { recursive: true });
 writeFileSync(RESULTS, `${previous}\n## Run ${(previous.match(/^## Run /gm)?.length ?? 0) + 1}\n\n${summary}\n\n${table}\n`);

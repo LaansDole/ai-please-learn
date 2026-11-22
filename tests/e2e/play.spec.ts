@@ -38,7 +38,7 @@ test('the walker binds R to a knee, so its restart shortcut falls back to N', as
 });
 
 test('the top bar links to the repository on every page', async ({ page }) => {
-  for (const url of ['/', '/#/c/snake/1', '/#/settings']) {
+  for (const url of ['/', '/#/c/snake/1', '/#/settings', '/#/create']) {
     await page.goto(url);
     const link = page.getByTestId('nav-repo');
     await expect(link).toHaveAttribute('href', 'https://github.com/LaansDole/evolab');

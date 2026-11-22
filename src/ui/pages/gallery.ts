@@ -1,9 +1,8 @@
 import { listEnvs } from '../../env/registry';
 import { library, toConceptFile, type StoredConcept } from '../../gen/library';
-import { h, repoLink } from '../dom';
-import { createNewConceptPanel } from '../panels/newConcept';
+import { h, topNav } from '../dom';
 import { showSource } from '../panels/sourceModal';
-import { formatRoute, type PageFn } from '../router';
+import type { PageFn } from '../router';
 import { drawInitials, drawThumbnail } from '../thumbnail';
 
 function download(name: string, text: string): void {
@@ -36,6 +35,17 @@ function generatedCard(c: StoredConcept, onDeleted: () => void): HTMLElement {
       } }, 'Delete')));
 }
 
+/** The way to the Create page, shaped like the concepts it sits beside. */
+function createCard(): HTMLElement {
+  const thumb = h('div', { class: 'card-thumb card-create-thumb', 'aria-hidden': 'true' });
+  thumb.innerHTML = '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  return h('a', { class: 'card card-create', href: '#/create', testid: 'card-create' },
+    thumb,
+    h('div', { class: 'card-body' },
+      h('h2', null, 'Make your own'),
+      h('p', null, 'Describe a game in a sentence and a language model writes it, or import a concept file.')));
+}
+
 export const galleryPage: PageFn = (root) => {
   let gone = false;
   const cards = listEnvs().filter((d) => !d.meta.hidden).map((def) => {
@@ -52,25 +62,21 @@ export const galleryPage: PageFn = (root) => {
   });
   const grid = h('div', { class: 'card-grid' }, ...cards);
   const libraryError = h('p', { class: 'errors-line', role: 'alert' });
-  const ownEmpty = h('p', { class: 'own-empty' }, 'Concepts you create or import appear here, next to the built-in ones. They are stored in this browser only.');
-  const ownGrid = h('div', { class: 'card-grid own-grid' },
-    createNewConceptPanel((id) => { location.hash = formatRoute({ page: 'concept', envId: id, step: 1 }); }), ownEmpty);
+  const ownGrid = h('div', { class: 'card-grid' }, createCard());
   let generated: HTMLElement[] = [];
   const refresh = () => library.list().then((list) => {
     if (gone) return;
     for (const el of generated) el.remove();
     generated = list.map((c) => generatedCard(c, refresh));
-    ownEmpty.hidden = generated.length > 0;
     ownGrid.append(...generated);
-  }, () => { ownEmpty.hidden = true; libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
+  }, () => { libraryError.textContent = 'Generated concepts are unavailable: this browser blocks IndexedDB.'; });
   void refresh();
 
   const steps: [string, string][] = [['Play', 'Try the game yourself.'], ['Rewards', 'Decide what counts as good.'], ['Network', 'Choose how it learns.'], ['Learn', 'Watch it get there.']];
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
       h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
-      h('a', { class: 'btn topbar-end', href: '#/settings', testid: 'nav-settings' }, 'Settings'),
-      repoLink()),
+      topNav('gallery')),
     h('main', { class: 'gallery' },
       h('section', { class: 'hero' },
         h('div', { class: 'hero-text' },
@@ -82,8 +88,8 @@ export const galleryPage: PageFn = (root) => {
         h('h2', { class: 'section-title' }, 'Pick a concept'),
         grid),
       h('section', { class: 'gallery-section' },
-        h('h2', { class: 'section-title' }, 'Make your own'),
-        h('p', { class: 'section-note' }, 'Describe a game in a sentence and a language model writes it. A generated concept is checked in a sandbox, then trains exactly like a built-in.'),
+        h('h2', { class: 'section-title' }, 'Your concepts'),
+        h('p', { class: 'section-note' }, 'Concepts you create or import appear here. They are stored in this browser only.'),
         libraryError, ownGrid))));
   return () => { gone = true; };
 };

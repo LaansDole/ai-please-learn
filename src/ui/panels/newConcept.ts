@@ -12,7 +12,7 @@ const validate = (source: string, meta: unknown) => validateInWorker(spawnValida
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /**
- * The gallery's first cell: describe a concept and let the configured LLM write it, or paste a model's answer / import a file.
+ * The Create page's form: describe a concept and let the configured LLM write it, or paste a model's answer / import a file.
  * Every path ends in the worker-side validator; nothing here needs a server besides the optional LLM call.
  */
 export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElement {
@@ -62,7 +62,7 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
     let id = slugId(meta.name, Math.random);
     while (await library.get(id)) id = slugId(meta.name, Math.random);
     await library.put({ id, name: meta.name, prompt, meta, source, model, createdAt });
-    if (el.isConnected) onCreated(id);          // the user may have left the gallery while the model was thinking
+    if (el.isConnected) onCreated(id);          // the user may have left the page while the model was thinking
   };
 
   input.addEventListener('input', sync);

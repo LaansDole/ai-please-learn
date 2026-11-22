@@ -15,7 +15,7 @@ test('concept from text: repair once, then play, train, and find it in the galle
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await page.getByTestId('settings-test').click();
     await expect(page.getByTestId('settings-test-result')).toContainText('Connected');
-    await page.goto('/');
+    await page.goto('/#/create');
     await page.getByTestId('new-concept-input').fill('slide a dot onto a target');
     await page.getByTestId('new-concept-submit').click();
     await expect(page.getByTestId('new-concept-log')).toContainText('repairing 1/3', { timeout: 30000 });
@@ -45,7 +45,7 @@ test('concept from text: repair once, then play, train, and find it in the galle
 });
 
 test('manual paste fallback, view source, export, delete; hung modules time out', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/create');
   await page.getByTestId('new-concept-paste').click();
   await page.getByTestId('new-concept-paste-input').fill(toResponse(INFINITE_LOOP));
   await page.getByTestId('new-concept-paste-submit').click();

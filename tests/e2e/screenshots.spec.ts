@@ -32,11 +32,13 @@ test.describe('visual acceptance screenshots', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.beforeAll(() => { mkdirSync(DIR, { recursive: true }); });
 
-  test('01 gallery, 16 settings', async ({ page }) => {
+  test('01 gallery, 17 create, 16 settings', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('a.card')).toHaveCount(6);
-    await expect(page.getByTestId('new-concept')).toBeVisible();
+    await expect(page.locator('a.card')).toHaveCount(7);          // six built-ins and the "Make your own" card
     await shot(page, '01-gallery');
+    await page.getByTestId('nav-create').click();
+    await expect(page.getByTestId('new-concept')).toBeVisible();
+    await shot(page, '17-create');
     await page.getByTestId('nav-settings').click();
     await expect(page.getByTestId('settings-base-url')).toHaveValue('http://localhost:11434/v1');
     await expect(page.getByTestId('settings-remote-warning')).toBeHidden();
@@ -127,7 +129,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('15 generated concept', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#/create');
     await page.getByTestId('new-concept-paste').click();
     await page.getByTestId('new-concept-paste-input').fill(toResponse(GOOD));
     await page.getByTestId('new-concept-paste-submit').click();

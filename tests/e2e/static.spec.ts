@@ -40,7 +40,7 @@ test('the build ships the physics engine once', () => {
 test('static sub-path build: gallery, a 2D concept trains, a champion replays', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto(`${origin}/evolab/`);
-  await expect(page.locator('a.card')).toHaveCount(6);
+  await expect(page.locator('a.card')).toHaveCount(7);          // six built-ins and the "Make your own" card
   await page.getByTestId('card-pong').click();
   await waitFrames(page, 10);
   await startTraining(page);
@@ -83,7 +83,9 @@ test('static sub-path build: direct LLM mode and a pasted concept that trains in
     await page.getByTestId('settings-test').click();
     await expect(page.getByTestId('settings-test-result')).toContainText('Connected');
   } finally { await llm.close(); }
-  await page.goto(`${origin}/evolab/`);
+  await page.goto(`${origin}/evolab/#/create`);
+  await page.reload();                                       // a deep link survives a reload on a static host
+  await expect(page.getByTestId('nav-create')).toHaveAttribute('aria-current', 'page');
   await page.getByTestId('new-concept-paste').click();
   await page.getByTestId('new-concept-paste-input').fill(toResponse(GOOD));
   await page.getByTestId('new-concept-paste-submit').click();

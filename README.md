@@ -10,7 +10,7 @@ EvoLab is a browser lab where you watch neural networks learn to play. Pick a co
 
 | | |
 |---|---|
-| ![Gallery of concepts](docs/screenshots/01-gallery.png) The gallery: six built-in concepts and the box that creates new ones from text. | ![Playing Pong](docs/screenshots/02-pong-play.png) Step 1: play it yourself and see every reward term count up. |
+| ![Gallery of concepts](docs/screenshots/01-gallery.png) The gallery: six built-in concepts, your own next to them. | ![Playing Pong](docs/screenshots/02-pong-play.png) Step 1: play it yourself and see every reward term count up. |
 | ![Reward panel](docs/screenshots/09-reward-panel.png) Step 2: rewards and penalties as sliders, presets or raw JSON. | ![Method picker](docs/screenshots/11-method-picker.png) Step 3: choose a learning method; ones that cannot work say why. |
 | ![Pong learning with NEAT](docs/screenshots/03-pong-learn.png) Pong with NEAT: the live population drawn as ghosts. | ![Snake learning](docs/screenshots/04-snake-learn.png) Snake with NEAT. |
 | ![Flappy learning](docs/screenshots/05-flappy-learn.png) Flappy at x1: a whole generation flying at once. | ![Car learning](docs/screenshots/06-car-learn.png) Car racing: seven distance sensors, steering and throttle. |
@@ -80,7 +80,9 @@ The full table, the assertions, the throughput guards and every deviation from t
 
 ## Concept from text
 
-Type a sentence such as "balance a pole on a cart" into the box in the gallery. EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
+Open the **Create** tab ([`#/create`](https://laansdole.github.io/evolab/#/create)) and type a sentence such as "balance a pole on a cart" into the box. EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
+
+![The Create page](docs/screenshots/17-create.png)
 
 EvoLab is an experimental project and the sandbox this code runs in is best-effort, not a security boundary: only generate, import or load concepts from sources you trust.
 
