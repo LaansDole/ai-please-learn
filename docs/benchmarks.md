@@ -12,7 +12,7 @@ Measured with `npm run bench` (headless, seed 1, default reward preset; spec sec
 | NEAT Tetris | pop 80 | 15 | 648.45 | 2429.40 | +300 | 2.4 | budget 180 s; population mean 25.12 -> 1184.91 |
 | NEAT Walker | pop 60 | 40 | 2.37 | 275.46 | +5 and champion replay >= 1.0 m | 25.3 | budget 300 s; population mean -6.07 -> 19.79; champion replay: 27.12 m in the full 15 s episode, upright 10.9 s, no fall |
 | DQN Pong | env defaults (1 episode per round) | 160,000 env steps, 86 episodes | first 20% of episodes: mean -10.61 | last 20%: mean 11.81 | +5 (last 20% vs first 20%) | 6.1 | budget 240 s; steps doubled from the spec's 80,000, see below |
-| PPO Car | env defaults (8 envs, rollout 128) | 150 updates | first 10 updates: mean -2.32 | last 10: mean 106.62 | +10 (last 10 vs first 10) | 7.0 | budget 240 s; no tuning needed |
+| PPO Car | env defaults (8 envs, rollout 256) | 150 updates | first 10 updates: mean -2.32 | last 10: mean 106.62 | +10 (last 10 vs first 10) | 7.0 | budget 240 s; no tuning needed |
 | PPO reach1d (unit test `src/learner/ppoLearner.test.ts`) | env defaults with `train.ppo.gamma = 0.95` | 40 updates | first update: mean 5.0 | last 5: mean 10.6 | +3 | 1.3 | gamma lowered from 0.99, see below |
 
 ## Changes from spec

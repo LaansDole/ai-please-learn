@@ -3,17 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { renderMathDoc, slug } from './mathDoc';
 
 describe('mathDoc', () => {
-  it('slugs headings without their section number', () => {
-    expect(slug('4. NEAT')).toBe('neat');
-    expect(slug('11.3 No observation or reward normalisation')).toBe('no-observation-or-reward-normalisation');
+  it('slugs headings as GitHub does: lowercase, punctuation dropped, spaces to hyphens, section numbers kept', () => {
+    expect(slug('4. NEAT')).toBe('4-neat');
+    expect(slug('11.1 Single-seed reporting')).toBe('111-single-seed-reporting');
     expect(slug('What the charts measure')).toBe('what-the-charts-measure');
+    expect(slug('A & B: (c_d)')).toBe('a--b-c_d');
   });
   it('renders headings with anchors, sections and cards', () => {
     const html = renderMathDoc('# Title\n\nLede.\n\n## 1. One\n\nText.\n\n### 1.1 Card\n\nBody.\n\n## 2. Two\n');
     expect(html).toContain('<h1>Title</h1>');
-    expect(html).toContain('<section><h2 id="one">1. One <a class="anchor" href="#one" aria-label="Link to this section">#</a></h2>');
-    expect(html).toContain('<article><h3 id="card">');
-    expect(html).toMatch(/<p>Body\.<\/p><\/article><\/section><section><h2 id="two">/);
+    expect(html).toContain('<section><h2 id="1-one">1. One <a class="anchor" href="#1-one" aria-label="Link to this section">#</a></h2>');
+    expect(html).toContain('<article><h3 id="11-card">');
+    expect(html).toMatch(/<p>Body\.<\/p><\/article><\/section><section><h2 id="2-two">/);
   });
   it('renders inline markup and escapes HTML', () => {
     const html = renderMathDoc('A **bold** *it* `a<b` and <script> [x](#one) [f](../src/neat/species.ts) [e](https://example.org/a).');

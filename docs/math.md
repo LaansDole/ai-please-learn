@@ -17,7 +17,7 @@ All three learners are written from scratch in TypeScript: [`src/neat`](../src/n
 Every concept is one environment definition ([`src/env/types.ts`](../src/env/types.ts)) and every session walks the same four steps.
 
 1. **Play.** A person plays the environment. The reward terms count up next to the game.
-2. **Rewards.** The person sets a weight $w_k \ge 0$ for each reward term. This fixes the objective (Section 3).
+2. **Rewards.** The person sets a magnitude $\lvert w_k \rvert \ge 0$ for each reward term, and the term's kind gives the sign of $w_k$. This fixes the objective (Section 3).
 3. **Network.** The person picks a learner: NEAT, DQN or PPO. The page shows the policy network it will train.
 4. **Learn.** The learner runs in a Web Worker. The page charts its progress (Section 8).
 
@@ -67,7 +67,7 @@ An episode ends when the environment sets `done` (termination) or after `maxStep
 | PPO agent (init, action sampling, minibatch order) | `hashSeed(z, 0x50504f)` |
 | PPO episode $j$ of parallel environment $e$ | `hashSeed(z, e, j)` |
 
-A run is a deterministic function of $z$, the reward weights and the config. Speed settings change how often the page draws and never what is computed. In NEAT every genome of a generation plays the same episode seeds, so genomes are compared under common random numbers. The seeds change with the generation, so a champion's fitness is re-drawn every generation (Section 11.9).
+A run is a deterministic function of $z$, the reward weights and the config. Speed settings change how often the page draws and never what is computed. In NEAT every genome of a generation plays the same episode seeds, so genomes are compared under common random numbers. The seeds change with the generation, so a champion's fitness is re-drawn every generation wherever the environment uses its seed (Section 11.9). Two built-in concepts use it little or not at all. The walker ignores its seed ([`src/envs/walker/walker.ts`](../src/envs/walker/walker.ts)): every episode starts from the same deterministic world, so an unchanged genome scores the same in every generation. The car uses its seed only to pick one of 8 start positions on the track, `seed % 8` ([`src/envs/car/car.ts`](../src/envs/car/car.ts)).
 
 ## 3. Reward shaping
 
@@ -151,7 +151,7 @@ Species $S$ then receives a quota of the $N$ slots in proportion to $\bar{f}_S$,
 
 ### 4.5 Crossover and mutation
 
-Each remaining slot is filled as follows. With probability 0.75 the child is a crossover of two parents, otherwise a clone of one. With probability 0.001 the second parent is drawn from a randomly chosen species instead of the first parent's own. The child then mutates.
+Each remaining slot is filled as follows. With probability 0.75 the child is a crossover of two parents, otherwise a clone of one. The second parent normally comes from the same top 20% as the first. With probability 0.001, and only when more than one species survives, it is instead drawn from all members of a randomly chosen surviving species, not only that species' top 20%. The chosen species can be the first parent's own. The child then mutates.
 
 **Crossover** ([`src/neat/crossover.ts`](../src/neat/crossover.ts)). The child has exactly the nodes and connections of the fitter parent. For a matching gene the weight (and for a matching node the bias) comes from either parent with probability 0.5. A gene that is disabled in either parent is disabled in the child with probability 0.75. With equal fitness the paper takes disjoint and excess genes from both parents. EvoLab breaks the tie by genome id and still takes one parent's structure, which keeps every child acyclic without a check.
 
@@ -162,7 +162,7 @@ Each remaining slot is filled as follows. With probability 0.75 the child is a c
 | Weights | 0.8 | each weight is replaced by a draw from $\mathcal{N}(0, 1)$ with probability 0.1, otherwise perturbed by $\mathcal{N}(0, 0.5^2)$. Weights are clamped to $[-8, 8]$ |
 | Biases | 0.3 | every non-input bias is perturbed by $\mathcal{N}(0, 0.3^2)$ and clamped to $[-8, 8]$ |
 | Toggle | 0.01 | one random connection flips its enabled flag |
-| Add connection | 0.10 | up to 20 tries to find an unconnected, acyclic pair. New weight from $\mathcal{N}(0, 1)$ |
+| Add connection | 0.10 | up to 20 tries to find an unconnected, acyclic pair. New weight from $\mathcal{N}(0, 1)$. A try that picks a pair whose connection exists but is disabled re-enables that connection and stops |
 | Add node | 0.05 | splits an enabled connection. Incoming weight 1, outgoing weight the old weight. At most 64 hidden nodes |
 
 The 0.8 and 0.1 weight probabilities and the 0.75 and 0.001 rates are the paper's. The paper perturbs weights uniformly and uses structural rates of 0.05 (add connection) and 0.03 (add node) for its small populations. EvoLab perturbs with Gaussians, mutates biases as separate genes and uses higher structural rates, so that growth is visible within the first minutes of a browser session.
@@ -273,6 +273,10 @@ $$
 - Policy and value share one network instead of using two.
 - The log-ratio is clamped to $[-20, 20]$ before exponentiation, so $\rho_t$ cannot overflow.
 - The losses shown on the page are the means over the final epoch only.
+- The log standard deviations are free parameters that do not depend on the state, clamped to $[-2.5, 0.5]$. They are not a network output.
+- Actions are clipped for the environment and scored as the unclipped sample, with no squashing and no correction.
+- The 0.01 scale of the last layer applies to the value output as well as the policy outputs.
+- There is no entropy bonus for continuous actions ($c_e = 0$).
 
 ## 7. Optimizer
 
@@ -301,7 +305,7 @@ Let $b_i$, $\mu_i$ and $\tilde{m}_i$ be the best, mean and median episode score 
 
 **Record.** The running maximum $R_i = \max_{j \le i} b_j$, drawn as a stepped line. After a reward change at iteration $i_0$ the scale of $F$ is different, so the maximum is taken over $j \ge i_0$ only ([`src/viz/trend.ts`](../src/viz/trend.ts)).
 
-**The strip of the last 60 iterations.** Each iteration gets one of three marks: *record* if $b_i > R_{i-1}$, else *improved* if $b_i$ is above the mean of the up to 10 scored iterations before it, else *no gain*.
+**The strip of the last 60 iterations.** Each iteration gets one of four marks: *none* if it has no score or lies before the last reward change, else *record* if $b_i > R_{i-1}$, else *improved* if $b_i$ is above the mean of the scored iterations among the 10 before it, not counting any before the last reward change, else *no gain*.
 
 **Verdict for NEAT.** Let $k$ be the number of generations since the record was set. The header says "New record" when $k = 0$, "Still learning" when $0 < k < 30$ and "Stalled" when $k \ge 30$.
 
@@ -314,16 +318,16 @@ $$
 and compares the average now with the average $L = \min(30, \, n - 1)$ iterations ago against one standard deviation of the average itself:
 
 $$
-\text{learning} \iff \bar{\mu}_n - \bar{\mu}_{n-L} > \sqrt{ \frac{\alpha}{2 - \alpha} \cdot \frac{1}{L} \sum_{i > n - L} d_i^2 } \tag{8.2}
+\text{learning} \iff \bar{\mu}_n - \bar{\mu}_{n-L} > \sqrt{ \frac{\alpha}{2 - \alpha} \cdot \frac{1}{\lvert D \rvert} \sum_{i \in D} d_i^2 } \tag{8.2}
 $$
 
-The factor $\alpha / (2 - \alpha)$ is the variance of an exponential average of independent noise relative to the variance of that noise. With fewer than 10 scored iterations the verdict is "too early to tell". This is a one-sigma heuristic, not a significance test: the threshold was chosen so that a visibly rising DQN Pong run is not called stalled, as the comment in the source says.
+Here $D$ is the set of scored iterations among the last $L$, so the noise term is a mean over scored iterations and not over all $L$. The first scored iteration of a run has no $d_i$ and is left out. The factor $\alpha / (2 - \alpha)$ is the variance of an exponential average of independent noise relative to the variance of that noise. With fewer than 10 scored iterations the verdict is "too early to tell". This is a one-sigma heuristic, not a significance test: the threshold was chosen so that a visibly rising DQN Pong run is not called stalled, as the comment in the source says.
 
 **Smoothed line on the fitness chart.** For DQN and PPO the chart plots one dot per finished episode with return $G_j$ and an average $\bar{G}_j = 0.9 \, \bar{G}_{j-1} + 0.1 \, G_j$ ([`src/ui/panels/learn.ts`](../src/ui/panels/learn.ts)). This average runs over episodes. The verdict's average runs over iterations. Both use $\alpha = 0.1$.
 
-**Species chart.** Band height is a species' share of the population, $\lvert S \rvert / N$. Each generation shows its 6 largest species and pools the rest into one grey band ([`src/viz/scale.ts`](../src/viz/scale.ts)). Long runs are sampled down to at most 240 columns and shares are smoothed with a centred moving average of radius $\min(4, \lfloor n/12 \rfloor)$ columns, so the chart shows the trend and the exact shares are in the standings table next to it.
+**Species chart.** Band height is a species' share of the population, $\lvert S \rvert / N$. Each generation shows its 6 largest species and pools the rest into one grey band (`speciesBands` in [`src/viz/scale.ts`](../src/viz/scale.ts)). Long runs are sampled down to at most 240 columns (`SPECIES_COLUMNS` in [`src/ui/panels/learn.ts`](../src/ui/panels/learn.ts), applied with `sampleEvenly` from `scale.ts`) and shares are smoothed with a centred moving average of radius $\min(4, \lfloor n/12 \rfloor)$ columns, so the chart shows the trend and the exact shares are in the standings table next to it.
 
-**Network view.** When a network has more than 30 enabled connections, the 14 with the largest $\lvert w \rvert$ are drawn in full and the rest faint ([`src/viz/nnLayout.ts`](../src/viz/nnLayout.ts)). This ranks by weight magnitude only. It is not a saliency measure: a large weight on an input that barely varies matters less than the drawing suggests. For DQN and PPO each edge is also tinted by $\lvert \Delta w \rvert / \max \lvert \Delta w \rvert$ since the previous snapshot.
+**Network view.** When a network has more than 30 enabled connections, the 14 with the largest $\lvert w \rvert$ are drawn in full and the rest faint ([`src/viz/nnLayout.ts`](../src/viz/nnLayout.ts)). This ranks by weight magnitude only. It is not a saliency measure: a large weight on an input that barely varies matters less than the drawing suggests. For DQN and PPO each edge is also tinted by $\lvert \Delta w \rvert / \max \lvert \Delta w \rvert$ since the previous snapshot, computed in `mlpSnapshot` ([`src/learner/mlpPolicy.ts`](../src/learner/mlpPolicy.ts)).
 
 ## 9. Generated concepts
 
@@ -343,19 +347,19 @@ On failure the validator's sentences are sent back to the model, for at most 3 r
 - **Ceiling reached by random actions:** some episode in either batch ended early (failure is possible), at least 1 random-action episode is full, and a full episode holds the best fitness of that batch.
 - **Ceiling reached by untrained networks:** failure is possible, at least 4 of the 32 linear-policy episodes are full, and a full episode holds the best fitness of that batch.
 
-Read as a hypothesis test, the null is "untrained play does not reach the ceiling" and the statistic is a count of full episodes. If a random-action episode is full with probability $p$, independently across episodes, the second rule sees at least one with probability
+Read as a hypothesis test, the null is "untrained play does not reach the ceiling" and the statistic is a count of full episodes. If a random-action episode is full with probability $p$, independently across episodes, and $m$ random-action episodes are played, the second rule sees at least one with probability
 
 $$
-1 - (1 - p)^{64} \tag{9.1}
+1 - (1 - p)^{m} \tag{9.1}
 $$
 
-which is 0.96 for $p = 0.05$, the rate measured on the module that motivated the check, and 0.47 for $p = 0.01$. The third rule requires 4 of 32 because, as the source notes, one lucky linear policy in 32 also survives in Pong, Tetris and the walker, where surviving is far from the best score. Nothing in the check bounds the false-positive rate, and it cannot see a task that is learnable but trivially easy (Section 11.10).
+The batch starts no new episode once 60,000 steps are used, so $m$ is about $\min(64, \, 60000 / \bar{T})$ for a mean episode length $\bar{T}$. It is 64 only when episodes are short, and as few as 12 when `maxSteps` is 5,000 and episodes run long. At $m = 64$ the probability is 0.96 for $p = 0.05$, the rate measured on the module that motivated the check, and 0.47 for $p = 0.01$. Both values are upper bounds. The third rule requires 4 of 32 because, as the source notes, one lucky linear policy in 32 also survives in Pong, Tetris and the walker, where surviving is far from the best score. Nothing in the check bounds the false-positive rate, and it cannot see a task that is learnable but trivially easy (Section 11.10).
 
 ## 10. Measured results
 
 All numbers are copied from [`docs/benchmarks.md`](benchmarks.md) and [`docs/llm-trial/RESULTS.md`](llm-trial/RESULTS.md). They come from `npm run bench`: headless runs with the default reward weights and the per-concept config, on one Apple Silicon machine.
 
-**Read these as smoke tests, not as results.** Every row is a single run with seed 1. There are no confidence intervals and no comparison across methods at equal cost. The assertions only require that the last iterations beat the first by a margin. Section 11.1 says what a proper evaluation needs.
+**Read these as smoke tests, not as results.** Every row is a single run with seed 1. There are no confidence intervals and no comparison across methods at equal cost. Most assertions only require that the last iterations beat the first by a margin. Two ask for more ([`tests/bench`](../tests/bench)): the car also requires the best of the last 5 generations to be at least twice the generation-1 best and its champion to replay at least 3 laps, and the walker requires its champion to replay at least 1.0 m forward. Section 11.1 says what a proper evaluation needs.
 
 | Method and concept | Budget | First | Last | Wall time |
 |---|---|---:|---:|---:|
@@ -374,7 +378,7 @@ Three details from the benchmark notes matter when reading the table.
 
 - DQN Pong failed its margin at the original budget of 80,000 steps (seed 1: -10.85 to -7.77) and passed after the budget was doubled. A second seed at 160,000 steps reached 8.53.
 - The walker's champion covered 27.12 m in the 15 s episode without falling. An earlier physics setting passed the same benchmark with a hopping gait that fell after 4 s, which the fitness margin alone did not catch.
-- The benchmark table labels the PPO car run "rollout 128". The config that `resolveConfig('ppo', car)` returns today has a rollout of 256 ([`src/learner/config.ts`](../src/learner/config.ts)). Either the label or the measurement is stale, and the row should be re-measured.
+- The benchmark table used to label the PPO car run "rollout 128". That label was stale: `DEFAULT_PPO.rolloutLen` was already 256 when the row was measured ([`src/learner/config.ts`](../src/learner/config.ts)), so the run used 256 steps per environment. The label now says 256 and the measurement stands.
 
 **Generated concepts.** In the recorded trial against one hosted model, 5 of 5 prompts passed validation with 0 repair rounds. NEAT then ran for 30 generations on each module with seed 1:
 
@@ -394,17 +398,17 @@ This section lists what a researcher should distrust or would want to change. Ea
 
 | Item | Effort | Expected impact |
 |---|---|---|
-| [11.1 Single-seed reporting](#single-seed-reporting) | S | high |
-| [11.2 Budgets are not comparable across methods](#budgets-are-not-comparable-across-methods) | S | high |
-| [11.3 No observation or reward normalisation](#no-observation-or-reward-normalisation) | M | medium to high |
-| [11.4 DQN is the 2016 baseline](#dqn-is-the-2016-baseline) | M | medium |
-| [11.5 PPO implementation details](#ppo-implementation-details) | M | medium |
-| [11.6 Shaping changes the task](#shaping-changes-the-task) | S | medium |
-| [11.7 The speciation controller is untested](#the-speciation-controller-is-untested) | S | low to medium |
-| [11.8 Objective-only search on a deceptive task](#objective-only-search-on-a-deceptive-task) | L | uncertain |
-| [11.9 Noisy fitness and elitism](#noisy-fitness-and-elitism) | S | medium |
-| [11.10 Power of the learnability check](#power-of-the-learnability-check) | M | medium |
-| [11.11 Generated games plateau early](#generated-games-plateau-early) | M | high for the generator |
+| [11.1 Single-seed reporting](#111-single-seed-reporting) | S | high |
+| [11.2 Budgets are not comparable across methods](#112-budgets-are-not-comparable-across-methods) | S | high |
+| [11.3 No observation or reward normalisation](#113-no-observation-or-reward-normalisation) | M | medium to high |
+| [11.4 DQN is the 2016 baseline](#114-dqn-is-the-2016-baseline) | M | medium |
+| [11.5 PPO implementation details](#115-ppo-implementation-details) | M | medium |
+| [11.6 Shaping changes the task](#116-shaping-changes-the-task) | S | medium |
+| [11.7 The speciation controller is untested](#117-the-speciation-controller-is-untested) | S | low to medium |
+| [11.8 Objective-only search on a deceptive task](#118-objective-only-search-on-a-deceptive-task) | L | uncertain |
+| [11.9 Noisy fitness and elitism](#119-noisy-fitness-and-elitism) | S | medium |
+| [11.10 Power of the learnability check](#1110-power-of-the-learnability-check) | M | medium |
+| [11.11 Generated games plateau early](#1111-generated-games-plateau-early) | M | high for the generator |
 
 ### 11.1 Single-seed reporting
 
@@ -464,7 +468,7 @@ This section lists what a researcher should distrust or would want to change. Ea
 
 `Effort S` `Impact low to medium`
 
-- **Now.** Eq. 4.2 moves the threshold by a fixed 0.15 toward 8 species, for populations from 60 to 150 and genomes from 10 to more than 100 connection genes. Assignment is first-fit against a random representative ([`src/neat/species.ts`](../src/neat/species.ts)).
+- **Now.** Eq. 4.2 moves the threshold by a fixed 0.15 toward 8 species, for populations from 60 to 150 and initial genomes from 6 connection genes (Tetris) to 126 (the walker). Assignment is first-fit against a random representative ([`src/neat/species.ts`](../src/neat/species.ts)).
 - **Why it matters.** The paper's argument for speciation is that it protects structural innovation (Stanley and Miikkulainen, 2002). A controller that merges and splits species to hit a count changes what is protected, and a target of 8 gives the walker species of 7 or 8 genomes, with 2 parents each at a 20% survival rate.
 - **Change.** Compare three settings: the fixed threshold of the paper, the current controller, and a controller whose target scales with $N$.
 - **Evaluate.** Final best fitness over 10 seeds, and the number of generations a new hidden node survives before its species is removed, which measures the protection directly.
@@ -482,7 +486,7 @@ This section lists what a researcher should distrust or would want to change. Ea
 
 `Effort S` `Impact medium`
 
-- **Now.** Most concepts evaluate each genome on 1 episode (Section 4.6). The episode seed changes every generation, so the "unchanged" elite is scored on a new episode and the best-fitness curve can fall. The generated Dodge module shows it: best fitness swings between about 13 and 2 for 120 generations.
+- **Now.** Most concepts evaluate each genome on 1 episode (Section 4.6). The episode seed changes every generation, so in a concept that uses its seed the "unchanged" elite is scored on a new episode and the best-fitness curve can fall. The walker is the exception: it ignores its seed, so its elite scores the same every generation. The car's seed only selects one of 8 start positions (Section 2). The generated Dodge module shows the noisy case: best fitness swings between about 13 and 2 for 120 generations.
 - **Why it matters.** A record on the chart can be a lucky episode, and the NEAT verdict (Section 8) is a function of records only. Selection on one noisy sample also favours variance.
 - **Change.** Re-evaluate the top few genomes on a fixed set of held-out seeds each generation and draw that score as the record. Raising `episodesPerGenome` is the blunt alternative and multiplies the cost.
 - **Evaluate.** The gap between the training fitness of each generation's champion and its mean score on 20 held-out seeds. That gap is the selection bias the chart currently hides.

@@ -5,9 +5,9 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // A TeX error fails the build: the page never shows a red `katex-error` span.
 const tex = (src: string, displayMode: boolean) => katex.renderToString(src, { displayMode, throwOnError: true, strict: 'error' });
 
-/** Heading id: the text without its section number ("4. NEAT" -> "neat"). */
+/** Heading id by GitHub's rule, so one link works in the app and on GitHub ("11.1 Single-seed reporting" -> "111-single-seed-reporting"). */
 export function slug(text: string): string {
-  return text.replace(/^[\d.]+\s+/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return text.toLowerCase().replace(/[^\p{L}\p{N}_ -]/gu, '').replace(/ /g, '-');
 }
 
 /** Relative links are written for GitHub, from docs/: on the page they open the same file on `main`. */

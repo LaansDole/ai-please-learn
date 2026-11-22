@@ -26,8 +26,8 @@ test('the Math tab opens the report: equations typeset, contents jump within the
   await expect(toc).toHaveCount(13);
   await expect(toc.first()).toHaveText('Purpose of ai-please-learn');
   await toc.filter({ hasText: 'Room for improvement' }).click();
-  await expect(page).toHaveURL(/4173\/math#room-for-improvement$/);
-  await expect(page.locator('#room-for-improvement')).toBeInViewport();
+  await expect(page).toHaveURL(/4173\/math#11-room-for-improvement$/);
+  await expect(page.locator('[id="11-room-for-improvement"]')).toBeInViewport();
   await expect(toc.filter({ hasText: 'Room for improvement' })).toHaveAttribute('aria-current');
   expect(await page.evaluate(() => document.body.dataset.same)).toBe('1');
   await expect(doc.locator('h2')).toHaveCount(13);
@@ -44,11 +44,11 @@ test('the Math tab opens the report: equations typeset, contents jump within the
 
 test('a deep link to a section of the report survives a reload', async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto('/math#ppo');
-  await expect(page.locator('#ppo')).toBeInViewport();
+  await page.goto('/math#6-ppo');
+  await expect(page.locator('[id="6-ppo"]')).toBeInViewport();
   await page.reload();
   await expect(page.getByTestId('nav-math')).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('#ppo')).toBeInViewport();
+  await expect(page.locator('[id="6-ppo"]')).toBeInViewport();
   expect(await page.getByTestId('math-doc').locator('.katex').count()).toBeGreaterThanOrEqual(20);
   expect(errors).toEqual([]);
 });
