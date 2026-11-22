@@ -68,7 +68,7 @@ test('router: the open page\'s own tab keeps the page, Back returns to where the
 });
 
 test('the Demo tab opens the recorded demo, whose top bar is the app\'s and leads back', async ({ page }) => {
-  const errors = collectErrors(page), TABS = ['Gallery', 'Create', 'Demo', 'Settings', 'GitHub'];
+  const errors = collectErrors(page), TABS = ['Gallery', 'Create', 'Demo', 'Math', 'Settings', 'GitHub'];
   for (const url of ['/snake/1', '/settings', '/create', '/']) {
     await page.goto(url);
     await expect(page.getByTestId('nav-demo')).toHaveAttribute('href', '/demo/');

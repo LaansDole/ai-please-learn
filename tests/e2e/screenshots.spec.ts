@@ -8,11 +8,11 @@ import { attr, startTraining, vis, waitFrames, waitIterations } from './helpers'
 const DIR = process.env.EVOLAB_SCREENSHOTS ? 'docs/screenshots' : 'test-results/screenshots';
 
 /** The assertions before each call are the test; the image is the artefact. A blank capture would be far below 20 kB. */
-async function shot(page: Page, name: string): Promise<void> {
+async function shot(page: Page, name: string, fullPage = true): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForTimeout(300);
   const path = `${DIR}/${name}.png`;
-  await page.screenshot({ path, fullPage: true });
+  await page.screenshot({ path, fullPage });
   expect(statSync(path).size).toBeGreaterThan(20000);
 }
 
@@ -32,7 +32,7 @@ test.describe('visual acceptance screenshots', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.beforeAll(() => { mkdirSync(DIR, { recursive: true }); });
 
-  test('01 gallery, 17 create, 16 settings', async ({ page }) => {
+  test('01 gallery, 17 create, 16 settings, 18 math', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('a.card')).toHaveCount(7);          // six built-ins and the "Make your own" card
     await shot(page, '01-gallery');
@@ -44,6 +44,10 @@ test.describe('visual acceptance screenshots', () => {
     await expect(page.getByTestId('settings-base-url')).toHaveValue('https://api.openai.com/v1');
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await shot(page, '16-settings');
+    await page.getByTestId('nav-math').click();
+    await expect(page.getByTestId('math-toc').locator('a')).toHaveCount(12);
+    await expect(page.locator('.math-doc .katex').first()).toBeVisible();
+    await shot(page, '18-math', false);                     // the report is some thirty screens long: its first one
   });
 
   test('02 pong play, 03 pong learn, 10 network, 14 replay', async ({ page }) => {

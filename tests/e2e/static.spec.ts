@@ -113,6 +113,14 @@ test('static sub-path build: deep links boot through 404.html, old hash links re
 
   await page.goto(`${origin}/ai-please-learn/pong/1`);
   await waitFrames(page, 5);
+  // The report is a deep link too, and its equations and their fonts come from the build, not a CDN.
+  const fonts: string[] = [];
+  page.on('response', (r) => { if (r.url().endsWith('.woff2')) fonts.push(`${r.status()} ${new URL(r.url()).origin}`); });
+  await page.goto(`${origin}/ai-please-learn/math`);
+  await expect(page.getByTestId('nav-math')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.math-doc .katex').first()).toBeVisible();
+  await expect.poll(() => fonts.length).toBeGreaterThan(0);
+  expect(fonts.filter((f) => f !== `200 ${origin}`)).toEqual([]);
   await page.goto(`${origin}/ai-please-learn/create`);
   await expect(page.getByTestId('nav-create')).toHaveAttribute('aria-current', 'page');
 
