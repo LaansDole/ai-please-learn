@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - "Make your own" has its own Create page.
 - Favicon.
 - DEVELOPER.md, CHANGELOG.md and docs/guide.md.
+- Math tab: a report on how NEAT, DQN and PPO work in this code, with equations, hyperparameters and open problems. Its source is docs/math.md.
 - Demo video page linked from the gallery.
 - Demo tab in the top bar. The demo page has the same top bar, so Gallery, Create and Settings are one click back.
 - Fitness chart: axis titles and a "best so far" line that only steps up.

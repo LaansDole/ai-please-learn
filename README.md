@@ -31,6 +31,6 @@ See [DEVELOPER.md](DEVELOPER.md) for tests, builds and LLM setup.
 - Methods: NEAT (Stanley & Miikkulainen 2002), DQN (Mnih et al. 2015), PPO (Schulman et al. 2017) - full references in [DEVELOPER.md](DEVELOPER.md#references).
 - Built with [three.js](https://threejs.org/) and [Rapier](https://rapier.rs/).
 
-More: [DEVELOPER.md](DEVELOPER.md) | [CHANGELOG.md](CHANGELOG.md) | [docs/guide.md](docs/guide.md)
+More: [DEVELOPER.md](DEVELOPER.md) | [CHANGELOG.md](CHANGELOG.md) | [docs/guide.md](docs/guide.md) | [docs/math.md](docs/math.md) (the math behind the learners, also the app's Math tab)
 
 [MIT](LICENSE), copyright (c) 2026 Do Le Long An.

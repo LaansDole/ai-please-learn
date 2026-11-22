@@ -16,7 +16,7 @@ Live app: <https://laansdole.github.io/ai-please-learn/>
 | ![Network view](screenshots/10-network-neat.png) The champion's network, with disabled connections shown. | ![Pong with DQN](screenshots/12-dqn-pong.png) DQN on Pong: loss, epsilon and Q-values. |
 | ![Car with PPO](screenshots/13-ppo-car.png) PPO on the car: policy and value loss, entropy, action means. | ![Champion replay](screenshots/14-replay.png) The hall of fame replays any earlier champion. |
 | ![Generated concept](screenshots/15-generated.png) A concept generated from text, training like a built-in. | ![The Create page](screenshots/17-create.png) The Create page: describe a game, paste a response or import a file. |
-| ![Settings](screenshots/16-settings.png) Settings: OpenAI, LM Studio or Ollama. | |
+| ![Settings](screenshots/16-settings.png) Settings: OpenAI, LM Studio or Ollama. | ![The Math tab](screenshots/18-math.png) Math: a report on how the learners work, with their equations. |
 
 ## Addresses
 
@@ -29,6 +29,7 @@ Every page has a clean URL under the app's base (`/` in dev, `/ai-please-learn/`
 | `/ai-please-learn/pong/3` | The same concept at step 3 (steps are 1 to 4). |
 | `/ai-please-learn/create` | Create a concept from text. |
 | `/ai-please-learn/settings` | LLM provider settings. |
+| `/ai-please-learn/math` | Report on the math of the learners, from [math.md](math.md). |
 
 Links shared before the clean URLs (`#/c/pong/3`, `#/settings`) are rewritten to the new form on load.
 
@@ -62,7 +63,7 @@ All three are written from scratch in TypeScript in this repository (`src/neat`,
 | Walker 3D | six joint targets (continuous) | yes | no: needs distinct actions | yes |
 | Generated concepts | buttons or continuous | yes | buttons only | yes |
 
-Measured learning results per concept and method are in [benchmarks.md](benchmarks.md).
+Measured learning results per concept and method are in [benchmarks.md](benchmarks.md). The equations, every hyperparameter and the known limitations are in [math.md](math.md), which the app shows under its Math tab.
 
 ## Concept from text
 
@@ -160,6 +161,7 @@ A concept is one TypeScript file that exports an `EnvDefinition`. The reference,
 | `tools/llmProxy.ts` | The Vite plugin that proxies LLM requests under dev and preview. |
 | `tests/bench`, `tests/perf`, `tests/e2e` | Learning benchmarks, throughput guards, Playwright suites. |
 | `docs/benchmarks.md`, `docs/llm-trial`, `docs/screenshots` | Measured numbers, text-to-game trials and the images on this page. |
+| `docs/math.md`, `tools/mathDoc.ts` | The report on the learners' math and the build step that typesets it for the Math tab. |
 
 Runtime dependencies are `three` (3D view) and `@dimforge/rapier3d-compat` (walker physics). Nothing else.
 
