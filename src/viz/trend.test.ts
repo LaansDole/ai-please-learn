@@ -52,6 +52,11 @@ describe('rlVerdict', () => {
     expect(rlVerdict(noisy((i) => Math.min(i, 40) * 0.3, 160), 'round')).toEqual({ state: 'stalled', text: 'Stalled - average has not risen over the last 30 rounds' });
     expect(rlVerdict(noisy((i) => -i * 0.3, 120), 'update').state).toBe('stalled');
   });
+  it('sees a slow rise under heavy noise (DQN Pong: 3 points in 40 rounds, single rounds +-5) and no rise in pure noise', () => {
+    // The rise here is 1.7 on the smoothed average: above one deviation of it (0.8), below the 2.2 of a two-deviation band.
+    expect(rlVerdict(noisy((i) => -10.5 + 0.08 * i, 40), 'round').state).toBe('learning');
+    for (const n of [40, 60, 200]) expect(rlVerdict(noisy(() => -10, n), 'round').state, String(n)).toBe('stalled');
+  });
   it('is idle before the first round and patient while there is too little to compare', () => {
     expect(rlVerdict([], 'round')).toEqual({ state: 'idle', text: 'Not started' });
     expect(rlVerdict([NaN, NaN], 'update')).toEqual({ state: 'learning', text: 'Still learning - no episode has finished yet' });
