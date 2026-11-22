@@ -63,6 +63,8 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
 .topnav { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .topnav [aria-current="page"] { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .repo-link svg { flex: none; }
+/* Five tabs beside a concept's crumb and stepper: on a small laptop the GitHub tab keeps its mark and drops the word. */
+@media (max-width: 1100px) { .repo-link span { display: none; } }
 /* Narrow bars: the brand already leads to the gallery, so its tab gives way to the page name. */
 @media (max-width: 720px) {
   .repo-link { min-width: 44px; } .repo-link span { display: none; }
@@ -164,6 +166,8 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
   .cols { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: stretch; }
   .side > .panel { flex: 1; }
 }
+/* The side column (rewards, the network) often runs past the fold: the game stays in view beside it instead of scrolling away. */
+@media (min-width: 1200px) and (min-height: 760px) { .cols > .stage { position: sticky; top: var(--gap); } }
 @media (max-width: 720px) { .step-nav .btn { flex: 1; } }
 .stage { padding: 0; overflow: hidden; align-self: start; }
 .stage-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
@@ -275,6 +279,12 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 /* How to read the chart, in one sentence. */
 .chart-note { margin-top: -2px; max-width: 78ch; font-size: var(--fs-small); color: var(--muted); }
 .chart-note:empty { display: none; }
+/* What the bands are, largest first: swatch, name, share now. */
+.chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-small); color: var(--muted); }
+.chart-legend:empty { display: none; }
+.chart-legend li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.chart-legend i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.chart-legend .num { color: var(--text); }
 .chart-wrap { position: relative; height: 200px; }
 .chart-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* The fitness chart grows to the height of the two stacked RL charts beside it. */

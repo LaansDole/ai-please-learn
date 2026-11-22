@@ -41,3 +41,38 @@ test('"Make your own" lives on its own page: nav tab, gallery card, reload', asy
   await expect(page.getByTestId('new-concept')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('the Demo tab opens the recorded demo, whose top bar is the app\'s and leads back', async ({ page }) => {
+  const errors = collectErrors(page), TABS = ['Gallery', 'Create', 'Demo', 'Settings', 'GitHub'];
+  for (const url of ['/snake/1', '/settings', '/create', '/']) {
+    await page.goto(url);
+    await expect(page.getByTestId('nav-demo')).toHaveAttribute('href', '/demo/');
+    await expect(page.getByTestId('nav-demo')).not.toHaveAttribute('aria-current');
+  }
+  await expect(page.locator('.topnav a')).toHaveText(TABS);
+  await page.evaluate(() => { document.body.dataset.same = '1'; });
+  await page.getByTestId('nav-demo').click();
+  await expect(page).toHaveURL(/4173\/demo\/$/);
+  await expect(page.locator('body')).not.toHaveAttribute('data-same');        // a page load, not a route
+  await expect(page.locator('.topnav a')).toHaveText(TABS);
+  await expect(page.locator('.topnav [aria-current="page"]')).toHaveText('Demo');
+  await expect(page.locator('.brand')).toHaveText('EvoLab');
+
+  // Chapters are buttons: keyboard reaches them, and one press seeks the video and marks the step.
+  const step = page.getByRole('button', { name: /Switch to DQN/ });
+  await step.focus();
+  await page.keyboard.press('Enter');
+  await expect(step).toHaveAttribute('aria-current', 'step');
+  await expect.poll(() => page.getByTestId('demo-video').evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThanOrEqual(96);
+
+  for (const [tab, testid, path] of [['nav-settings', 'settings', 'settings'], ['nav-create', 'create', 'create'], ['nav-gallery', 'gallery', '']] as const) {
+    await page.getByTestId(tab).click();
+    await expect(page).toHaveURL(new RegExp(`4173/${path}$`));
+    await expect(page.getByTestId(testid)).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/4173\/demo\/$/);
+  }
+  await page.locator('.brand').click();
+  await expect(page.getByTestId('gallery')).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -31,19 +31,13 @@ jobs:
         env:
           EVOLAB_BASE: /ai-please-learn/
           EVOLAB_STATIC: '1'
-      - name: Add the demo page if present
-        run: |
-          if [ -d docs/demo/runbook ]; then
-            mkdir -p dist/demo
-            cp docs/demo/runbook/demo.html dist/demo/index.html
-            cp docs/demo/runbook/*.mp4 docs/demo/runbook/*.png dist/demo/ 2>/dev/null || true
-          fi
-          touch dist/.nojekyll
       - name: Gate on the built app
         run: |
+          touch dist/.nojekyll
           grep -q "<title>EvoLab" dist/index.html
           ls dist/assets/*.js >/dev/null
           cmp dist/index.html dist/404.html   # deep links (/ai-please-learn/pong/2) boot through 404.html
+          test -f dist/demo/index.html        # the Demo tab's page (copied by the build: vite.config.ts demoPage)
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

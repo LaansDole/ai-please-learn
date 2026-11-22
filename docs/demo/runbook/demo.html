@@ -5,81 +5,113 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI, Please Learn (EvoLab): demo</title>
 <link rel="canonical" href="https://laansdole.github.io/ai-please-learn/demo/">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <style>
-  :root { --bg:#111116; --panel:#1b1b22; --line:#2b2b35; --text:#ececf1; --muted:#a3a3ad; --accent:#4285f4; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
-  header { padding:28px 36px 8px; }
-  h1 { margin:0 0 6px; font-size:28px; letter-spacing:-0.01em; }
-  .sub { color:var(--muted); }
-  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:24px; padding:20px 36px 40px; }
-  video { width:100%; border-radius:10px; background:#000; border:1px solid var(--line); }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; min-width:0; }
-  .panel h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
+  /* The app's tokens (src/ui/tokens.css) and top bar (src/ui/app.css), inlined: this page is a static file beside the app. */
+  :root {
+    --bg:#0a0e14; --panel:#10161f; --panel-2:#161d29; --line:#232c3b; --line-strong:#556480;
+    --text:#d7e0ee; --muted:#7d8aa3; --accent:#4de1c1; --radius:4px; --pad:20px; --ease:cubic-bezier(.2,.8,.2,1);
+    --font-ui:system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing:border-box; }
+  html { color-scheme:dark; scrollbar-color:var(--line-strong) var(--bg); }
+  body { margin:0; background:var(--bg); color:var(--text); font:0.9375rem/1.5 var(--font-ui); -webkit-font-smoothing:antialiased; accent-color:var(--accent); }
+  ::selection { background:color-mix(in srgb, var(--accent) 35%, transparent); color:var(--text); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  a { color:var(--accent); text-underline-offset:3px; }
+  .topbar { display:flex; align-items:center; gap:8px 16px; flex-wrap:wrap; min-height:52px; padding:8px var(--pad); border-bottom:1px solid var(--line); background:var(--panel); font-size:0.875rem; line-height:1.45; }
+  .brand { font-weight:700; font-size:1rem; letter-spacing:0.02em; color:var(--text); text-decoration:none; }
+  .brand:hover { color:var(--accent); }
+  .topnav { display:flex; align-items:center; gap:6px; margin-left:auto; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:32px; padding:4px 12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2); color:var(--text); text-decoration:none; white-space:nowrap; transition:border-color 150ms var(--ease), background 150ms var(--ease); }
+  .btn:hover { border-color:var(--line-strong); }
+  .btn:active { background:var(--line); }
+  .topnav [aria-current="page"] { border-color:var(--accent); color:var(--accent); box-shadow:inset 0 -2px 0 var(--accent); }
+  .repo-link svg { flex:none; }
+  @media (max-width: 1100px) { .repo-link span { display:none; } }
+  p { text-wrap:pretty; }
+  .intro { padding:36px var(--pad) 4px; }
+  h1 { margin:0 0 8px; font-size:1.75rem; font-weight:650; letter-spacing:-0.02em; line-height:1.15; text-wrap:balance; }
+  .sub { color:var(--muted); max-width:75ch; text-wrap:pretty; }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:20px; padding:20px var(--pad) 32px; align-items:start; }
+  video { display:block; width:100%; border-radius:var(--radius); background:#000; border:1px solid var(--line); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; min-width:0; }
+  .panel h2 { margin:0 0 10px; font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
   .steps { list-style:none; margin:0; padding:0; }
-  .steps li { padding:7px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:44px 1fr; gap:6px; border-left:3px solid transparent; }
-  .steps li:hover { background:#24242d; }
-  .steps li.active { background:#22304a; border-left-color:var(--accent); }
-  .steps .t { color:var(--muted); font-variant-numeric:tabular-nums; }
-  .steps .chapter { margin-top:10px; padding:6px 10px 2px; cursor:pointer; font-weight:700; color:#fff; display:block; }
-  .tag { white-space:nowrap; display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; margin-left:4px; vertical-align:1px; background:#1f2f4a; color:#9cc0ff; }
-  .tag.good, .tag.low { background:#1f3a2a; color:#8fd6a5; } .tag.warn, .tag.adv { background:#4a1f1f; color:#ffa49b; } .tag.collab { background:#1f2f4a; color:#9cc0ff; }
+  .steps button { width:100%; display:grid; grid-template-columns:44px 1fr; gap:6px; align-items:baseline; padding:3px 10px; border:1px solid transparent; border-radius:var(--radius); background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; transition:background 150ms var(--ease), border-color 150ms var(--ease); }
+  .steps button:hover { background:var(--panel-2); border-color:var(--line); }
+  .steps button[aria-current] { background:var(--panel-2); border-color:var(--accent); color:var(--accent); }
+  .steps .t { color:var(--muted); font-family:var(--font-mono); font-size:0.8125rem; font-variant-numeric:tabular-nums; }
+  .steps .chapter button { display:block; margin-top:10px; font-weight:650; }
+  .steps .chapter:first-child button { margin-top:0; }
   .table-wrap { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:0.875rem; font-variant-numeric:tabular-nums; }
   th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; }
+  th { color:var(--muted); font-weight:600; font-size:0.6875rem; text-transform:uppercase; letter-spacing:0.08em; }
   td.nw, th.nw { white-space:nowrap; }
-  .below { padding:0 36px 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:24px; }
-  code { white-space:nowrap; background:#24242d; padding:1px 5px; border-radius:4px; font-size:13px; }
-  pre { background:#0c0c10; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; font-size:13px; max-width:100%; }
-  pre code { white-space:pre; background:none; padding:0; }
-  a { color:#8ab4ff; }
-  .note { color:var(--muted); font-size:13px; }
-  footer { padding:0 36px 36px; color:var(--muted); font-size:13px; }
-  @media (max-width: 1180px) { .wrap { grid-template-columns:1fr; } }
+  .below { padding:0 var(--pad) 48px; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:20px; align-items:start; }
+  code { font-family:var(--font-mono); white-space:nowrap; background:var(--panel-2); border:1px solid var(--line); padding:1px 4px; border-radius:2px; font-size:0.8125rem; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; overflow:auto; max-width:100%; }
+  pre code { white-space:pre; background:none; border:0; padding:0; }
+  .note { color:var(--muted); font-size:0.8125rem; max-width:75ch; }
+  footer { padding:0 var(--pad) 36px; color:var(--muted); font-size:0.8125rem; }
+  @media (max-width: 1100px) { .wrap { grid-template-columns:1fr; } }
   @media (max-width: 1400px) { .below { grid-template-columns:1fr; } }
-  @media (max-width: 600px) { header, .wrap, .below, footer { padding-left:16px; padding-right:16px; } h1 { font-size:24px; } }
+  @media (max-width: 720px) { :root { --pad:12px; } h1 { font-size:1.5rem; } .repo-link span { display:none; } .topnav { gap:4px; } .topnav .btn { padding:4px 8px; } }
 </style>
 </head>
 <body>
-<header>
+<header class="topbar">
+  <a class="brand" href="../">EvoLab</a>
+  <nav class="topnav" aria-label="Main">
+    <a class="btn" href="../" data-testid="nav-gallery">Gallery</a>
+    <a class="btn" href="../create" data-testid="nav-create">Create</a>
+    <a class="btn" href="./" aria-current="page" data-testid="nav-demo">Demo</a>
+    <a class="btn" href="../settings" data-testid="nav-settings">Settings</a>
+    <a class="btn repo-link" href="https://github.com/LaansDole/ai-please-learn" target="_blank" rel="noopener noreferrer" aria-label="EvoLab on GitHub" data-testid="nav-repo"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
+  </nav>
+</header>
+
+<main>
+<div class="intro">
   <h1>AI, Please Learn (EvoLab): demo</h1>
   <div class="sub">One continuous recording of the live site in a fresh browser. You play Snake and crash, set the rewards, then watch NEAT and DQN learn it, a 3D stick figure learn to walk, and gpt-6-luna write a new game from one sentence that NEAT then trains. Captions quote the numbers on screen at that moment. Idle stretches longer than 2.5 s are shortened; nothing else is cut or staged.</div>
-</header>
+</div>
 
 <div class="wrap">
   <div>
-    <video id="v" controls preload="metadata" src="ai-please-learn-demo.mp4"></video>
+    <video id="v" controls preload="metadata" src="ai-please-learn-demo.mp4" aria-label="Recorded demo of EvoLab" data-testid="demo-video"></video>
     <p class="note">Recorded 2026-11-22 on https://laansdole.github.io/ai-please-learn/ at commit 2246ccc, fresh Chrome profile, OpenAI gpt-6-luna. Click any step in the list to jump there.</p>
   </div>
   <div class="panel">
     <h2>Runbook steps in the video</h2>
-    <ul class="steps" id="steps">
-      <span class="chapter" data-t="0.0">Intro</span>
-      <span class="chapter" data-t="6.9">Play it yourself</span>
-      <li data-t="6.9"><span class="t"></span><span>1 Open the gallery</span></li>
-      <li data-t="12.9"><span class="t"></span><span>2 Open Snake</span></li>
-      <li data-t="18.2"><span class="t"></span><span>2.1 Play: crash into the wall</span></li>
-      <li data-t="18.9"><span class="t"></span><span>2.2 R restarts</span></li>
-      <span class="chapter" data-t="22.1">Teach it</span>
-      <li data-t="22.1"><span class="t"></span><span>3 Set the rewards</span></li>
-      <li data-t="27.6"><span class="t"></span><span>4 Choose NEAT</span></li>
-      <span class="chapter" data-t="34.2">NEAT learns Snake</span>
-      <li data-t="34.2"><span class="t"></span><span>5 Learn at MAX speed</span></li>
-      <li data-t="79.7"><span class="t"></span><span>5.1 Watch the champion at 1x</span></li>
-      <span class="chapter" data-t="96.1">DQN learns Snake</span>
-      <li data-t="96.1"><span class="t"></span><span>6 Switch to DQN</span></li>
-      <span class="chapter" data-t="152.7">NEAT learns to walk</span>
-      <li data-t="152.7"><span class="t"></span><span>7 3D walker learns</span></li>
-      <li data-t="203.7"><span class="t"></span><span>7.1 Watch it walk</span></li>
-      <span class="chapter" data-t="221.0">Make your own game</span>
-      <li data-t="221.0"><span class="t"></span><span>8 Settings: OpenAI</span></li>
-      <li data-t="226.2"><span class="t"></span><span>8.1 Paste the key</span></li>
-      <li data-t="229.2"><span class="t"></span><span>9 Describe a game</span></li>
-      <li data-t="240.1"><span class="t"></span><span>9.1 The LLM writes it</span></li>
-      <li data-t="293.7"><span class="t"></span><span>9.2 Apple Basket opens</span></li>
-      <span class="chapter" data-t="300.6">NEAT learns the new game</span>
-      <li data-t="300.6"><span class="t"></span><span>10 Train the new game</span></li>
+    <ul class="steps" id="steps" data-testid="demo-steps">
+      <li class="chapter"><button type="button" data-t="0.0">Intro</button></li>
+      <li class="chapter"><button type="button" data-t="6.9">Play it yourself</button></li>
+      <li><button type="button" class="step" data-t="6.9"><span class="t"></span><span>1 Open the gallery</span></button></li>
+      <li><button type="button" class="step" data-t="12.9"><span class="t"></span><span>2 Open Snake</span></button></li>
+      <li><button type="button" class="step" data-t="18.2"><span class="t"></span><span>2.1 Play: crash into the wall</span></button></li>
+      <li><button type="button" class="step" data-t="18.9"><span class="t"></span><span>2.2 R restarts</span></button></li>
+      <li class="chapter"><button type="button" data-t="22.1">Teach it</button></li>
+      <li><button type="button" class="step" data-t="22.1"><span class="t"></span><span>3 Set the rewards</span></button></li>
+      <li><button type="button" class="step" data-t="27.6"><span class="t"></span><span>4 Choose NEAT</span></button></li>
+      <li class="chapter"><button type="button" data-t="34.2">NEAT learns Snake</button></li>
+      <li><button type="button" class="step" data-t="34.2"><span class="t"></span><span>5 Learn at MAX speed</span></button></li>
+      <li><button type="button" class="step" data-t="79.7"><span class="t"></span><span>5.1 Watch the champion at 1x</span></button></li>
+      <li class="chapter"><button type="button" data-t="96.1">DQN learns Snake</button></li>
+      <li><button type="button" class="step" data-t="96.1"><span class="t"></span><span>6 Switch to DQN</span></button></li>
+      <li class="chapter"><button type="button" data-t="152.7">NEAT learns to walk</button></li>
+      <li><button type="button" class="step" data-t="152.7"><span class="t"></span><span>7 3D walker learns</span></button></li>
+      <li><button type="button" class="step" data-t="203.7"><span class="t"></span><span>7.1 Watch it walk</span></button></li>
+      <li class="chapter"><button type="button" data-t="221.0">Make your own game</button></li>
+      <li><button type="button" class="step" data-t="221.0"><span class="t"></span><span>8 Settings: OpenAI</span></button></li>
+      <li><button type="button" class="step" data-t="226.2"><span class="t"></span><span>8.1 Paste the key</span></button></li>
+      <li><button type="button" class="step" data-t="229.2"><span class="t"></span><span>9 Describe a game</span></button></li>
+      <li><button type="button" class="step" data-t="240.1"><span class="t"></span><span>9.1 The LLM writes it</span></button></li>
+      <li><button type="button" class="step" data-t="293.7"><span class="t"></span><span>9.2 Apple Basket opens</span></button></li>
+      <li class="chapter"><button type="button" data-t="300.6">NEAT learns the new game</button></li>
+      <li><button type="button" class="step" data-t="300.6"><span class="t"></span><span>10 Train the new game</span></button></li>
     </ul>
   </div>
 </div>
@@ -108,23 +140,27 @@ npm run dev</code></pre>
   </div>
 </div>
 
-<footer>Source: <a href="https://github.com/LaansDole/ai-please-learn/tree/main/docs/demo/runbook">docs/demo/runbook</a>. App: <a href="https://laansdole.github.io/ai-please-learn/">laansdole.github.io/ai-please-learn</a>. Inspired by <a href="https://www.youtube.com/@CodeBullet">Code Bullet</a>.</footer>
+</main>
+
+<footer>Source: <a href="https://github.com/LaansDole/ai-please-learn/tree/main/docs/demo/runbook">docs/demo/runbook</a>. App: <a href="../">the gallery</a>. Inspired by <a href="https://www.youtube.com/@CodeBullet">Code Bullet</a>.</footer>
 
 <script>
   const v = document.getElementById('v');
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const items = [...document.querySelectorAll('#steps [data-t]')];
+  const steps = items.filter(el => el.classList.contains('step'));
+  const mark = now => {
+    let cur = null;
+    for (const el of steps) if (parseFloat(el.dataset.t) <= now + 0.2) cur = el;
+    steps.forEach(el => { if (el === cur) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current'); });
+  };
   items.forEach(el => {
     const t = parseFloat(el.dataset.t);
     const slot = el.querySelector('.t'); if (slot) slot.textContent = fmt(t);
-    el.addEventListener('click', () => { v.currentTime = t; v.play(); });
+    // The video element reports a file it cannot play itself; the list still shows where the click went.
+    el.addEventListener('click', () => { v.currentTime = t; mark(t); v.play().catch(() => {}); });
   });
-  const lis = items.filter(el => el.tagName === 'LI');
-  v.addEventListener('timeupdate', () => {
-    let cur = null;
-    for (const el of lis) if (parseFloat(el.dataset.t) <= v.currentTime + 0.2) cur = el;
-    lis.forEach(el => el.classList.toggle('active', el === cur));
-  });
+  v.addEventListener('timeupdate', () => mark(v.currentTime));
 </script>
 </body>
 </html>

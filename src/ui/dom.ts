@@ -34,7 +34,11 @@ export function topNav(active?: 'gallery' | 'create' | 'settings'): HTMLElement 
   const tab = (id: string, href: string, label: string) =>
     h('a', { class: id === 'gallery' ? 'btn nav-home' : 'btn', href, testid: `nav-${id}`, 'aria-current': active === id && 'page' }, label);
   return h('nav', { class: 'topnav', 'aria-label': 'Main' },
-    tab('gallery', HOME, 'Gallery'), tab('create', formatRoute({ page: 'create' }), 'Create'), tab('settings', formatRoute({ page: 'settings' }), 'Settings'), repoLink());
+    tab('gallery', HOME, 'Gallery'), tab('create', formatRoute({ page: 'create' }), 'Create'),
+    // The recorded demo is a static page beside the app (`RESERVED_IDS` has "demo"): the router leaves this link to the browser,
+    // and that page carries the same bar with Demo marked as open.
+    tab('demo', `${HOME}demo/`, 'Demo'),
+    tab('settings', formatRoute({ page: 'settings' }), 'Settings'), repoLink());
 }
 
 /** A whole page that says something is missing and links home. */

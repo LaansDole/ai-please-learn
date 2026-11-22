@@ -35,6 +35,8 @@ Every push to `main` runs [.github/workflows/pages.yml](.github/workflows/pages.
 
 Each page has its own address, such as [/ai-please-learn/pong](https://laansdole.github.io/ai-please-learn/pong) or [/ai-please-learn/settings](https://laansdole.github.io/ai-please-learn/settings). Pages has no rewrite rules, so the build copies `index.html` to `404.html` and deep links boot through it.
 
+The Demo tab opens `demo/`, a static page beside the app: [docs/demo/runbook/demo.html](docs/demo/runbook/demo.html) and its video. The build copies them to `dist/demo/`, and `npm run dev` serves them from the docs folder. The page inlines the app's top bar and tokens, so a change to the tabs in `src/ui/dom.ts` needs the same change there.
+
 ## Where to look
 
 - [docs/guide.md](docs/guide.md) is the full guide.

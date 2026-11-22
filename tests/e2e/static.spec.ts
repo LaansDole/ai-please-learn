@@ -143,12 +143,25 @@ test('static sub-path build: deep links boot through 404.html, old hash links re
     await expect(page.getByTestId('gallery')).toBeVisible();
   }
 
-  // The demo is a file beside the app: its link is a page load, not a route. (No demo file in this build, so 404.html answers.)
+  // The demo is a file beside the app: its links are page loads, not routes, in both directions.
   await page.evaluate(() => { document.body.dataset.same = '1'; });
   await expect(page.getByTestId('gallery-demo')).toHaveAttribute('href', '/ai-please-learn/demo/');
+  await expect(page.getByTestId('nav-demo')).toHaveAttribute('href', '/ai-please-learn/demo/');
+  await page.getByTestId('nav-demo').click();
+  await expect(page).toHaveURL(`${origin}/ai-please-learn/demo/`);
+  await expect(page.locator('body')).not.toHaveAttribute('data-same');
+  await expect(page.getByTestId('nav-demo')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('demo-video')).toBeVisible();
+  await page.getByTestId('nav-gallery').click();
+  await expect(page).toHaveURL(`${origin}/ai-please-learn/`);
+  await expect(page.getByTestId('gallery')).toBeVisible();
   await page.getByTestId('gallery-demo').click();
   await expect(page).toHaveURL(`${origin}/ai-please-learn/demo/`);
-  await expect(page.getByTestId('not-found')).toBeVisible();
-  await expect(page.locator('body')).not.toHaveAttribute('data-same');
+  await page.getByTestId('nav-settings').click();             // a deep link from the demo: the host answers with 404.html
+  await expect(page).toHaveURL(`${origin}/ai-please-learn/settings`);
+  await expect(page.getByTestId('settings')).toBeVisible();
+  await page.goBack();
+  await page.locator('.brand').click();
+  await expect(page).toHaveURL(`${origin}/ai-please-learn/`);
   expect(errors).toEqual([]);
 });
