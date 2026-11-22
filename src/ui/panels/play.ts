@@ -23,16 +23,20 @@ export function createPlayPanel(session: Session): { el: HTMLElement; dispose():
   const total = h('span', { class: 'num total', testid: 'play-fitness' }, '0.00');
   const over = h('p', { class: 'play-over', role: 'status' });
   const restart = () => { seed++; over.textContent = ''; session.play(seed); };
+  // R restarts, unless the env steers with it (the walker's right knee): then N. A generated concept that binds both gets no shortcut.
+  const hotkey = ['KeyR', 'KeyN'].find((c) => !spec.human!.keys.some((k) => k.code === c)), hotLabel = hotkey?.slice(3);
   const el = h('section', { class: 'panel play' },
     h('h3', null, 'Play it yourself'),
     h('p', null, spec.human.hint),
-    h('div', { class: 'keys' }, ...spec.human.keys.map((k) => h('span', { class: 'key' }, h('kbd', null, k.code.replace(/^Arrow|^Key/, '')), k.label))),
+    h('div', { class: 'keys' },
+      ...spec.human.keys.map((k) => h('span', { class: 'key' }, h('kbd', null, k.code.replace(/^Arrow|^Key/, '')), k.label)),
+      hotLabel && h('span', { class: 'key' }, h('kbd', null, hotLabel), 'restart')),
     h('table', { class: 'terms' },
       h('thead', null, h('tr', null, h('th', { scope: 'col' }, 'Term'), h('th', { scope: 'col' }, 'What it counts'), h('th', { scope: 'col', class: 'num' }, 'Raw'), h('th', { scope: 'col', class: 'num' }, 'Fitness'))),
       h('tbody', null, ...rows.map((r) => r.tr))),
     h('div', { class: 'play-foot' },
       h('span', null, 'Fitness ', total),
-      h('button', { testid: 'play-restart', onclick: restart }, 'Restart')),
+      h('button', { testid: 'play-restart', onclick: restart, 'aria-keyshortcuts': hotLabel }, 'Restart', hotLabel && h('kbd', { 'aria-hidden': 'true' }, hotLabel))),
     over);
 
   const paint = (terms: number[], fitness: number) => {
@@ -46,7 +50,12 @@ export function createPlayPanel(session: Session): { el: HTMLElement; dispose():
   const keys = new InputTracker(spec.human.keys.map((k) => k.code));
   const send = () => { const s = keys.take(); session.input(s.held, s.pressed); };
   const typing = (e: Event) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-  const onDown = (e: KeyboardEvent) => { if (!typing(e) && keys.down(e.code)) { e.preventDefault(); send(); } };
+  const onDown = (e: KeyboardEvent) => {
+    if (typing(e)) return;
+    if (keys.down(e.code)) { e.preventDefault(); send(); }
+    // Not with a modifier: Ctrl/Cmd+R must still reload the page.
+    else if (e.code === hotkey && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); restart(); }
+  };
   const onUp = (e: KeyboardEvent) => { if (keys.up(e.code)) { e.preventDefault(); send(); } };
   const onBlur = () => { keys.clear(); send(); };
   window.addEventListener('keydown', onDown); window.addEventListener('keyup', onUp); window.addEventListener('blur', onBlur);

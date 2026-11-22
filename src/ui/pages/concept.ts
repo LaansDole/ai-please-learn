@@ -3,7 +3,7 @@ import { library, type StoredConcept } from '../../gen/library';
 import { iterationLabel } from '../../learner/types';
 import { resolveConfig } from '../../learner/config';
 import { loadRunPrefs, type RunPrefs } from '../../persist/storage';
-import { h } from '../dom';
+import { h, repoLink } from '../dom';
 import { createPlayPanel } from '../panels/play';
 import { createLearnPanel } from '../panels/learn';
 import { createNetworkPanel } from '../panels/network';
@@ -35,7 +35,7 @@ type Unmount = (() => void) & { onStep(step: Step): void };
 
 function unknownConcept(root: HTMLElement): void {
   root.append(h('div', { class: 'page' },
-    h('header', { class: 'topbar' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab')),
+    h('header', { class: 'topbar' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), repoLink(true)),
     h('main', { class: 'gallery' },
       h('div', { class: 'empty-state' },
         h('h1', null, 'This concept does not exist'),
@@ -79,7 +79,8 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
         concept && h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated')),
       h('nav', { class: 'stepper', 'aria-label': 'Steps' }, h('ol', null, ...buttons.map((b) => h('li', null, b)))),
       concept && h('button', { type: 'button', testid: 'view-source', onclick: () => showSource(concept) }, 'View source'),
-      h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
+      h('a', { class: 'btn', href: '#/settings', testid: 'nav-settings' }, 'Settings'),
+      repoLink()),
     banner,
     h('main', { class: 'concept' }, h('div', { class: 'cols' }, stage.el, side), lower)));
 

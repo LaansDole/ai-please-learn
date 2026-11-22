@@ -47,6 +47,7 @@ kbd {
   display: inline-block; min-width: 26px; padding: 2px 6px; text-align: center; font-size: var(--fs-small); color: var(--text);
   background: var(--panel-2); border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: var(--radius);
 }
+button kbd { min-width: 20px; padding: 0 4px; font-size: var(--fs-label); line-height: 1.5; color: var(--muted); background: var(--bg); }
 label.check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 24px; }
 /* Fingers: every control gets a 44 px target on narrow screens and touch devices. */
 @media (max-width: 720px), (pointer: coarse) {
@@ -60,6 +61,8 @@ label.check { display: inline-flex; align-items: center; gap: 6px; cursor: point
   padding: 8px var(--pad); border-bottom: 1px solid var(--line); background: var(--panel);
 }
 .topbar-end { margin-left: auto; }
+.repo-link svg { flex: none; }
+@media (max-width: 720px) { .repo-link { min-width: 44px; } .repo-link span { display: none; } }
 .brand { font-weight: 700; font-size: var(--fs-lead); letter-spacing: 0.02em; color: var(--text); text-decoration: none; }
 .brand:hover { color: var(--accent); }
 .crumb { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-lead); min-width: 0; }

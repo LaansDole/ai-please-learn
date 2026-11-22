@@ -1,6 +1,6 @@
 import { listModels } from '../../gen/llm';
 import { PRESETS, isLocalUrl, loadSettings, resolveMode, saveSettings, validateSettings, type LlmSettings } from '../../gen/settings';
-import { h } from '../dom';
+import { h, repoLink } from '../dom';
 import type { PageFn } from '../router';
 
 export const settingsPage: PageFn = (root) => {
@@ -66,7 +66,8 @@ export const settingsPage: PageFn = (root) => {
   root.append(h('div', { class: 'page', testid: 'settings' },
     h('header', { class: 'topbar' },
       h('div', { class: 'crumb' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, 'Settings')),
-      h('a', { class: 'btn topbar-end', href: '#/' }, 'Back to the gallery')),
+      h('a', { class: 'btn topbar-end', href: '#/' }, 'Back to the gallery'),
+      repoLink()),
     h('main', { class: 'settings' },
       h('h1', null, 'Settings'),
       h('section', { class: 'panel form' },

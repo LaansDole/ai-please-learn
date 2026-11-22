@@ -1,6 +1,6 @@
 import { listEnvs } from '../../env/registry';
 import { library, toConceptFile, type StoredConcept } from '../../gen/library';
-import { h } from '../dom';
+import { h, repoLink } from '../dom';
 import { createNewConceptPanel } from '../panels/newConcept';
 import { showSource } from '../panels/sourceModal';
 import { formatRoute, type PageFn } from '../router';
@@ -69,7 +69,8 @@ export const galleryPage: PageFn = (root) => {
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
       h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
-      h('a', { class: 'btn topbar-end', href: '#/settings', testid: 'nav-settings' }, 'Settings')),
+      h('a', { class: 'btn topbar-end', href: '#/settings', testid: 'nav-settings' }, 'Settings'),
+      repoLink()),
     h('main', { class: 'gallery' },
       h('section', { class: 'hero' },
         h('div', { class: 'hero-text' },
