@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimate, ema, niceTicks, sampleEvenly, stackShares, tickLabel } from './scale';
+import { assignColours, decimate, ema, niceTicks, OTHER, runningBest, sampleEvenly, speciesBands, tickLabel } from './scale';
 
 describe('chart scales', () => {
   it('picks nice ticks covering the range', () => {
@@ -20,8 +20,8 @@ describe('chart scales', () => {
     expect(decimate([1, 2], [3, 4], 500)).toEqual({ xs: [1, 2], ys: [3, 4] });
   });
   it('stacks species shares in order of first appearance', () => {
-    expect(stackShares([{ species: [{ id: 1, size: 30 }, { id: 2, size: 10 }] }, { species: [{ id: 2, size: 20 }, { id: 3, size: 20 }] }]))
-      .toEqual({ ids: [1, 2, 3], rows: [[0.75, 1, 1], [0, 0.5, 1]] });
+    expect(speciesBands([{ species: [{ id: 1, size: 30 }, { id: 2, size: 10 }] }, { species: [{ id: 2, size: 20 }, { id: 3, size: 20 }] }]))
+      .toEqual({ ids: [1, 2, 3], rows: [[0.75, 1, 1], [0, 0.5, 1]], pooled: 0 });
   });
   it('samples long series evenly and keeps both ends', () => {
     const xs = Array.from({ length: 1001 }, (_, i) => i);
@@ -54,5 +54,49 @@ describe('tickLabel', () => {
       if (Number.isFinite(min) && Number.isFinite(max)) expect(t.every(Number.isFinite), `${min}..${max}`).toBe(true);
     }
     expect(niceTicks(1e-9, 2e-9).length).toBeGreaterThan(2);      // a genuinely small range keeps its resolution
+  });
+});
+
+describe('running best', () => {
+  it('never goes down, skips gaps and starts over where told', () => {
+    expect(runningBest([1, 3, 2, null, 5, 4])).toEqual([1, 3, 3, 3, 5, 5]);
+    expect(runningBest([null, 2, 1])).toEqual([null, 2, 2]);
+    expect(runningBest([5, 9, 1, 2], (i) => i === 2)).toEqual([5, 9, 1, 2]);     // a reward change rescales fitness
+  });
+});
+
+describe('species bands', () => {
+  const gen = (...sizes: number[]) => ({ species: sizes.flatMap((size, i) => (size > 0 ? [{ id: i + 1, size }] : [])) });
+  it('keeps the big species in order of first appearance and pools the small ones into "other" on top', () => {
+    const b = speciesBands([gen(60, 30, 4, 3, 3), gen(50, 40, 5, 5, 0)], { minShare: 0.1 });
+    expect(b.ids).toEqual([1, 2, OTHER]);
+    expect(b.rows[0]!.map((v) => +v.toFixed(4))).toEqual([0.6, 0.9, 1]);
+    expect(b.rows[1]!.map((v) => +v.toFixed(4))).toEqual([0.5, 0.9, 1]);
+    expect(b.pooled).toBe(2);                        // species 3 and 4 are alive in the last generation
+  });
+  it('has no "other" band when nothing is pooled, and caps the number of bands', () => {
+    expect(speciesBands([gen(50, 50)]).ids).toEqual([1, 2]);
+    const many = speciesBands([gen(...new Array<number>(20).fill(5))], { minShare: 0.01, maxBands: 7 });
+    expect(many.ids).toHaveLength(8);
+    expect(many.pooled).toBe(13);
+  });
+  it('smooths long runs without leaving gaps: every column still fills 0..1', () => {
+    const history = Array.from({ length: 60 }, (_, g) => (g % 2 ? gen(90, 10) : gen(10, 90)));
+    const b = speciesBands(history);
+    for (const row of b.rows) {
+      expect(row.at(-1)).toBe(1);
+      for (let k = 1; k < row.length; k++) expect(row[k]!).toBeGreaterThanOrEqual(row[k - 1]!);
+    }
+    const mid = b.rows[30]![0]!;                     // raw flips between 0.9 and 0.1
+    expect(mid).toBeGreaterThan(0.3); expect(mid).toBeLessThan(0.7);
+  });
+  it('gives a species one colour for good, and never shares it with a species shown beside it', () => {
+    const slots = new Map<number, number>();
+    assignColours([1, 8, OTHER], slots, 7);          // 1 and 8 both want slot 1
+    expect(slots.get(1)).toBe(1); expect(slots.get(8)).not.toBe(1);
+    const eight = slots.get(8);
+    assignColours([8, 15, OTHER], slots, 7);
+    expect(slots.get(8)).toBe(eight); expect(slots.get(15)).not.toBe(eight);
+    expect(slots.has(OTHER)).toBe(false);
   });
 });

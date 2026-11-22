@@ -1,20 +1,25 @@
 import { createChartCanvas } from './canvas';
 import { decimate, niceTicks, tickLabel as short } from './scale';
 
-export interface SeriesSpec { key: string; label: string; color: string; dash?: number[]; dots?: boolean }   // color: a CSS colour or a '--token'
+/** color: a CSS colour or a '--token'. `faint`: a thin, dimmed line for the raw signal behind a trend line. */
+export interface SeriesSpec { key: string; label: string; color: string; dash?: number[]; dots?: boolean; faint?: boolean }
 export interface ChartMarker { x: number; label: string }
 export interface LineChart {
   el: HTMLElement;
   setData(x: number[], ys: Record<string, (number | null)[]>, markers?: ChartMarker[]): void;
   /** One plain sentence under the title saying how to read the chart. */
   setNote(text: string): void;
+  /** What one step along the x axis is ("generation", "episode"): the axis title and the first line of the tooltip. */
+  setXLabel(text: string): void;
 }
 
-const PAD = { l: 46, r: 64, t: 10, b: 22 }, DECIMATE_ABOVE = 2000;
+const DECIMATE_ABOVE = 2000, LABEL_GAP = 14;
 
-/** Line chart with nice ticks, directly labelled series, reward-change markers and a hover crosshair (spec section 11.4). */
-export function createLineChart(opts: { testid: string; title: string; series: SeriesSpec[]; logToggle?: boolean }): LineChart {
-  let xs: number[] = [], data: Record<string, (number | null)[]> = {}, markers: ChartMarker[] = [], hover: number | null = null, log = false;
+/** Line chart with nice ticks, axis titles, directly labelled series, reward-change markers and a hover crosshair (spec section 11.4). */
+export function createLineChart(opts: { testid: string; title: string; series: SeriesSpec[]; logToggle?: boolean; yLabel?: string }): LineChart {
+  let xs: number[] = [], data: Record<string, (number | null)[]> = {}, markers: ChartMarker[] = [], hover: number | null = null, log = false, xLabel = '';
+  // Room for the y title on the left, the x title below, and (measured on every draw) the longest series label on the right.
+  const PAD = { l: opts.yLabel ? 60 : 46, r: 64, t: 10, b: 22 };
   const c = createChartCanvas(opts.testid, draw), { ctx } = c;
   c.canvas.dataset.points = '0'; c.canvas.dataset.markers = '0';
   c.canvas.setAttribute('role', 'img'); c.canvas.setAttribute('aria-label', opts.title);
@@ -43,8 +48,10 @@ export function createLineChart(opts: { testid: string; title: string; series: S
 
   function draw(): void {
     const line = c.token('--line'), muted = c.token('--muted'), mono = c.token('--font-mono');
-    const plotH = c.h - PAD.t - PAD.b, right = c.w - PAD.r;
     ctx.font = `11px ${mono}`; ctx.textBaseline = 'middle'; ctx.lineWidth = 1;
+    PAD.b = xLabel ? 38 : 22;
+    PAD.r = Math.max(40, ...opts.series.filter((s) => data[s.key]?.length).map((s) => Math.ceil(ctx.measureText(s.label).width) + 14));
+    const plotH = c.h - PAD.t - PAD.b, right = c.w - PAD.r;
     if (xs.length === 0) {
       ctx.fillStyle = muted; ctx.textAlign = 'center';
       ctx.fillText('Nothing to plot yet', c.w / 2, c.h / 2);
@@ -65,8 +72,11 @@ export function createLineChart(opts: { testid: string; title: string; series: S
     ctx.textAlign = 'center';
     for (const t of niceTicks(xa, xb, Math.max(2, Math.floor((right - PAD.l) / 90)))) {
       if (t < xa || t > xb || !Number.isInteger(t)) continue;
-      ctx.fillStyle = muted; ctx.fillText(String(t), xPos(t), c.h - PAD.b / 2);
+      ctx.fillStyle = muted; ctx.fillText(String(t), xPos(t), PAD.t + plotH + 11);
     }
+    ctx.fillStyle = muted;
+    if (xLabel) ctx.fillText(xLabel, (PAD.l + right) / 2, c.h - 8);
+    if (opts.yLabel) { ctx.save(); ctx.translate(9, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(opts.yLabel, 0, 0); ctx.restore(); }
 
     const warn = c.token('--warn');
     for (const m of markers) {
@@ -81,7 +91,8 @@ export function createLineChart(opts: { testid: string; title: string; series: S
       const raw = (data[s.key] ?? []).map(value);
       const d = xs.length > DECIMATE_ABOVE ? decimate(xs, raw, DECIMATE_ABOVE / 2) : { xs, ys: raw };
       const color = c.token(s.color);
-      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s.dash ? 1.5 : 2; ctx.setLineDash(s.dash ?? []); ctx.lineJoin = 'round';
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = s.faint ? 1 : s.dash ? 1.5 : 2; ctx.setLineDash(s.dash ?? []); ctx.lineJoin = 'round';
+      ctx.globalAlpha = s.faint ? 0.6 : 1;
       ctx.beginPath();
       let pen = false, last = NaN;
       d.ys.forEach((v, i) => {
@@ -90,15 +101,15 @@ export function createLineChart(opts: { testid: string; title: string; series: S
         pen = true; last = v;
       });
       if (!s.dots) ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
       // A dots series is a faint scatter (one mark per sample) with no connecting line.
       if (s.dots) { ctx.globalAlpha = 0.35; d.ys.forEach((v, i) => { if (!Number.isNaN(v)) ctx.fillRect(xPos(d.xs[i]!) - 1.5, yPos(v) - 1.5, 3, 3); }); ctx.globalAlpha = 1; }
       else if (d.xs.length === 1 && !Number.isNaN(last)) { ctx.beginPath(); ctx.arc(xPos(d.xs[0]!), yPos(last), 2.5, 0, Math.PI * 2); ctx.fill(); }
       if (!Number.isNaN(last)) ends.push({ y: yPos(last), label: s.label, color });
     }
-    // Direct labels at the right end, nudged apart so close series stay readable.
+    // Direct labels at the right end, spread a full line apart so close series (mean and median) never overlap.
     ends.sort((a, b) => a.y - b.y);
-    for (let i = 1; i < ends.length; i++) ends[i]!.y = Math.max(ends[i]!.y, ends[i - 1]!.y + 12);
+    for (let i = 1; i < ends.length; i++) ends[i]!.y = Math.max(ends[i]!.y, ends[i - 1]!.y + LABEL_GAP);
     const overflow = ends.length ? Math.max(0, ends.at(-1)!.y - (PAD.t + plotH)) : 0;
     ctx.textAlign = 'left'; ctx.font = `11px ${mono}`;
     for (const e of ends) { ctx.fillStyle = e.color; ctx.fillText(e.label, right + 6, e.y - overflow); }
@@ -116,9 +127,9 @@ export function createLineChart(opts: { testid: string; title: string; series: S
     let best = 0;
     for (let i = 1; i < xs.length; i++) if (Math.abs(xPos(xs[i]!) - px) < Math.abs(xPos(xs[best]!) - px)) best = i;
     hover = best;
-    const rows = opts.series.map((s) => { const v = data[s.key]?.[best]; return `${s.label} ${v === null || v === undefined ? '-' : short(v)}`; });
+    const rows = opts.series.filter((s) => data[s.key]?.length).map((s) => { const v = data[s.key]![best]; return `${s.label} ${v === null || v === undefined ? '-' : short(v)}`; });
     const marker = markers.find((m) => m.x === xs[best]);
-    tip.textContent = [`${xs[best]}`, ...rows, ...(marker ? [`reward change: ${marker.label}`] : [])].join('\n');
+    tip.textContent = [`${xLabel} ${short(xs[best]!)}`.trim(), ...rows, ...(marker ? [`reward change: ${marker.label}`] : [])].join('\n');
     tip.hidden = false;
     const x = xPos(xs[best]!);
     tip.style.left = `${Math.min(x + 10, c.w - tip.offsetWidth - 4)}px`; tip.style.top = `${PAD.t}px`;
@@ -129,6 +140,7 @@ export function createLineChart(opts: { testid: string; title: string; series: S
   return {
     el,
     setNote(text) { if (note.textContent !== text) note.textContent = text; },
+    setXLabel(text) { if (xLabel !== text) { xLabel = text; c.redraw(); } },
     setData(x, ys, m = []) {
       xs = x; data = ys; markers = m;
       c.canvas.dataset.points = String(x.length); c.canvas.dataset.markers = String(m.length);

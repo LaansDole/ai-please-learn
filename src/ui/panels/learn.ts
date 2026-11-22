@@ -1,9 +1,10 @@
 import type { RewardConfig } from '../../env/types';
 import { argmax } from '../../learner/policy';
+import { iterationLabel } from '../../learner/types';
 import type { RunPrefs } from '../../persist/storage';
 import { createOutputsBar } from '../../viz/barChart';
 import { createLineChart, type ChartMarker } from '../../viz/lineChart';
-import { sampleEvenly, stackShares } from '../../viz/scale';
+import { runningBest, sampleEvenly, speciesBands } from '../../viz/scale';
 import { createStackedArea } from '../../viz/stackedArea';
 import { h } from '../dom';
 import type { RunInfo, Session } from '../session';
@@ -26,18 +27,20 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
   const { spec } = session;
   const speedBar = createSpeedBar(session, prefs, start), stats = createStatsStrip(session, prefs);
   const fitness = createLineChart({
-    testid: 'fitness-chart', title: 'Fitness',
+    testid: 'fitness-chart', title: 'Fitness', yLabel: 'fitness',
     series: [
       { key: 'episode', label: 'episode', color: '--muted', dots: true },
-      { key: 'best', label: 'best', color: '--series-best' },
+      { key: 'best', label: 'best', color: '--series-best', faint: true },
       { key: 'mean', label: 'mean', color: '--series-mean', dash: [6, 4] },
       { key: 'median', label: 'median', color: '--series-median', dash: [2, 3] },
       { key: 'smoothed', label: 'smoothed', color: '--text' },
+      { key: 'record', label: 'best so far', color: '--series-best' },
     ],
   });
   const species = createStackedArea({
     testid: 'species-chart', title: 'Species',
-    note: 'Each band is a species: a family of networks alike enough to breed. Its height is its share of the population.',
+    note: 'Each band is a species: a family of networks alike enough to breed. Its height is its share of the population. '
+      + 'The number is the species\' id, counted up as new ones appear. Species that stay small share the grey band.',
   });
   const rlPanels = createRlPanels(session);
   const discrete = spec.action.type === 'discrete';
@@ -57,7 +60,7 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
           : 'Nothing has learned yet. Start learning and one network plays several copies of the game at once, correcting itself after every batch.';
       if (hint.textContent !== text) hint.textContent = text;
     }
-    fitness.setNote(kind === 'neat' ? 'Fitness is the weighted sum of the rewards from step 2. Best is each generation\'s champion; mean and median are the whole crowd. Up is better.'
+    fitness.setNote(kind === 'neat' ? 'Fitness is the weighted sum of the rewards from step 2. The thick line is the best score so far: each step up is a network that beat every one before it. The thin line is each generation\'s champion; mean and median are the whole crowd.'
       : 'Fitness is the weighted sum of the rewards from step 2. Each dot is one finished episode; the white line is their running average. Up is better.');
     const out = kind === 'neat' ? 'What the network on stage wants to do right now.'
       : kind === 'dqn' ? 'How good the network expects each action to be from here.'
@@ -101,17 +104,23 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
     species.el.hidden = kind !== 'neat'; rlPanels.el.hidden = kind === 'neat';
     describe(kind);
     outputsTitle.textContent = kind === 'neat' ? 'Output activations' : kind === 'dqn' ? 'Q-values' : discrete ? 'Action probabilities' : 'Action means';
+    fitness.setXLabel(iterationLabel(kind).toLowerCase());
     if (kind !== 'neat') {
       extendRl();
-      fitness.setData(rl.x, { episode: rl.episode, smoothed: rl.smoothed, best: rl.best, mean: rl.mean, median: rl.median }, markers);
+      // A DQN round is one episode: its best, mean and median are the dot itself, three lines drawn on top of each other.
+      fitness.setData(rl.x, { episode: rl.episode, smoothed: rl.smoothed, ...(kind === 'ppo' && { best: rl.best, mean: rl.mean, median: rl.median }) }, markers);
       rlPanels.update(kind);
       return;
     }
-    fitness.setData(hist.map((s) => s.iteration), { best: hist.map((s) => s.best), mean: hist.map((s) => s.mean), median: hist.map((s) => s.median) }, markers);
+    const best = hist.map((s) => s.best), changed = new Set(session.rewardMarkers);
+    fitness.setData(hist.map((s) => s.iteration), {
+      best, mean: hist.map((s) => s.mean), median: hist.map((s) => s.median),
+      record: runningBest(best, (i) => changed.has(hist[i]!.iteration)),      // new rewards rescale fitness: the record starts over
+    }, markers);
     // Long runs are drawn from a bounded sample of generations: the chart is ~500 px wide and repaints every frame at MAX.
     const neat = hist.flatMap((s) => (s.neat ? [s.neat] : []));
-    const shares = stackShares(sampleEvenly(neat, SPECIES_COLUMNS));
-    species.setData(shares.ids, shares.rows, neat.length);
+    const bands = speciesBands(sampleEvenly(neat, SPECIES_COLUMNS));
+    species.setData(bands.ids, bands.rows, neat.length, bands.pooled);
   };
   // History can grow hundreds of times per second at MAX; charts repaint once per frame.
   const schedule = () => { if (!raf) raf = requestAnimationFrame(render); };

@@ -40,18 +40,69 @@ export function decimate(xs: number[], ys: number[], maxPoints: number): { xs: n
   return { xs: idx.map((i) => xs[i]!), ys: idx.map((i) => ys[i]!) };
 }
 
-/** rows[g][k]: cumulative upper bound in [0, 1] of species ids[k]'s population share at generation g. Ids in order of first appearance. */
-export function stackShares(history: readonly { species: { id: number; size: number }[] }[]): { ids: number[]; rows: number[][] } {
-  const ids: number[] = [], index = new Map<number, number>();
-  for (const g of history) for (const s of g.species) if (!index.has(s.id)) { index.set(s.id, ids.length); ids.push(s.id); }
-  const rows = history.map((g) => {
-    const sizes = new Array<number>(ids.length).fill(0);
-    let total = 0;
-    for (const s of g.species) { sizes[index.get(s.id)!]! += s.size; total += s.size; }
-    let acc = 0;
-    return sizes.map((s) => (acc += total > 0 ? s / total : 0));
+/** The band of pooled small species; never a real species id. */
+export const OTHER = -1;
+
+/**
+ * What the species chart draws. NEAT makes and loses species every few generations, and one band per species is unreadable:
+ * only species that reach `minShare` of the population are kept (the `maxBands` largest of them, in order of first
+ * appearance, oldest at the bottom), and everything else is pooled into one `OTHER` band on top. Shares are averaged over
+ * neighbouring generations on long runs, so a band changes shape with the trend and not with every reshuffle.
+ * rows[g][k] is the cumulative upper bound in [0, 1] of band ids[k] at generation g; the last band always ends at 1.
+ * `pooled` counts the species alive in the last generation that are inside `OTHER`.
+ */
+export function speciesBands(
+  history: readonly { species: { id: number; size: number }[] }[], { minShare = 0.06, maxBands = 7 } = {},
+): { ids: number[]; rows: number[][]; pooled: number } {
+  const all: number[] = [], index = new Map<number, number>(), n = history.length;
+  for (const g of history) for (const s of g.species) if (!index.has(s.id)) { index.set(s.id, all.length); all.push(s.id); }
+  const raw = history.map((g) => {
+    const shares = new Array<number>(all.length).fill(0), total = g.species.reduce((sum, s) => sum + s.size, 0);
+    if (total > 0) for (const s of g.species) shares[index.get(s.id)!]! += s.size / total;
+    return shares;
   });
-  return { ids, rows };
+  // Centred moving average; the same window for every species, so a column still sums to 1.
+  const radius = Math.min(4, Math.floor(n / 12));
+  const smooth = radius === 0 ? raw : raw.map((_, g) => {
+    const a = Math.max(0, g - radius), b = Math.min(n - 1, g + radius);
+    return all.map((_, k) => { let sum = 0; for (let i = a; i <= b; i++) sum += raw[i]![k]!; return sum / (b - a + 1); });
+  });
+  const peak = all.map((_, k) => smooth.reduce((m, row) => Math.max(m, row[k]!), 0));
+  const area = all.map((_, k) => smooth.reduce((sum, row) => sum + row[k]!, 0));
+  const kept = all.map((_, k) => k).filter((k) => peak[k]! >= minShare).sort((a, b) => area[b]! - area[a]!).slice(0, maxBands).sort((a, b) => a - b);
+  const other = kept.length < all.length;
+  const rows = smooth.map((row) => {
+    let acc = 0;
+    const out = kept.map((k) => (acc += row[k]!));
+    if (other) out.push(1); else if (out.length) out[out.length - 1] = 1;
+    return out;
+  });
+  const shown = new Set(kept.map((k) => all[k]!));
+  return { ids: [...kept.map((k) => all[k]!), ...(other ? [OTHER] : [])], rows, pooled: history.at(-1)?.species.filter((s) => s.size > 0 && !shown.has(s.id)).length ?? 0 };
+}
+
+/**
+ * Palette slots for the bands in `ids`. A species keeps the slot it was first given (`slots` outlives the call), and a new
+ * one takes a slot that no band beside it uses. At most `palette` real ids at a time.
+ */
+export function assignColours(ids: readonly number[], slots: Map<number, number>, palette: number): void {
+  const used = new Set(ids.flatMap((id) => (slots.has(id) ? [slots.get(id)!] : [])));
+  for (const id of ids) {
+    if (id === OTHER || slots.has(id) || used.size >= palette) continue;
+    let s = id % palette;
+    while (used.has(s)) s = (s + 1) % palette;
+    slots.set(id, s); used.add(s);
+  }
+}
+
+/** The highest value so far at each index: the line that answers "is it improving?". `restart(i)` begins a new record at i. */
+export function runningBest(values: readonly (number | null)[], restart?: (i: number) => boolean): (number | null)[] {
+  let best: number | null = null;
+  return values.map((v, i) => {
+    if (restart?.(i)) best = null;
+    if (v !== null && (best === null || v > best)) best = v;
+    return best;
+  });
 }
 
 /** At most `max` (>= 2) items at evenly spaced indices; the first and the last are always kept. */
