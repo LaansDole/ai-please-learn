@@ -6,7 +6,7 @@ export type Route = { page: 'gallery' } | { page: 'concept'; envId: string; step
 export type PageFn = (root: HTMLElement, route: Route) => (() => void) | void;
 type Unmount = (() => void) & { onStep?(step: Step): void };
 
-/** Where the app is hosted, with a trailing slash: "/" in dev, "/evolab/" on GitHub Pages. */
+/** Where the app is hosted, with a trailing slash: "/" in dev, "/ai-please-learn/" on GitHub Pages. */
 const BASE = import.meta.env.BASE_URL;
 
 /** `pathname` is a full URL path. Concepts sit at the top level, so `RESERVED_IDS` can never be concept ids. */

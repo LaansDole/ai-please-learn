@@ -26,10 +26,10 @@ jobs:
       - run: npm ci
       - name: Unit tests
         run: npm test
-      - name: Build for the /evolab/ sub-path
+      - name: Build for the /ai-please-learn/ sub-path
         run: npm run build
         env:
-          EVOLAB_BASE: /evolab/
+          EVOLAB_BASE: /ai-please-learn/
           EVOLAB_STATIC: '1'
       - name: Add the demo page if present
         run: |
@@ -43,7 +43,7 @@ jobs:
         run: |
           grep -q "<title>EvoLab" dist/index.html
           ls dist/assets/*.js >/dev/null
-          cmp dist/index.html dist/404.html   # deep links (/evolab/pong/2) boot through 404.html
+          cmp dist/index.html dist/404.html   # deep links (/ai-please-learn/pong/2) boot through 404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

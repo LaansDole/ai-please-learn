@@ -11,7 +11,7 @@ npm test         # unit tests
 npm run e2e      # Playwright, full journey in Chromium
 npm run bench    # learning benchmarks
 npm run build    # type check and production bundle in dist/
-EVOLAB_BASE=/evolab/ EVOLAB_STATIC=1 npm run build   # the GitHub Pages build
+EVOLAB_BASE=/ai-please-learn/ EVOLAB_STATIC=1 npm run build   # the GitHub Pages build
 EVOLAB_SCREENSHOTS=1 npm run e2e -- screenshots      # regenerate docs/screenshots
 ```
 
@@ -33,7 +33,7 @@ In "Play it yourself" the arrow keys control the game and R restarts it. The hin
 
 Every push to `main` runs [.github/workflows/pages.yml](.github/workflows/pages.yml), which runs the unit tests, makes the Pages build and publishes `dist/` to GitHub Pages.
 
-Each page has its own address, such as [/evolab/pong](https://laansdole.github.io/evolab/pong) or [/evolab/settings](https://laansdole.github.io/evolab/settings). Pages has no rewrite rules, so the build copies `index.html` to `404.html` and deep links boot through it.
+Each page has its own address, such as [/ai-please-learn/pong](https://laansdole.github.io/ai-please-learn/pong) or [/ai-please-learn/settings](https://laansdole.github.io/ai-please-learn/settings). Pages has no rewrite rules, so the build copies `index.html` to `404.html` and deep links boot through it.
 
 ## Where to look
 

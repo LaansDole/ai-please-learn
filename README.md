@@ -2,7 +2,7 @@
 
 Watch neural networks learn to play games in your browser, with no backend and no account.
 
-**Live app** at <https://laansdole.github.io/evolab/>
+**Live app** at <https://laansdole.github.io/ai-please-learn/>
 
 ![A population of stick-figure walkers learning to walk, with the champion's network, fitness and species charts](docs/screenshots/08-walker-learn.png)
 
@@ -10,7 +10,7 @@ Watch neural networks learn to play games in your browser, with no backend and n
 
 - **Six games.** Pong, Snake, Flappy, a racing car, Tetris and a two-legged 3D walker.
 - **Three learning methods.** NEAT, DQN and PPO, written from scratch in TypeScript with no ML library.
-- **Make your own.** Describe a game in a sentence on the [Create](https://laansdole.github.io/evolab/create) page and an LLM writes it.
+- **Make your own.** Describe a game in a sentence on the [Create](https://laansdole.github.io/ai-please-learn/create) page and an LLM writes it.
 - **You set the reward.** Play the game, weight each reward and penalty, then watch the network learn at any speed.
 
 ## Run locally

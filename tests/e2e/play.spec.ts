@@ -41,7 +41,7 @@ test('the top bar links to the repository on every page', async ({ page }) => {
   for (const url of ['/', '/snake/1', '/settings', '/create']) {
     await page.goto(url);
     const link = page.getByTestId('nav-repo');
-    await expect(link).toHaveAttribute('href', 'https://github.com/LaansDole/evolab');
+    await expect(link).toHaveAttribute('href', 'https://github.com/LaansDole/ai-please-learn');
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     await expect(link).toHaveAccessibleName('EvoLab on GitHub');

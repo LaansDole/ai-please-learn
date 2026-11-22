@@ -2,7 +2,7 @@
 
 The detail behind the [README](../README.md): what each page does, how the learning methods differ, how generated code is contained, how to add a concept and where things live in the source.
 
-Live app: <https://laansdole.github.io/evolab/>
+Live app: <https://laansdole.github.io/ai-please-learn/>
 
 ## Gallery
 
@@ -20,15 +20,15 @@ Live app: <https://laansdole.github.io/evolab/>
 
 ## Addresses
 
-Every page has a clean URL under the app's base (`/` in dev, `/evolab/` on the live site):
+Every page has a clean URL under the app's base (`/` in dev, `/ai-please-learn/` on the live site):
 
 | Address | Page |
 |---|---|
-| `/evolab/` | The gallery. |
-| `/evolab/pong` | A concept, at step 1. Built-in ids are `pong`, `snake`, `flappy`, `car`, `tetris`, `walker`. |
-| `/evolab/pong/3` | The same concept at step 3 (steps are 1 to 4). |
-| `/evolab/create` | Create a concept from text. |
-| `/evolab/settings` | LLM provider settings. |
+| `/ai-please-learn/` | The gallery. |
+| `/ai-please-learn/pong` | A concept, at step 1. Built-in ids are `pong`, `snake`, `flappy`, `car`, `tetris`, `walker`. |
+| `/ai-please-learn/pong/3` | The same concept at step 3 (steps are 1 to 4). |
+| `/ai-please-learn/create` | Create a concept from text. |
+| `/ai-please-learn/settings` | LLM provider settings. |
 
 Links shared before the clean URLs (`#/c/pong/3`, `#/settings`) are rewritten to the new form on load.
 
@@ -66,9 +66,9 @@ Measured learning results per concept and method are in [benchmarks.md](benchmar
 
 ## Concept from text
 
-Open the **Create** page ([`/evolab/create`](https://laansdole.github.io/evolab/create), also the "Make your own" card in the gallery) and type a sentence such as "balance a pole on a cart". EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
+Open the **Create** page ([`/ai-please-learn/create`](https://laansdole.github.io/ai-please-learn/create), also the "Make your own" card in the gallery) and type a sentence such as "balance a pole on a cart". EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
 
-**Settings.** Open [Settings](https://laansdole.github.io/evolab/settings) and pick a provider:
+**Settings.** Open [Settings](https://laansdole.github.io/ai-please-learn/settings) and pick a provider:
 
 | Provider | Base URL | Default model | API key |
 |---|---|---|---|
@@ -112,7 +112,7 @@ A concept is one TypeScript file that exports an `EnvDefinition`. The reference,
 
 1. Copy `src/envs/reach1d.ts` to `src/envs/<name>.ts`.
 2. Fill in the definition:
-   - `meta`: id, name, tagline, `dims` (`'2d'`), `fps`, `maxSteps`, which `learners` can train it, whether it can draw `ghosts`. The id becomes the address (`/evolab/<id>`), so it cannot be a reserved name such as `create` or `settings`.
+   - `meta`: id, name, tagline, `dims` (`'2d'`), `fps`, `maxSteps`, which `learners` can train it, whether it can draw `ghosts`. The id becomes the address (`/ai-please-learn/<id>`), so it cannot be a reserved name such as `create` or `settings`.
    - `observation.labels`: one label per number the network sees.
    - `action`: `discrete` (button labels) or `continuous` (dial labels, each in -1..1).
    - `rewardTerms`: raw counters such as "food eaten" or "seconds alive". Weights are non-negative; the sign comes from `kind` (`reward` adds, `penalty` subtracts).
@@ -135,7 +135,7 @@ A concept is one TypeScript file that exports an `EnvDefinition`. The reference,
 | `npm test` | Unit tests: seeded RNG, reward engine, every env's conformance and determinism, NEAT operators and XOR, gradient checks of the hand-written backprop, DQN and PPO on toy problems, the sandbox and validator, persistence, the router. |
 | `npm run bench` | The learning benchmarks: each method really learns each concept from a fixed seed. |
 | `npm run perf` | Throughput floors for the training hot paths (generations per minute per concept, MLP and NEAT network speed). |
-| `npm run e2e` | Playwright in Chromium: the full journey for all six concepts, DQN and PPO, live reward edits, champion export and import, concept from text against a fake LLM, the provider presets, and the GitHub Pages build served from a plain static server under `/evolab/`. |
+| `npm run e2e` | Playwright in Chromium: the full journey for all six concepts, DQN and PPO, live reward edits, champion export and import, concept from text against a fake LLM, the provider presets, and the GitHub Pages build served from a plain static server under `/ai-please-learn/`. |
 | `npm run build` | Strict type check and the production bundle. |
 
 `EVOLAB_SCREENSHOTS=1 npm run e2e -- screenshots` regenerates the images in [screenshots](screenshots).

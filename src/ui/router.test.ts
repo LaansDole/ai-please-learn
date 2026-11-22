@@ -25,21 +25,21 @@ describe('router', () => {
       expect(parseRoute(p), p).toEqual({ page: 'notfound' });
   });
   it('works under a sub-path base', () => {
-    expect(parseRoute('/evolab/', '/evolab/')).toEqual({ page: 'gallery' });
-    expect(parseRoute('/evolab', '/evolab/')).toEqual({ page: 'gallery' });
-    expect(parseRoute('/evolab/pong/2', '/evolab/')).toEqual({ page: 'concept', envId: 'pong', step: 2 });
-    expect(parseRoute('/evolab/create', '/evolab/')).toEqual({ page: 'create' });
-    expect(parseRoute('/elsewhere/pong', '/evolab/')).toEqual({ page: 'notfound' });
-    expect(formatRoute({ page: 'concept', envId: 'pong', step: 2 }, '/evolab/')).toBe('/evolab/pong/2');
-    expect(formatRoute({ page: 'gallery' }, '/evolab/')).toBe('/evolab/');
-    expect(formatRoute({ page: 'settings' }, '/evolab/')).toBe('/evolab/settings');
+    expect(parseRoute('/ai-please-learn/', '/ai-please-learn/')).toEqual({ page: 'gallery' });
+    expect(parseRoute('/ai-please-learn', '/ai-please-learn/')).toEqual({ page: 'gallery' });
+    expect(parseRoute('/ai-please-learn/pong/2', '/ai-please-learn/')).toEqual({ page: 'concept', envId: 'pong', step: 2 });
+    expect(parseRoute('/ai-please-learn/create', '/ai-please-learn/')).toEqual({ page: 'create' });
+    expect(parseRoute('/elsewhere/pong', '/ai-please-learn/')).toEqual({ page: 'notfound' });
+    expect(formatRoute({ page: 'concept', envId: 'pong', step: 2 }, '/ai-please-learn/')).toBe('/ai-please-learn/pong/2');
+    expect(formatRoute({ page: 'gallery' }, '/ai-please-learn/')).toBe('/ai-please-learn/');
+    expect(formatRoute({ page: 'settings' }, '/ai-please-learn/')).toBe('/ai-please-learn/settings');
   });
   it('maps old hash links to clean paths', () => {
     expect(legacyHashPath('#/c/pong')).toBe('/pong');
-    expect(legacyHashPath('#/c/pong/3', '/evolab/')).toBe('/evolab/pong/3');
-    expect(legacyHashPath('#/settings', '/evolab/')).toBe('/evolab/settings');
+    expect(legacyHashPath('#/c/pong/3', '/ai-please-learn/')).toBe('/ai-please-learn/pong/3');
+    expect(legacyHashPath('#/settings', '/ai-please-learn/')).toBe('/ai-please-learn/settings');
     expect(legacyHashPath('#/create')).toBe('/create');
-    expect(legacyHashPath('#/', '/evolab/')).toBe('/evolab/');
+    expect(legacyHashPath('#/', '/ai-please-learn/')).toBe('/ai-please-learn/');
     expect(legacyHashPath('')).toBeNull();
     expect(legacyHashPath('#section')).toBeNull();
   });
