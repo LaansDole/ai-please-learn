@@ -3,7 +3,7 @@ import { library, type StoredConcept } from '../../gen/library';
 import { iterationLabel } from '../../learner/types';
 import { resolveConfig } from '../../learner/config';
 import { loadRunPrefs, type RunPrefs } from '../../persist/storage';
-import { h, notFound, topNav } from '../dom';
+import { h, notFound, pageNotFound, topNav } from '../dom';
 import { createPlayPanel } from '../panels/play';
 import { createLearnPanel } from '../panels/learn';
 import { createNetworkPanel } from '../panels/network';
@@ -42,7 +42,7 @@ export const conceptPage: PageFn = (root, route) => {
   const id = route.envId;
   if (!id.startsWith('gen-')) {
     const def = listEnvs().find((d) => d.meta.id === id);
-    if (!def) return unknownConcept(root);
+    if (!def) return pageNotFound(root);            // not a concept id at all (/nope): a mistyped address, nothing was deleted
     return mount(root, def.meta.name, { kind: 'builtin', id }, route.step);
   }
   // Generated concepts live in IndexedDB, so the page mounts once the record has loaded.

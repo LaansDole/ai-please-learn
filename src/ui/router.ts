@@ -14,7 +14,7 @@ export function parseRoute(pathname: string, base = BASE): Route {
   if (`${pathname}/` === base) return { page: 'gallery' };
   if (!pathname.startsWith(base)) return { page: 'notfound' };
   const parts = pathname.slice(base.length).split('/').filter(Boolean), [id, step] = parts;
-  if (!id || (id === 'index.html' && parts.length === 1)) return { page: 'gallery' };
+  if (!id || ((id === 'index.html' || id === 'index') && parts.length === 1)) return { page: 'gallery' };
   if ((id === 'settings' || id === 'create') && parts.length === 1) return { page: id };
   if (parts.length <= 2 && /^[a-z][a-z0-9-]*$/.test(id) && !RESERVED_IDS.has(id)) {
     const n = Number(step ?? 1);
@@ -33,18 +33,24 @@ export function legacyHashPath(hash: string, base = BASE): string | null {
   return hash.startsWith('#/') ? base + hash.slice(2).replace(/^c\//, '') : null;
 }
 
-/** In-app navigation that adds a history entry. */
+/** In-app navigation that adds a history entry. The entry left behind remembers its scroll position for back/forward. */
 export function navigate(path: string): void {
-  if (path !== location.pathname) history.pushState(null, '', path);
+  if (path !== location.pathname) {
+    history.replaceState({ ...(history.state as object | null), scrollY: window.scrollY }, '');
+    history.pushState(null, '', path);
+  }
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function startRouter(root: HTMLElement, pages: Record<Route['page'], PageFn>): void {
   let current: Route | null = null, unmount: Unmount | void;
-  const render = () => {
+  history.scrollRestoration = 'manual';                // the page is rebuilt on every route: render() restores the position itself
+  const render = (e?: Event) => {
     const legacy = legacyHashPath(location.hash);
     if (legacy !== null) history.replaceState(null, '', legacy);
     const next = parseRoute(location.pathname);
+    // The page that is already open stays as it is: a click on its own tab or a hash-only change must not wipe a form or orphan a run.
+    if (current && current.page === next.page && formatRoute(current) === formatRoute(next)) return;
     if (current?.page === 'concept' && next.page === 'concept' && current.envId === next.envId && unmount?.onStep) {
       current = next; unmount.onStep(next.step); return;
     }
@@ -52,7 +58,8 @@ export function startRouter(root: HTMLElement, pages: Record<Route['page'], Page
     root.replaceChildren();
     current = next;
     unmount = pages[next.page](root, next);
-    window.scrollTo(0, 0);
+    // Back and forward (a real popstate) return to where the reader was; a link opens its page at the top.
+    window.scrollTo(0, e?.isTrusted ? (history.state as { scrollY?: number } | null)?.scrollY ?? 0 : 0);
   };
   window.addEventListener('popstate', render);       // back/forward, navigate(), and a hash typed into the address bar
   // Plain left-clicks on links to a page of the app navigate without a page load. New tabs, downloads, other sites, in-page

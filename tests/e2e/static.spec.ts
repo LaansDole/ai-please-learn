@@ -137,11 +137,13 @@ test('static sub-path build: deep links boot through 404.html, old hash links re
 
   for (const missing of ['nope', 'assets', 'pong/2/extra']) {
     await page.goto(`${origin}/ai-please-learn/${missing}`);
-    await expect(page.getByTestId('not-found')).toContainText('does not exist');
+    await expect(page.getByTestId('not-found')).toContainText('Page not found');
     await page.getByRole('link', { name: 'Back to the gallery' }).click();
     await expect(page).toHaveURL(`${origin}/ai-please-learn/`);
     await expect(page.getByTestId('gallery')).toBeVisible();
   }
+  await page.goto(`${origin}/ai-please-learn/gen-never-made-0000`);
+  await expect(page.getByTestId('not-found')).toContainText('This concept does not exist');
 
   // The demo is a file beside the app: its links are page loads, not routes, in both directions.
   await page.evaluate(() => { document.body.dataset.same = '1'; });

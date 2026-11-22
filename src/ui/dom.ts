@@ -52,6 +52,11 @@ export function notFound(root: HTMLElement, title: string, text: string): void {
         h('p', null, h('a', { class: 'btn btn-primary', href: HOME }, 'Back to the gallery'))))));
 }
 
+/** Any address that is no page of the app. An unknown generated concept (`gen-*`) has its own wording in the concept page. */
+export function pageNotFound(root: HTMLElement): void {
+  notFound(root, 'Page not found', 'The address may be mistyped, or the page has moved.');
+}
+
 /** Compact number for readouts: 1 decimal below 100, none above, "4.1k" above 1000. */
 export function fmt(v: number): string {
   const a = Math.abs(v);

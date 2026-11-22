@@ -15,8 +15,9 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 /**
  * The Create page's form: describe a concept and let the configured LLM write it, or paste a model's answer / import a file.
  * Every path ends in the worker-side validator; nothing here needs a server besides the optional LLM call.
+ * `leaving` aborts a request to the model that is still in flight when the page is left.
  */
-export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElement {
+export function createNewConceptPanel(onCreated: (id: string) => void, leaving?: AbortSignal): HTMLElement {
   const settings = loadSettings();
   const provider = PROVIDERS[settings.provider].label, needsKey = missingKey(settings);
   let running = false;
@@ -79,10 +80,10 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
     void busy(async () => {
       const mode = await resolveMode(settings);
       // An empty model (LM Studio's preset) is whatever chat model the server has loaded.
-      const model = settings.model || pickChatModel(await listModels(settings, fetch, mode));
+      const model = settings.model || pickChatModel(await listModels(settings, fetch, mode, leaving));
       if (!model) throw new Error(`${provider} lists no chat model: load one there, or name a model in Settings.`);
       const r = await generateConcept(text, {
-        chat: createChat({ ...settings, model }, fetch, mode),
+        chat: createChat({ ...settings, model }, fetch, mode, leaving),
         validate,
         onProgress: (e) => {
           if (e.phase === 'prompting') step(`prompting ${model}`);

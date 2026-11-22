@@ -42,6 +42,25 @@ test('"Make your own" lives on its own page: nav tab, gallery card, reload', asy
   expect(errors).toEqual([]);
 });
 
+test('router: the open page\'s own tab keeps the page, Back returns to where the reader was', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 500 });
+  await page.goto('/create');
+  await page.getByTestId('new-concept-input').fill('balance a pole on a cart');
+  await page.getByTestId('nav-create').click();
+  await expect(page.getByTestId('new-concept-input')).toHaveValue('balance a pole on a cart');   // not remounted: the form is not wiped
+
+  await page.goto('/');
+  await page.getByTestId('card-create').scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(100);
+  await page.getByTestId('card-create').click();
+  await expect(page.getByTestId('create')).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);                                      // a link opens its page at the top
+  await page.goBack();
+  await expect(page.getByTestId('gallery')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y);
+});
+
 test('the Demo tab opens the recorded demo, whose top bar is the app\'s and leads back', async ({ page }) => {
   const errors = collectErrors(page), TABS = ['Gallery', 'Create', 'Demo', 'Settings', 'GitHub'];
   for (const url of ['/snake/1', '/settings', '/create', '/']) {

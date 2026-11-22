@@ -12,7 +12,7 @@ export function directHint(baseUrl: string, origin: string): string {
  * proxy: /api/llm/* on the dev/preview server, which forwards to the base URL named in a header.
  * direct: <baseUrl>/* from the browser. GETs carry no custom headers, so listing models needs no CORS preflight.
  */
-async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof fetch, path: string, body?: unknown): Promise<Response> {
+async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof fetch, path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
   const base = normalizeBaseUrl(s.baseUrl);
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
@@ -20,6 +20,7 @@ async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof f
   if (s.apiKey) headers.authorization = `Bearer ${s.apiKey}`;
   const init: RequestInit = { method: body === undefined ? 'GET' : 'POST', headers };
   if (body !== undefined) init.body = JSON.stringify(body);
+  if (signal) init.signal = signal;
   let res: Response;
   try { res = await fetchImpl(mode === 'proxy' ? `/api/llm${path}` : base + path, init); }
   catch (e) {
@@ -30,11 +31,12 @@ async function request(s: LlmSettings, mode: ConnectionMode, fetchImpl: typeof f
   return res;
 }
 
-export function createChat(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy'): (messages: ChatMessage[]) => Promise<string> {
+/** `signal` aborts a request in flight (the page that asked was left). */
+export function createChat(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy', signal?: AbortSignal): (messages: ChatMessage[]) => Promise<string> {
   // No temperature is sent: some hosted models (OpenAI's reasoning models) answer 400 to anything but their own default,
   // and the validator and repair loop absorb the variance of a model's default.
   return async (messages) => {
-    const res = await request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, stream: false });
+    const res = await request(settings, mode, fetchImpl, '/chat/completions', { model: settings.model, messages, stream: false }, signal);
     const data = await res.json().catch(() => null) as { choices?: { message?: { content?: unknown } }[] } | null;
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content) throw new Error('LLM returned no content');
@@ -42,8 +44,8 @@ export function createChat(settings: LlmSettings, fetchImpl: typeof fetch = fetc
   };
 }
 
-export async function listModels(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy'): Promise<string[]> {
-  const res = await request(settings, mode, fetchImpl, '/models');
+export async function listModels(settings: LlmSettings, fetchImpl: typeof fetch = fetch, mode: ConnectionMode = 'proxy', signal?: AbortSignal): Promise<string[]> {
+  const res = await request(settings, mode, fetchImpl, '/models', undefined, signal);
   const data = await res.json().catch(() => null) as { data?: { id?: unknown }[] } | null;
   return (data?.data ?? []).map((m) => String(m.id));
 }

@@ -42,6 +42,12 @@ describe('LLM client through the proxy', () => {
     expect(f.calls[0]!.url).toBe('/api/llm/models');
     expect(f.calls[0]!.init.method).toBe('GET');
   });
+  it('hands the abort signal to fetch, so leaving the page stops the request', async () => {
+    const f = fakeFetch(200, ok), g = fakeFetch(200, { data: [] }), { signal } = new AbortController();
+    await createChat(settings, f.impl, 'proxy', signal)(messages);
+    await listModels(settings, g.impl, 'direct', signal);
+    expect(f.calls[0]!.init.signal).toBe(signal); expect(g.calls[0]!.init.signal).toBe(signal);
+  });
   it('picks the first chat model, skipping embedding models', () => {
     expect(pickChatModel(['text-embedding-nomic-embed-text-v1.5', 'qwen2.5-coder-14b', 'llama-3'])).toBe('qwen2.5-coder-14b');
     expect(pickChatModel(['text-embedding-3-small'])).toBeUndefined();

@@ -9,6 +9,9 @@ describe('router', () => {
   it('parses and formats clean paths', () => {
     expect(parseRoute('/')).toEqual({ page: 'gallery' });
     expect(parseRoute('/index.html')).toEqual({ page: 'gallery' });
+    expect(parseRoute('/index')).toEqual({ page: 'gallery' });           // GitHub Pages serves <base>index as index.html
+    expect(parseRoute('/ai-please-learn/index', '/ai-please-learn/')).toEqual({ page: 'gallery' });
+    expect(parseRoute('/index/2')).toEqual({ page: 'notfound' });
     expect(parseRoute('/pong')).toEqual({ page: 'concept', envId: 'pong', step: 1 });
     expect(parseRoute('/pong/')).toEqual({ page: 'concept', envId: 'pong', step: 1 });
     expect(parseRoute('/gen-juggle-a1b2/4')).toEqual({ page: 'concept', envId: 'gen-juggle-a1b2', step: 4 });
