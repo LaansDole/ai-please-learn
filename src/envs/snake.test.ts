@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { checkConformance } from '../env/conformance';
+import { RecordingDraw2D } from '../env/draw2d';
 import { validateDefinition } from '../env/registry';
 import { snake } from './snake';
 
@@ -35,5 +36,20 @@ describe('snake', () => {
     expect(env.humanAct!(inp('ArrowDown'))).toBe(2);
     expect(env.humanAct!(inp('ArrowLeft'))).toBe(1);
     expect(env.humanAct!({ held: new Set(), pressed: new Set() })).toBe(1);
+  });
+});
+
+describe('snake score HUD', () => {
+  const texts = (env: ReturnType<typeof snake.create>, ghost = false) => {
+    const draw = new RecordingDraw2D(); env.render({ kind: '2d', draw, ghost });
+    return draw.cmds.filter((c) => c[0] === 't').map((c) => c[1]);
+  };
+  it('draws the food eaten and updates it; ghosts draw no score', () => {
+    const env = snake.create(); env.reset(1);
+    expect(texts(env)).toContain('0');
+    for (let i = 0; i < 2000 && !env.done && env.terms[0]! < 2; i++) env.step(greedy(env.observe()));
+    expect(env.terms[0]).toBe(2);
+    expect(texts(env)).toContain('2');
+    expect(texts(env, true)).toEqual([]);
   });
 });
