@@ -46,6 +46,8 @@ In "Play it yourself" the arrow keys control the game and R restarts it. The hin
 
 ## More detail
 
+Full guide: [docs/guide.md](docs/guide.md)
+
 - [docs/benchmarks.md](docs/benchmarks.md) has the benchmark table, the throughput floors and the changes from the original design.
 - [docs/llm-trial/RESULTS.md](docs/llm-trial/RESULTS.md) has the text-to-game trials and the generated modules.
 - [src/envs/reach1d.ts](src/envs/reach1d.ts) is a commented one-file example of a game. Copy it to add your own.
