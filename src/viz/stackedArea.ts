@@ -5,17 +5,17 @@ const PAD = { l: 52, r: 12, t: 10, b: 22 }, LABEL_MIN_HEIGHT = 14, PALETTE = 7;
 
 /**
  * Stacked population shares, one band per species among a generation's largest and one grey band for the rest
- * (`speciesBands`). A band is never told apart by hue alone: it carries its id on the chart and in the legend below. Spec
- * section 11.4. `rows` may be a sample of the run; `total` is the real number of generations (axis label, data-points);
- * `pooled` is how many species the grey band holds now.
+ * (`speciesBands`). A band is never told apart by hue alone: the species alive now carry their id on the chart and in the
+ * legend below. Spec section 11.4. `rows` may be a sample of the run; `total` is the real number of generations (axis
+ * label, data-points); `pooled` is how many species the grey band holds now; `run` identifies the run (colours start over).
  */
 export function createStackedArea(opts: { testid: string; title: string; note: string }): {
   el: HTMLElement;
-  setData(ids: number[], rows: number[][], total?: number, pooled?: number): void;
+  setData(ids: number[], rows: number[][], total?: number, pooled?: number, run?: unknown): void;
   /** The CSS colour of a species' band, for the standings beside the chart. */
   colour(id: number): string;
 } {
-  let ids: number[] = [], rows: number[][] = [], total = 0, legendKey = '';
+  let ids: number[] = [], rows: number[][] = [], total = 0, legendKey = '', shownRun: unknown;
   const slots = new Map<number, number>();           // species id -> palette slot, kept for the whole run
   const c = createChartCanvas(opts.testid, draw), { ctx } = c;
   c.canvas.dataset.points = '0'; c.canvas.dataset.bands = '0';
@@ -59,11 +59,12 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
         a = b;
       }
     }
-    // Each species carries its id where its band is thickest, if the id fits inside it.
+    // The species alive in the last generation (its six largest at most) carry their id where their band is thickest, if
+    // the id fits inside it. On a long run a plate for every species that ever lived buried the chart.
     ctx.textAlign = 'center'; ctx.font = `12px ${mono}`;
     const placed: { x: number; y: number }[] = [];
     ids.forEach((id, k) => {
-      if (id === OTHER) return;
+      if (id === OTHER || !(top(n - 1, k) > bottom(n - 1, k))) return;
       let best = 0, bestH = 0;
       for (let g = 0; g < n; g++) { const hgt = (top(g, k) - bottom(g, k)) * plotH; if (hgt >= bestH) { bestH = hgt; best = g; } }
       if (bestH < LABEL_MIN_HEIGHT) return;
@@ -89,7 +90,7 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
   /** The bands of the latest generation, largest share first and the grey band last, with what the numbers mean. */
   function renderLegend(pooled: number): void {
     const last = rows.at(-1) ?? [];
-    const items = ids.map((id, k) => ({ id, height: last[k]! - (k === 0 ? 0 : last[k - 1]!) })).filter((b) => b.height > 0)
+    const items = ids.map((id, k) => ({ id, height: last[k]! - (k === 0 ? 0 : last[k - 1]!) })).filter((b) => b.height > 0 && (b.id !== OTHER || pooled > 0))
       .sort((a, b) => Number(a.id === OTHER) - Number(b.id === OTHER) || b.height - a.height)
       .map((b) => ({ id: b.id, share: b.height < 0.005 ? '<1%' : `${Math.round(b.height * 100)}%` }));
     const key = items.map((b) => `${b.id}:${b.share}`).join() + `|${pooled}`;
@@ -107,8 +108,9 @@ export function createStackedArea(opts: { testid: string; title: string; note: s
   return {
     el,
     colour: (id) => (slots.has(id) ? `var(--species-${slots.get(id)! + 1})` : 'var(--species-other)'),
-    setData(i, r, t = r.length, pooled = 0) {
-      if (t < total) slots.clear();                  // a new run numbers its species from the start again
+    setData(i, r, t = r.length, pooled = 0, run) {
+      // A new run numbers its species from the start again. By identity: a restarted run can already be as long as the last.
+      if (run !== shownRun || t < total) { shownRun = run; slots.clear(); }
       ids = i; rows = r; total = t;
       assignColours(ids, rows, slots, PALETTE);
       c.canvas.dataset.points = String(t); c.canvas.dataset.bands = String(ids.length);

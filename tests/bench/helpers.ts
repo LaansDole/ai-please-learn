@@ -7,7 +7,8 @@ import { runHeadless } from '../../src/trainer/headless';
 /** Max `best` over the final 5 iterations (spec section 14.2). */
 export function last5(stats: IterationStats[]): number { return Math.max(...stats.slice(-5).map((s) => s.best)); }
 
-export function meanOf(xs: number[]): number { return xs.reduce((a, b) => a + b, 0) / xs.length; }
+/** Mean of the finite values: a PPO update in which no episode ended has no score (NaN). */
+export function meanOf(xs: number[]): number { const f = xs.filter(Number.isFinite); return f.reduce((a, b) => a + b, 0) / f.length; }
 
 /** One line per benchmark; copy the numbers into docs/benchmarks.md. */
 export function report(name: string, stats: IterationStats[], ms: number): void {

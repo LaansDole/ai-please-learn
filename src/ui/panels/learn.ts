@@ -6,7 +6,7 @@ import { createOutputsBar } from '../../viz/barChart';
 import { createLineChart, type ChartMarker } from '../../viz/lineChart';
 import { runningBest, sampleEvenly, speciesBands } from '../../viz/scale';
 import { createStackedArea } from '../../viz/stackedArea';
-import { trend, verdict, type Mark } from '../../viz/trend';
+import { rlVerdict, trend, verdict, type Mark } from '../../viz/trend';
 import { fmt, h } from '../dom';
 import type { RunInfo, Session } from '../session';
 import { createHallOfFame } from './hallOfFame';
@@ -97,10 +97,13 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
     }
     for (; rl.n < hist.length; rl.n++) {
       const s = hist[rl.n]!, returns = s.rl?.returns ?? [];
+      // An update in which no episode ended has no best, mean or median: a gap in the lines, not a point at 0.
+      const finite = (v: number) => (Number.isFinite(v) ? v : null);
+      const best = finite(s.best), mean = finite(s.mean), median = finite(s.median);
       const point = (x: number, ret: number | null) => {
         if (ret !== null) { rl.smooth = rl.seen ? SMOOTHING * rl.smooth + (1 - SMOOTHING) * ret : ret; rl.seen = true; }
         rl.x.push(x); rl.episode.push(ret); rl.smoothed.push(rl.seen ? rl.smooth : null);
-        rl.best.push(s.best); rl.mean.push(s.mean); rl.median.push(s.median);
+        rl.best.push(best); rl.mean.push(mean); rl.median.push(median);
       };
       if (returns.length === 0) point(s.iteration, null);              // a PPO update in which no episode ended
       else returns.forEach((ret, k) => point(s.iteration - 1 + (k + 1) / returns.length, ret));
@@ -112,7 +115,8 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
   let lastReward = session.reward, raf = 0, shownRun = session.run, headKey = '';
   const render = () => {
     raf = 0;
-    if (session.run !== shownRun) { shownRun = session.run; outputs.reset(); }
+    // A new run is told by identity: by the time this runs it may already be as long as the one before it.
+    if (session.run !== shownRun) { shownRun = session.run; outputs.reset(); headKey = ''; }
     const hist = session.history, kind = session.run?.learner.kind ?? prefs.learner;
     if (session.rewardMarkers.length === 0) { markerLabels.clear(); lastReward = session.reward; }
     const markers: ChartMarker[] = session.rewardMarkers.map((x) => {
@@ -133,13 +137,14 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
     const key = `${kind}|${n}|${from}`, ticked = key !== headKey;
     if (ticked) {
       headKey = key;
-      const v = verdict(t, n, unit), [lead, ...rest] = v.text.split(' - ');
+      // DQN and PPO: one lucky episode holds the record for a long time while the average still climbs, so the verdict reads the average.
+      const v = kind === 'neat' ? verdict(t, n, unit) : rlVerdict(hist.map((s) => s.mean), unit, from), [lead, ...rest] = v.text.split(' - ');
       verdictEl.dataset.state = v.state;
       verdictLead.textContent = lead!; verdictRest.textContent = rest.length ? ` - ${rest.join(' - ')}` : '';
       stripLabel.textContent = `Last ${STRIP} ${unit}s`;
       strip.replaceChildren(...t.marks.map((m) => h('i', { class: m })));
-      const count = (m: Mark) => t.marks.filter((x) => x === m).length;
-      strip.setAttribute('aria-label', `Last ${t.marks.length} ${unit}s: ${count('rec')} new records, ${count('imp')} improved, ${count('flat')} no gain`);
+      const count = (m: Mark) => t.marks.filter((x) => x === m).length, scored = t.marks.length - count('none');
+      strip.setAttribute('aria-label', `Last ${scored} ${unit}s: ${count('rec')} new records, ${count('imp')} improved, ${count('flat')} no gain`);
       stats.setRecord(t.record, holder?.iteration ?? null);
     }
 
@@ -148,7 +153,7 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
       // A DQN round is one episode: its best, mean and median are the dot itself, three lines drawn on top of each other.
       fitness.setData(rl.x, { episode: rl.episode, smoothed: rl.smoothed, ...(kind === 'ppo' && { best: rl.best, mean: rl.mean, median: rl.median }) }, markers);
       rlPanels.update(kind);
-      if (ticked) tower.update(hist, kind, t);
+      if (ticked) tower.update(hist, kind, t, from, session.run);
       return;
     }
     fitness.setData(hist.map((s) => s.iteration), {
@@ -158,8 +163,8 @@ export function createLearnPanel(session: Session, prefs: RunPrefs, start: () =>
     // Long runs are drawn from a bounded sample of generations: the chart is ~500 px wide and repaints every frame at MAX.
     const neat = hist.flatMap((s) => (s.neat ? [s.neat] : []));
     const bands = speciesBands(sampleEvenly(neat, SPECIES_COLUMNS));
-    species.setData(bands.ids, bands.rows, neat.length, bands.pooled);
-    if (ticked) tower.update(hist, kind, t);                           // after the chart, which hands out the species colours
+    species.setData(bands.ids, bands.rows, neat.length, bands.pooled, session.run);
+    if (ticked) tower.update(hist, kind, t, from, session.run);        // after the chart, which hands out the species colours
   };
   // History can grow hundreds of times per second at MAX; charts repaint once per frame.
   const schedule = () => { if (!raf) raf = requestAnimationFrame(render); };

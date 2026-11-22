@@ -47,7 +47,7 @@ export function thinHof(hof: HofEntry[]): void {
   if (hof.length <= 400) return;
   const cut = hof.length - 100;
   let best = 0;
-  for (let i = 1; i < hof.length; i++) if (hof[i]!.best > hof[best]!.best) best = i;
+  for (let i = 1; i < hof.length; i++) if (hof[i]!.best > hof[best]!.best || Number.isNaN(hof[best]!.best)) best = i;
   const kept = hof.filter((_, i) => i >= cut || i === best || i % 2 === 0);
   hof.splice(0, hof.length, ...kept);
 }

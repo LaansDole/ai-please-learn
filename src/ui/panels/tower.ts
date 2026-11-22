@@ -1,14 +1,16 @@
 import type { LearnerKind } from '../../env/types';
 import { iterationLabel } from '../../learner/types';
+import { rankSpecies } from '../../viz/scale';
 import type { Mark, Trend } from '../../viz/trend';
 import { fmt, h } from '../dom';
 import type { HistoryEntry } from '../session';
 
 const TOP = 5, LAPS = 8;
-const MARK_WORDS: Record<Mark, string> = { rec: 'new record', imp: 'improved', flat: 'no gain' };
+type Scored = Exclude<Mark, 'none'>;
+const MARK_WORDS: Record<Scored, string> = { rec: 'new record', imp: 'improved', flat: 'no gain' };
 
 /** The shaped mark that repeats the timing colour, with its meaning for screen readers. */
-export function markEl(mark: Mark): HTMLElement {
+export function markEl(mark: Scored): HTMLElement {
   return h('span', null, h('i', { class: `mark mark-${mark}`, 'aria-hidden': 'true' }), h('span', { class: 'sr' }, `${MARK_WORDS[mark]}: `));
 }
 
@@ -18,8 +20,9 @@ const gap = (best: number, record: number) => (best >= record ? 'record' : fmt(b
 /**
  * The timing tower beside the stage: species standings (NEAT only) and the last few iterations as a table.
  * `colour` gives a species the colour its band has in the species chart.
+ * `update`: `from` is the index in `hist` where the record `t` starts (the last reward change); `run` identifies the run.
  */
-export function createTower(colour: (id: number) => string): { el: HTMLElement; update(hist: readonly HistoryEntry[], kind: LearnerKind, t: Trend): void } {
+export function createTower(colour: (id: number) => string): { el: HTMLElement; update(hist: readonly HistoryEntry[], kind: LearnerKind, t: Trend, from: number, run: unknown): void } {
   const standingsSub = h('span', { class: 'sub' }), standingsBody = h('tbody');
   const standingsTitle = h('h3', null, 'Species standings', standingsSub);
   const col = (label: string, numeric = true) => h('th', { scope: 'col', class: numeric && 'n' }, label);
@@ -34,17 +37,18 @@ export function createTower(colour: (id: number) => string): { el: HTMLElement; 
 
   // Species ages: the iteration each id was first seen in, filled in as history grows; a new run starts over.
   const born = new Map<number, number>();
-  let seen = 0;
+  let seen = 0, shownRun: unknown = null;
 
   return {
     el,
-    update(hist, kind, t) {
+    update(hist, kind, t, from, run) {
       const n = hist.length, unit = iterationLabel(kind), neat = kind === 'neat';
-      if (n < seen) { born.clear(); seen = 0; }
+      // By identity, not by length: a restarted run can be as long as the one before it by the time this is called.
+      if (run !== shownRun || n < seen) { shownRun = run; born.clear(); seen = 0; }
       for (; seen < n; seen++) for (const s of hist[seen]!.neat?.species ?? []) if (!born.has(s.id)) born.set(s.id, hist[seen]!.iteration);
 
       standingsTitle.hidden = standings.hidden = !neat;
-      const now = hist.at(-1), species = [...(now?.neat?.species ?? [])].sort((a, b) => b.size - a.size || b.best - a.best);
+      const now = hist.at(-1), species = rankSpecies(now?.neat?.species ?? []);
       const top = species.slice(0, TOP), rest = species.slice(TOP);
       standingsSub.textContent = species.length > TOP ? `top ${TOP} of ${species.length}` : '';
       const rows = top.map((s, i) => h('tr', null,
@@ -68,12 +72,13 @@ export function createTower(colour: (id: number) => string): { el: HTMLElement; 
       lapsTitle.textContent = `Last ${LAPS} ${unit.toLowerCase()}s`;
       lapsUnit.textContent = unit;
       const lapRows = hist.slice(-LAPS).reverse().map((s, k) => {
-        const mark = t.marks[t.marks.length - 1 - k] ?? 'flat';
+        // No mark and no gap for a row without a score, or from before the reward change: its fitness is on another scale than the record.
+        const i = n - 1 - k, mark = i < from ? 'none' : t.marks[t.marks.length - 1 - k] ?? 'none';
         return h('tr', null,
           h('td', null, String(s.iteration)),
-          h('td', { class: `n d-${mark}` }, markEl(mark), fmt(s.best)),
+          h('td', { class: `n d-${mark}` }, mark !== 'none' && markEl(mark), fmt(s.best)),
           h('td', { class: 'n' }, fmt(s.mean)),
-          h('td', { class: 'n' }, n - 1 - k === t.recordAt ? 'record' : s.best >= t.record ? 'level' : fmt(s.best - t.record)));
+          h('td', { class: 'n' }, mark === 'none' ? '-' : i === t.recordAt ? 'record' : s.best >= t.record ? 'level' : fmt(s.best - t.record)));
       });
       if (lapRows.length === 0) lapRows.push(h('tr', null, h('td', { class: 'empty', colspan: 4 }, `Each ${unit.toLowerCase()} adds a row: its champion, the crowd's mean and how far it was from the record.`)));
       lapsBody.replaceChildren(...lapRows);

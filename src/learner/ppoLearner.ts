@@ -30,7 +30,6 @@ export class PpoLearner implements Learner {
   private rewardVersion = 0;
   private envSteps = 0;
   private returns: number[] = [];
-  private summary = { best: 0, mean: 0, median: 0 };
   private netVersion = 0;
   private shown: Float32Array;                // weights the NN graph shows
   private shownPrev: Float32Array;            // the snapshot before that: baseline of the weight-change heat
@@ -88,10 +87,9 @@ export class PpoLearner implements Learner {
     if (!agent.full) return false;
     for (let e = 0; e < n; e++) this.lastValues[e] = agent.value(envs[e]!.observe());
     const losses = agent.update(this.lastValues);
-    if (this.returns.length) this.summary = summarise(this.returns);  // otherwise carry the previous iteration's values
     this.iteration++;
     this.last = {
-      iteration: this.iteration, learner: 'ppo', ...this.summary,
+      iteration: this.iteration, learner: 'ppo', ...summarise(this.returns),   // NaN when no episode ended in this rollout
       episodes: this.returns.length, envSteps: this.envSteps, rewardVersion: this.rewardVersion,
       champion: { kind: 'mlp', algo: 'ppo', sizes: this.sizes, hidden: 'tanh', params: (agent.net.params as Float32Array).slice() },
       rl: { ...losses, returns: this.returns },

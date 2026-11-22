@@ -8,9 +8,10 @@ import type { IterationStats, Learner, LiveView } from './types';
 
 const NETWORK_EVERY = 50;                     // ticks between refreshed weight snapshots for the NN graph (5 s of Snake at x1); a refresh copies the parameters, nothing more
 
-/** Best, mean and median of the episode returns finished in an iteration. */
+/** Best, mean and median of the episode returns finished in an iteration; NaN when none finished: there is no score to report. */
 export function summarise(returns: number[]): { best: number; mean: number; median: number } {
   const sorted = [...returns].sort((a, b) => a - b), n = sorted.length;
+  if (n === 0) return { best: NaN, mean: NaN, median: NaN };
   return { best: sorted[n - 1]!, mean: sorted.reduce((a, b) => a + b, 0) / n, median: sorted[n >> 1]! };
 }
 

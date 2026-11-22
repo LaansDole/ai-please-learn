@@ -3,7 +3,7 @@ import { resolveConfig } from '../../learner/config';
 import type { NetworkSnapshot } from '../../learner/types';
 import type { RunPrefs } from '../../persist/storage';
 import { createNnGraph } from '../../viz/nnGraph';
-import { initialMlpSnapshot, initialNeatSnapshot, strongCutoff, STRONG_EDGES } from '../../viz/nnLayout';
+import { initialMlpSnapshot, initialNeatSnapshot, strongEdges, STRONG_EDGES } from '../../viz/nnLayout';
 import { h } from '../dom';
 import type { Session } from '../session';
 import { createMethodPicker } from './method';
@@ -38,7 +38,7 @@ export function createNetworkPanel(session: Session, prefs: RunPrefs, opts: { li
     graph.setNetwork(net, animate);
     const enabled = net.edges.filter((e) => e.enabled).length;
     counts.textContent = `nodes ${net.nodes.length}, connections ${enabled}`;
-    const full = strongCutoff(net.edges) > 0 ? `The ${STRONG_EDGES} strongest of ${enabled} connections are drawn in full. ` : '';
+    const full = strongEdges(net.edges) ? `The ${STRONG_EDGES} strongest of ${enabled} connections are drawn in full. ` : '';
     const text = `${full}Solid green excites, dashed russet inhibits. Node fill is activation right now.`;
     if (reading.textContent !== text) reading.textContent = text;
   };

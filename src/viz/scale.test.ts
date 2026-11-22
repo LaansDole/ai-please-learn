@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assignColours, decimate, ema, niceTicks, OTHER, runningBest, sampleEvenly, speciesBands, tickLabel } from './scale';
+import { assignColours, decimate, ema, niceTicks, OTHER, rankSpecies, runningBest, sampleEvenly, speciesBands, tickLabel } from './scale';
 
 describe('chart scales', () => {
   it('picks nice ticks covering the range', () => {
@@ -62,6 +62,7 @@ describe('running best', () => {
     expect(runningBest([1, 3, 2, null, 5, 4])).toEqual([1, 3, 3, 3, 5, 5]);
     expect(runningBest([null, 2, 1])).toEqual([null, 2, 2]);
     expect(runningBest([5, 9, 1, 2], (i) => i === 2)).toEqual([5, 9, 1, 2]);     // a reward change rescales fitness
+    expect(runningBest([NaN, 1, 2, NaN])).toEqual([null, 1, 2, 2]);              // an iteration without a score is a gap, not a frozen record
   });
 });
 
@@ -79,6 +80,21 @@ describe('species bands', () => {
   });
   it('has no "other" band when nothing is pooled', () => {
     expect(speciesBands([gen(50, 50)]).ids).toEqual([1, 2]);
+  });
+  it('a column that pools nothing has no "other" band at all, even when another column pools', () => {
+    // Six shares of 1/6 add up to 0.9999999999999999: the grey band must not get the rounding error as its height.
+    const b = speciesBands([gen(4, 4, 4, 4, 4, 4, 4), gen(1, 1, 1, 1, 1, 1)]);
+    expect(b.ids).toEqual([1, 2, 3, 4, 5, 6, OTHER]);
+    expect(b.rows[1]!.slice(-2)).toEqual([1, 1]);
+    expect(b.pooled).toBe(0);
+  });
+  it('ranks the standings as the chart picks its bands: by size, ties to the older (lower) id', () => {
+    const species = [{ id: 9, size: 5, best: 99 }, { id: 3, size: 5, best: 1 }, { id: 4, size: 8, best: 0 }, { id: 7, size: 5, best: 50 }];
+    expect(rankSpecies(species).map((s) => s.id)).toEqual([4, 3, 7, 9]);
+    // Seven species of one size, listed newest first: the chart keeps ids 1-6, so the standings' top five are among them.
+    const tied = [7, 6, 5, 4, 3, 2, 1].map((id) => ({ id, size: 5 }));
+    expect(speciesBands([{ species: tied }]).ids).toEqual([6, 5, 4, 3, 2, 1, OTHER]);
+    expect(rankSpecies(tied).slice(0, 5).map((s) => s.id)).toEqual([1, 2, 3, 4, 5]);
   });
   it('many equal small species: the top six stay visible, "other" is exactly what they leave over', () => {
     const b = speciesBands(Array.from({ length: 3 }, () => gen(...new Array<number>(20).fill(5))));

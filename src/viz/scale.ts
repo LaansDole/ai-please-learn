@@ -73,18 +73,24 @@ export function speciesBands(
   const largest = smooth.map((row) => {
     const alive = row.flatMap((share, k) => (share > 0 ? [k] : []));
     other ||= alive.length > top;
-    return new Set(alive.sort((a, b) => row[b]! - row[a]! || a - b).slice(0, top));
+    return { pooled: Math.max(0, alive.length - top), set: new Set(alive.sort((a, b) => row[b]! - row[a]! || all[a]! - all[b]!).slice(0, top)) };
   });
-  const kept = all.flatMap((_, k) => (largest.some((set) => set.has(k)) ? [k] : []));
+  const kept = all.flatMap((_, k) => (largest.some((l) => l.set.has(k)) ? [k] : []));
   const rows = smooth.map((row, g) => {
     let acc = 0, last = -1;
-    const out = kept.map((k, j) => { if (largest[g]!.has(k)) { acc += row[k]!; last = j; } return acc; });
-    // Without a pooled band the largest species fill the column: close it at exactly 1, rounding aside.
-    if (other) out.push(1); else if (last >= 0) out.fill(1, last);
+    const out = kept.map((k, j) => { if (largest[g]!.set.has(k)) { acc += row[k]!; last = j; } return acc; });
+    // Where nothing is pooled the largest species fill the column: close it at exactly 1, rounding aside, so the grey
+    // band has no height there.
+    if (largest[g]!.pooled === 0 && last >= 0) out.fill(1, last);
+    if (other) out.push(1);
     return out;
   });
-  const now = smooth.at(-1)?.filter((share) => share > 0).length ?? 0;
-  return { ids: [...kept.map((k) => all[k]!), ...(other ? [OTHER] : [])], rows, pooled: now - (largest.at(-1)?.size ?? 0) };
+  return { ids: [...kept.map((k) => all[k]!), ...(other ? [OTHER] : [])], rows, pooled: largest.at(-1)?.pooled ?? 0 };
+}
+
+/** Standings order: largest first, ties to the older species (ids count up), as `speciesBands` picks a generation's largest. */
+export function rankSpecies<T extends { id: number; size: number }>(species: readonly T[]): T[] {
+  return [...species].sort((a, b) => b.size - a.size || a.id - b.id);
 }
 
 /**
@@ -104,12 +110,15 @@ export function assignColours(ids: readonly number[], rows: readonly number[][],
   });
 }
 
-/** The highest value so far at each index: the line that answers "is it improving?". `restart(i)` begins a new record at i. */
+/**
+ * The highest value so far at each index: the line that answers "is it improving?". `restart(i)` begins a new record at i.
+ * null and non-finite values are gaps: they neither set nor freeze the record.
+ */
 export function runningBest(values: readonly (number | null)[], restart?: (i: number) => boolean): (number | null)[] {
   let best: number | null = null;
   return values.map((v, i) => {
     if (restart?.(i)) best = null;
-    if (v !== null && (best === null || v > best)) best = v;
+    if (v !== null && Number.isFinite(v) && (best === null || v > best)) best = v;
     return best;
   });
 }

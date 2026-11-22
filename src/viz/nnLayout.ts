@@ -76,11 +76,11 @@ export function initialMlpSnapshot(spec: Pick<EnvSpecMsg, 'observation' | 'actio
 export const STRONG_EDGES = 14;
 
 /**
- * Past `above` enabled links a graph is a hairball: the `n` strongest are drawn in full and the rest faint. Returns the
- * |weight| a link needs to be drawn in full, or 0 when every link is.
+ * Past `above` enabled links a graph is a hairball: the `n` strongest are drawn in full and the rest faint. Returns those
+ * `n` links (exactly n: equal weights do not all count as strongest), or null when every link is drawn in full.
  */
-export function strongCutoff(edges: readonly Edge[], n = STRONG_EDGES, above = 30): number {
-  const mags = edges.filter((e) => e.enabled).map((e) => Math.abs(e.weight));
-  if (mags.length <= above) return 0;
-  return mags.sort((a, b) => b - a)[n - 1]!;
+export function strongEdges(edges: readonly Edge[], n = STRONG_EDGES, above = 30): Set<Edge> | null {
+  const enabled = edges.filter((e) => e.enabled);
+  if (enabled.length <= above) return null;
+  return new Set(enabled.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)).slice(0, n));
 }

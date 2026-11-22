@@ -15,7 +15,7 @@ export type PolicySnapshot =
 export interface IterationStats {
   iteration: number;                 // 1-based; NEAT generation | PPO rollout+update | DQN episodesPerIteration episodes
   learner: LearnerKind;
-  best: number; mean: number; median: number;   // episode fitness/return over the episodes finished in this iteration
+  best: number; mean: number; median: number;   // episode fitness/return over the episodes finished in this iteration; NaN when none finished (PPO)
   episodes: number;
   envSteps: number;                  // cumulative
   rewardVersion: number;             // increments each time a staged reward config is applied

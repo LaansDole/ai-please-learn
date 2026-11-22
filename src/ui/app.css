@@ -276,6 +276,7 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .strip-key i { flex: none; width: 7px; }
 .strip .imp, .strip-key .imp { height: 14px; background: var(--imp); box-shadow: none; }
 .strip .rec, .strip-key .rec { height: 22px; background: var(--rec); box-shadow: none; }
+.strip .none { visibility: hidden; }
 .strip-key { display: flex; align-items: flex-end; gap: 4px 14px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 .strip-key li { display: inline-flex; align-items: flex-end; gap: 5px; line-height: 1; white-space: nowrap; }
 /* What Start will do, shown only before the first run. */

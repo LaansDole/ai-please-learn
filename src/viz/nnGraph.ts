@@ -1,5 +1,5 @@
 import type { NetworkSnapshot } from '../learner/types';
-import { diffSnapshots, edgeKey, edgeStyle, layoutNetwork, strongCutoff, visibleEdges, type Point } from './nnLayout';
+import { diffSnapshots, edgeKey, edgeStyle, layoutNetwork, strongEdges, visibleEdges, type Point } from './nnLayout';
 
 export interface NnGraph {
   el: HTMLCanvasElement;
@@ -40,7 +40,7 @@ export function createNnGraph(): NnGraph {
 
   let net: NetworkSnapshot | null = null, acts: Float32Array | null = null, showDisabled = false, weightScale = 1;
   let shown: NetworkSnapshot['edges'] = [];    // visibleEdges(net), computed once per snapshot rather than once per frame
-  let strong = 0;                              // strongCutoff(shown): links below it are drawn faint
+  let strong: Set<NetworkSnapshot['edges'][number]> | null = null;   // strongEdges(shown): the other links are drawn faint
   let w = 0, h = 0, t0 = 0, raf = 0, hover: number | null = null, caption = '';
   let target = new Map<number, Point>(), from = new Map<number, Point>();
   let addedNodes = new Set<number>(), addedEdges = new Set<string>();
@@ -103,9 +103,10 @@ export function createNnGraph(): NnGraph {
       const bx = a.x + (b.x - a.x) * t, by = a.y + (b.y - a.y) * t;
       const line = () => { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(bx, by); ctx.stroke(); };
       if (!e.enabled) { ctx.globalAlpha = 0.8; ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.setLineDash([1, 4]); line(); continue; }
-      const s = edgeStyle(e.weight, weightScale), full = Math.abs(e.weight) >= strong;
-      ctx.globalAlpha = strong === 0 ? s.alpha : full ? 0.95 : 0.16;
-      ctx.strokeStyle = s.dashed ? C.neg : C.pos; ctx.lineWidth = s.width; ctx.setLineDash(s.dashed && full ? [6, 4] : []);
+      const s = edgeStyle(e.weight, weightScale), full = !strong || strong.has(e);
+      ctx.globalAlpha = !strong ? s.alpha : full ? 0.95 : 0.16;
+      // A faint link keeps its dash: at that opacity the colour alone does not tell the sign.
+      ctx.strokeStyle = s.dashed ? C.neg : C.pos; ctx.lineWidth = s.width; ctx.setLineDash(s.dashed ? [6, 4] : []);
       line();
       if (e.delta && heat > 0) { ctx.globalAlpha = e.delta * heat; ctx.strokeStyle = C.heat; ctx.setLineDash([]); line(); }
     }
@@ -186,7 +187,7 @@ export function createNnGraph(): NnGraph {
       });
       addedNodes = new Set(d.addedNodes); addedEdges = new Set(d.addedEdges);
       caption = [d.addedNodes.length ? plural(d.addedNodes.length, 'neuron') : '', d.addedEdges.length ? plural(d.addedEdges.length, 'connection') : ''].filter(Boolean).join(', ');
-      net = next; shown = visibleEdges(next); strong = strongCutoff(shown); t0 = now;
+      net = next; shown = visibleEdges(next); strong = strongEdges(shown); t0 = now;
       if (acts && acts.length !== next.nodes.length) acts = null;
       relayout();
       // New nodes start where they will sit; survivors tween from where they are now.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NetworkSnapshot } from '../learner/types';
 import { pong } from '../envs/pong';
-import { diffSnapshots, edgeStyle, initialMlpSnapshot, layoutNetwork, strongCutoff, visibleEdges } from './nnLayout';
+import { diffSnapshots, edgeStyle, initialMlpSnapshot, layoutNetwork, strongEdges, STRONG_EDGES, visibleEdges } from './nnLayout';
 
 const net: NetworkSnapshot = {
   maxDepth: 2,
@@ -51,16 +51,20 @@ describe('initialMlpSnapshot', () => {
   });
 });
 
-describe('strongCutoff', () => {
+describe('strongEdges', () => {
   const edges = (ws: number[]) => ws.map((weight, i) => ({ from: 0, to: i + 1, weight, enabled: true }));
-  it('is 0 for a small network: every link is drawn in full', () => {
-    expect(strongCutoff(edges([1, -2, 3]), 2, 3)).toBe(0);
+  it('is null for a small network: every link is drawn in full', () => {
+    expect(strongEdges(edges([1, -2, 3]), 2, 3)).toBeNull();
   });
-  it('is the |weight| of the n-th strongest link past the threshold', () => {
-    expect(strongCutoff(edges([0.1, -5, 3, 0.2, 4]), 2, 3)).toBe(4);
+  it('is the n strongest links by |weight| past the threshold', () => {
+    const e = edges([0.1, -5, 3, 0.2, 4]);
+    expect(strongEdges(e, 2, 3)).toEqual(new Set([e[1], e[4]]));
   });
   it('ignores disabled links', () => {
     const e = edges([9, 1, 2, 3, 4]); e[0]!.enabled = false;
-    expect(strongCutoff(e, 1, 3)).toBe(4);
+    expect(strongEdges(e, 1, 3)).toEqual(new Set([e[4]]));
+  });
+  it('is exactly n links when weights tie (a fresh NEAT network: every weight 0.5)', () => {
+    expect(strongEdges(edges(new Array<number>(40).fill(0.5)))!.size).toBe(STRONG_EDGES);
   });
 });

@@ -25,12 +25,13 @@ describe('PpoLearner', () => {
     expect(meanOf(Array.from(live.outputs())) * 3).toBeCloseTo(1, 4);
     expect(live.activations().length).toBe(live.network().nodes.length);
   });
-  it('iterations without a finished episode report 0 at first and carry the previous values later', async () => {
+  it('iterations without a finished episode have no score: NaN, never a made-up 0 or the previous values', async () => {
     const stats = await runHeadless({ def: reach1d, learner: resolveConfig('ppo', reach1d, { rolloutLen: 16 }), seed: 1, iterations: 9 });
-    expect(stats[0]).toMatchObject({ best: 0, mean: 0, median: 0, episodes: 0 });
+    expect(stats[0]).toMatchObject({ best: NaN, mean: NaN, median: NaN, episodes: 0 });
     expect(stats[7]!.episodes).toBe(8);                               // episodes last 120 steps: all 8 envs finish in ticks 113..128
     expect(stats[7]!.rl!.returns.length).toBe(8);
-    expect(stats[8]).toMatchObject({ best: stats[7]!.best, mean: stats[7]!.mean, median: stats[7]!.median, episodes: 0 });
+    expect(Number.isFinite(stats[7]!.best)).toBe(true);
+    expect(stats[8]).toMatchObject({ best: NaN, mean: NaN, median: NaN, episodes: 0 });
   });
   it('learns reach1d: mean return of the last 5 updates beats the first by 3', async () => {
     const m = (await runHeadless({ def: reach1d, learner: resolveConfig('ppo', reach1d), seed: 1, iterations: 40 })).map((s) => s.mean);
