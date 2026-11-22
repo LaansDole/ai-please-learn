@@ -20,6 +20,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Field guide redesign. Light paper palette, Gill Sans and Charter type, and a shell-green top bar across the app, the games, the 3D stage and the demo page.
+- Gallery: the four steps and a "Start with Snake" button sit beside the concept plates.
+- Learn step: a generation header that says in words whether it is still learning, a strip of the last 60 generations, a record readout, species standings and a table of the last 8 generations beside the stage.
+- Fitness chart: the record is a stepped blue line with its value and generation written on it. Every line ends in its latest value.
+- Network on the Learn step: the 14 strongest connections are drawn in full and the rest faint.
 - Clean URLs without the `#` and the `/c`.
 - OpenAI is the default LLM provider, with LM Studio and Ollama as presets.
 - README is shorter; the detail moved to DEVELOPER.md and docs/guide.md.
