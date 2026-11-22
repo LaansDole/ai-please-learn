@@ -57,11 +57,18 @@ describe('LLM settings', () => {
     expect(validateSettings({ ...old, provider: 'openai' })?.provider).toBe('openai');
     expect(validateSettings({ ...old, provider: 'nope' })?.provider).toBe('ollama');
   });
-  it('no-key guard: only a remote endpoint under a provider that needs a key', () => {
+  it('no-key guard: only api.openai.com itself demands a key', () => {
     expect(missingKey(DEFAULT_LLM)).toBe(true);
     expect(missingKey({ ...DEFAULT_LLM, apiKey: '  ' })).toBe(true);
     expect(missingKey({ ...DEFAULT_LLM, apiKey: 'k' })).toBe(false);
     expect(missingKey({ ...DEFAULT_LLM, baseUrl: 'http://127.0.0.1:9/v1' })).toBe(false);
+    // Settings migrated from before providers existed: a server that is not on localhost lands under OpenAI and needs no key.
+    for (const baseUrl of ['http://192.168.1.20:11434/v1', 'http://host.docker.internal:1234/v1', 'http://nas.local:8080/v1', 'https://openrouter.ai/api/v1']) {
+      const migrated = validateSettings({ baseUrl, model: 'm', apiKey: '', mode: 'auto' })!;
+      expect(migrated.provider, baseUrl).toBe('openai');
+      expect(missingKey(migrated), baseUrl).toBe(false);
+    }
+    expect(missingKey({ ...DEFAULT_LLM, baseUrl: 'not a url' })).toBe(false);
     expect(missingKey(presetFor('ollama'))).toBe(false);
     expect(missingKey(presetFor('lmstudio'))).toBe(false);
   });

@@ -32,8 +32,15 @@ export function detectProvider(baseUrl: string): ProviderId {
   return new URL(u).port === '1234' ? 'lmstudio' : 'ollama';
 }
 
-/** True when a request would be sent without the key its provider demands. A local base URL under the OpenAI preset is a custom server and needs none. */
-export const missingKey = (s: LlmSettings): boolean => PROVIDERS[s.provider].needsKey && !isLocalUrl(s.baseUrl) && !s.apiKey.trim();
+/**
+ * True when a request would be sent without the key its endpoint demands. Only api.openai.com is known to demand one: any
+ * other base URL under the OpenAI preset (a LAN Ollama, host.docker.internal, an OpenAI-compatible gateway) is a custom
+ * server, and whether it wants a key is for it to say.
+ */
+export function missingKey(s: LlmSettings): boolean {
+  if (!PROVIDERS[s.provider].needsKey || s.apiKey.trim()) return false;
+  try { return new URL(s.baseUrl).hostname === 'api.openai.com'; } catch { return false; }
+}
 
 /** "gpt-6-luna via OpenAI", or "m at <url>" once the base URL is no longer the preset's. */
 export function describeEndpoint(s: LlmSettings): string {

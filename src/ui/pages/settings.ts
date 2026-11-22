@@ -85,15 +85,20 @@ export const settingsPage: PageFn = (root) => {
     if (!now) { save(); return; }
     if (missingKey(now)) { result.textContent = `Enter your ${PROVIDERS[now.provider].label} API key first.`; apiKey.focus(); return; }
     testButton.disabled = true; result.textContent = 'Connecting...';
+    // The answer belongs to the server that was asked: once the provider or base URL has changed, or the page is gone, it is dropped.
+    const stale = () => { const after = current(); return gone || after?.provider !== now.provider || after.baseUrl !== now.baseUrl; };
     try {
       const models = await listModels(now, fetch, await resolveMode(now));
-      modelOptions.replaceChildren(...models.map((id) => h('option', { value: id })));
-      const count = `Connected: ${models.length} model${models.length === 1 ? '' : 's'}.`;
-      const first = now.model ? undefined : pickChatModel(models);
-      if (first) { model.value = first; save(); result.textContent = `${count} Using ${first}.`; }
-      else if (!now.model) result.textContent = `${count} Load a chat model in ${PROVIDERS[now.provider].label} first.`;
-      else result.textContent = count + (models.includes(now.model) ? '' : ` Warning: model ${now.model} not found on this server.`);
-    } catch (e) { result.textContent = `Failed: ${e instanceof Error ? e.message : String(e)}`; }
+      if (!stale()) {
+        modelOptions.replaceChildren(...models.map((id) => h('option', { value: id })));
+        const count = `Connected: ${models.length} model${models.length === 1 ? '' : 's'}.`;
+        const first = now.model ? undefined : pickChatModel(models);
+        if (first) { model.value = first; save(); result.textContent = `${count} Using ${first}.`; }
+        else if (!now.model) result.textContent = `${count} Load a chat model in ${PROVIDERS[now.provider].label} first.`;
+        else result.textContent = count + (models.includes(now.model) ? '' : ` Warning: model ${now.model} not found on this server.`);
+      }
+    } catch (e) { if (!stale()) result.textContent = `Failed: ${e instanceof Error ? e.message : String(e)}`; }
+    if (stale() && result.textContent === 'Connecting...') result.textContent = '';
     testButton.disabled = false;
   });
 

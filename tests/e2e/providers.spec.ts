@@ -61,3 +61,23 @@ test('settings saved before providers existed keep their values under the matchi
   await expect(page.getByTestId('settings-base-url')).toHaveValue('http://localhost:11434/v1');
   await expect(page.getByTestId('settings-model')).toHaveValue('llama3.2');
 });
+
+test('settings: a Test connection reply that arrives after the provider changed is dropped', async ({ page }) => {
+  // The proxy probe carries no base-URL header and goes through; the model list of the LM Studio preset answers late.
+  await page.route('**/api/llm/models', async (r) => {
+    if (!r.request().headers()['x-evolab-base-url']) return r.continue();
+    await new Promise((done) => setTimeout(done, 600));
+    return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 'lm-studio-model' }] }) });
+  });
+  await page.goto('/settings');
+  await page.getByTestId('settings-provider-lmstudio').click();
+  await page.getByTestId('settings-test').click();
+  await expect(page.getByTestId('settings-test')).toBeDisabled();
+  await page.getByTestId('settings-provider-openai').click();
+  await expect(page.getByTestId('settings-test')).toBeEnabled();              // the late reply has arrived
+  await expect(page.getByTestId('settings-model')).toHaveValue('gpt-6-luna');
+  await expect(page.getByTestId('settings-test-result')).toBeEmpty();
+  await page.reload();
+  await expect(page.getByTestId('settings-provider-openai')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('settings-model')).toHaveValue('gpt-6-luna');
+});
