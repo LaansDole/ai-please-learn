@@ -40,8 +40,8 @@ test.describe('visual acceptance screenshots', () => {
     await expect(page.getByTestId('new-concept')).toBeVisible();
     await shot(page, '17-create');
     await page.getByTestId('nav-settings').click();
-    await expect(page.getByTestId('settings-base-url')).toHaveValue('http://localhost:11434/v1');
-    await expect(page.getByTestId('settings-remote-warning')).toBeHidden();
+    await expect(page.getByTestId('settings-provider-openai')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('settings-base-url')).toHaveValue('https://api.openai.com/v1');
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await shot(page, '16-settings');
   });

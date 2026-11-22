@@ -77,7 +77,9 @@ test('static sub-path build: direct LLM mode and a pasted concept that trains in
   try {
     await page.goto(`${origin}/evolab/settings`);
     await expect(page.getByTestId('settings-mode-active')).toContainText('direct');
-    await expect(page.getByTestId('settings-direct-help')).toContainText(`OLLAMA_ORIGINS=${origin}`);
+    await page.getByTestId('settings-provider-ollama').click();
+    await expect(page.getByTestId('settings-provider-help')).toContainText(`OLLAMA_ORIGINS=${origin} ollama serve`);
+    await expect(page.getByTestId('settings-direct-help')).toContainText('Paste a response');
     await page.getByTestId('settings-base-url').fill(llm.baseUrl);
     await page.getByTestId('settings-model').fill('fake-model');
     await page.getByTestId('settings-model').blur();

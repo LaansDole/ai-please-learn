@@ -312,7 +312,7 @@ fieldset.weights legend { padding: 0 6px; font-size: var(--fs-small); color: var
 .form { display: flex; flex-direction: column; gap: 14px; }
 .form > h3 { margin: 0; }
 .form-field { display: flex; flex-direction: column; gap: 6px; }
-.form-field label { font-size: var(--fs-small); color: var(--muted); }
+.form-field label, .field-label { font-size: var(--fs-small); color: var(--muted); }
 .form-field input, .form-field select { width: 100%; font-family: var(--font-mono); }
 .field-help { font-size: var(--fs-small); color: var(--muted); }
 .field-help:empty, .errors-line:empty { display: none; }

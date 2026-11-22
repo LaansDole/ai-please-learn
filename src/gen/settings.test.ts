@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { setStorage } from '../persist/storage';
-import { DEFAULT_LLM, PRESETS, detectMode, isLocalUrl, loadSettings, normalizeBaseUrl, resolveMode, saveSettings, validateSettings } from './settings';
+import { DEFAULT_LLM, PROVIDERS, describeEndpoint, detectMode, detectProvider, isLocalUrl, loadSettings, missingKey, normalizeBaseUrl, presetFor, resolveMode, saveSettings, validateSettings } from './settings';
 
 const map = new Map<string, string>();
 beforeEach(() => {
@@ -11,14 +11,14 @@ beforeEach(() => {
 describe('LLM settings', () => {
   it('returns defaults when nothing is stored or the value is corrupt', () => {
     expect(loadSettings()).toEqual(DEFAULT_LLM);
-    expect(DEFAULT_LLM.baseUrl).toBe(PRESETS.ollama);
+    expect(DEFAULT_LLM).toEqual({ provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6-luna', apiKey: '', mode: 'auto' });
     map.set('evolab.settings.v1', '{not json');
     expect(loadSettings()).toEqual(DEFAULT_LLM);
     map.set('evolab.settings.v1', JSON.stringify({ baseUrl: 'ftp://x', model: 'm', apiKey: '' }));
     expect(loadSettings()).toEqual(DEFAULT_LLM);
   });
   it('round trips', () => {
-    const s = { baseUrl: 'http://localhost:1234/v1', model: 'm', apiKey: 'k', mode: 'direct' as const };
+    const s = { provider: 'lmstudio' as const, baseUrl: 'http://localhost:1234/v1', model: 'm', apiKey: 'k', mode: 'direct' as const };
     saveSettings(s);
     expect(loadSettings()).toEqual(s);
     expect(JSON.parse(map.get('evolab.settings.v1')!)).toEqual(s);
@@ -35,7 +35,40 @@ describe('LLM settings', () => {
     expect(validateSettings({ baseUrl: 'http://localhost:1/v1', model: 'm', apiKey: '', mode: 'weird' })).toBeNull();
     expect(validateSettings(null)).toBeNull();
     // Settings stored before the connection mode existed stay valid.
-    expect(validateSettings({ baseUrl: 'http://localhost:1/v1/', model: 'm', apiKey: '' })).toEqual({ baseUrl: 'http://localhost:1/v1', model: 'm', apiKey: '', mode: 'auto' });
+    expect(validateSettings({ baseUrl: 'http://localhost:1/v1/', model: 'm', apiKey: '' })).toEqual({ provider: 'ollama', baseUrl: 'http://localhost:1/v1', model: 'm', apiKey: '', mode: 'auto' });
+  });
+  it('presets: OpenAI needs a key, the local servers do not, LM Studio leaves the model to the server', () => {
+    expect(presetFor('ollama')).toMatchObject({ baseUrl: 'http://localhost:11434/v1', model: 'qwen2.5-coder:14b' });
+    expect(presetFor('lmstudio')).toMatchObject({ baseUrl: 'http://localhost:1234/v1', model: '' });
+    expect([PROVIDERS.openai.needsKey, PROVIDERS.lmstudio.needsKey, PROVIDERS.ollama.needsKey]).toEqual([true, false, false]);
+    expect(validateSettings(presetFor('lmstudio'))).toEqual(presetFor('lmstudio'));      // an empty model is valid only where the preset has none
+    expect(validateSettings({ ...presetFor('openai'), model: '' })).toBeNull();
+  });
+  it('migrates settings saved before providers existed without changing their values', () => {
+    const old = { baseUrl: 'http://localhost:11434/v1', model: 'llama3', apiKey: '', mode: 'direct' };
+    map.set('evolab.settings.v1', JSON.stringify(old));
+    expect(loadSettings()).toEqual({ ...old, provider: 'ollama' });
+    expect(detectProvider('http://localhost:1234/v1/')).toBe('lmstudio');
+    expect(detectProvider('http://127.0.0.1:1234/v1')).toBe('lmstudio');
+    expect(detectProvider('http://127.0.0.1:8080/v1')).toBe('ollama');
+    expect(detectProvider('https://api.openai.com/v1')).toBe('openai');
+    expect(detectProvider('https://openrouter.ai/api/v1')).toBe('openai');     // a remote OpenAI-compatible endpoint sits under OpenAI
+    // A stored provider wins over detection, and an unknown one falls back to it.
+    expect(validateSettings({ ...old, provider: 'openai' })?.provider).toBe('openai');
+    expect(validateSettings({ ...old, provider: 'nope' })?.provider).toBe('ollama');
+  });
+  it('no-key guard: only a remote endpoint under a provider that needs a key', () => {
+    expect(missingKey(DEFAULT_LLM)).toBe(true);
+    expect(missingKey({ ...DEFAULT_LLM, apiKey: '  ' })).toBe(true);
+    expect(missingKey({ ...DEFAULT_LLM, apiKey: 'k' })).toBe(false);
+    expect(missingKey({ ...DEFAULT_LLM, baseUrl: 'http://127.0.0.1:9/v1' })).toBe(false);
+    expect(missingKey(presetFor('ollama'))).toBe(false);
+    expect(missingKey(presetFor('lmstudio'))).toBe(false);
+  });
+  it('describes the endpoint by provider, or by URL once it is customised', () => {
+    expect(describeEndpoint(DEFAULT_LLM)).toBe('gpt-6-luna via OpenAI');
+    expect(describeEndpoint(presetFor('lmstudio'))).toBe('the first loaded model via LM Studio');
+    expect(describeEndpoint({ ...presetFor('ollama'), baseUrl: 'http://127.0.0.1:9/v1', model: 'm' })).toBe('m at http://127.0.0.1:9/v1');
   });
 });
 

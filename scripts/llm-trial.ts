@@ -37,7 +37,7 @@ const apiKey = process.env.OPENAI_API_KEY ?? '';
 if (!apiKey) { console.error('OPENAI_API_KEY is not set'); process.exit(1); }
 const redact = (s: string) => s.replaceAll(apiKey, '[key]').replace(/sk-[A-Za-z0-9_*-]{8,}/g, '[key]');
 const model = args.model, maxCalls = Number(args['max-calls']);
-const settings = { baseUrl: args['base-url'], model, apiKey, mode: 'direct' as const };
+const settings = { provider: 'openai' as const, baseUrl: args['base-url'], model, apiKey, mode: 'direct' as const };
 const kebab = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 interface Row {

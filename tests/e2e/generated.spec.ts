@@ -15,6 +15,7 @@ test('concept from text: repair once, then play, train, and find it in the galle
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await page.getByTestId('settings-test').click();
     await expect(page.getByTestId('settings-test-result')).toContainText('Connected');
+    await expect(page.locator('[data-testid="settings-model-options"] option')).toHaveAttribute('value', 'fake-model');
     await page.goto('/create');
     await page.getByTestId('new-concept-input').fill('slide a dot onto a target');
     await page.getByTestId('new-concept-submit').click();

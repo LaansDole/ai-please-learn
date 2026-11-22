@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createChat, listModels } from './llm';
+import { createChat, listModels, pickChatModel } from './llm';
 import type { ChatMessage } from './prompt';
 import type { LlmSettings } from './settings';
 
-const settings: LlmSettings = { baseUrl: 'http://localhost:11434/v1/', model: 'm1', apiKey: '', mode: 'auto' };
+const settings: LlmSettings = { provider: 'ollama', baseUrl: 'http://localhost:11434/v1/', model: 'm1', apiKey: '', mode: 'auto' };
 const messages: ChatMessage[] = [{ role: 'system', content: 's' }, { role: 'user', content: 'u' }];
 
 function fakeFetch(status: number, body: unknown) {
@@ -41,6 +41,10 @@ describe('LLM client through the proxy', () => {
     expect(await listModels(settings, f.impl)).toEqual(['a', 'b']);
     expect(f.calls[0]!.url).toBe('/api/llm/models');
     expect(f.calls[0]!.init.method).toBe('GET');
+  });
+  it('picks the first chat model, skipping embedding models', () => {
+    expect(pickChatModel(['text-embedding-nomic-embed-text-v1.5', 'qwen2.5-coder-14b', 'llama-3'])).toBe('qwen2.5-coder-14b');
+    expect(pickChatModel(['text-embedding-3-small'])).toBeUndefined();
   });
 });
 

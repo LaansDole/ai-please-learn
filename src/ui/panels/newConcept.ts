@@ -1,10 +1,10 @@
 import { library, parseConceptFile, type StoredConcept } from '../../gen/library';
-import { createChat } from '../../gen/llm';
+import { createChat, listModels, pickChatModel } from '../../gen/llm';
 import { slugId, type GeneratedMeta } from '../../gen/meta';
 import { parseResponse } from '../../gen/parse';
 import { SYSTEM_PROMPT, userMessage } from '../../gen/prompt';
 import { MAX_REPAIRS, generateConcept } from '../../gen/repair';
-import { loadSettings, resolveMode } from '../../gen/settings';
+import { PROVIDERS, describeEndpoint, loadSettings, missingKey, resolveMode } from '../../gen/settings';
 import { spawnValidateWorker, validateInWorker } from '../../gen/validateClient';
 import { h } from '../dom';
 import { formatRoute } from '../router';
@@ -18,10 +18,11 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
  */
 export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElement {
   const settings = loadSettings();
+  const provider = PROVIDERS[settings.provider].label, needsKey = missingKey(settings);
   let running = false;
   const input = h('input', { type: 'text', id: 'new-concept-text', testid: 'new-concept-input', placeholder: 'learn to juggle', maxlength: 500, autocomplete: 'off' });
   const submit = h('button', { type: 'submit', class: 'btn-primary', testid: 'new-concept-submit', disabled: true }, 'Create');
-  const endpoint = h('span', { class: 'mono' }, `${settings.model} at ${settings.baseUrl}`);
+  const endpoint = h('span', { class: 'mono' }, describeEndpoint(settings));
   const log = h('ol', { class: 'gen-log', testid: 'new-concept-log', 'aria-live': 'polite' });
   const errors = h('div', { class: 'gen-errors', testid: 'new-concept-errors', role: 'alert' });
   const pasteInput = h('textarea', { testid: 'new-concept-paste-input', rows: 6, spellcheck: 'false', 'aria-label': 'Model response',
@@ -40,7 +41,7 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
   pasteToggle.addEventListener('click', () => showManual(manual.hidden !== false));
 
   const sync = () => {
-    submit.disabled = running || !input.value.trim();
+    submit.disabled = running || needsKey || !input.value.trim();
     pasteSubmit.disabled = running || !pasteInput.value.trim();
     file.disabled = running;
   };
@@ -68,24 +69,28 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
 
   input.addEventListener('input', sync);
   pasteInput.addEventListener('input', sync);
-  void resolveMode(settings).then((mode) => { endpoint.textContent = `${settings.model} at ${settings.baseUrl} (${mode})`; });
+  void resolveMode(settings).then((mode) => { endpoint.textContent = `${describeEndpoint(settings)} (${mode})`; });
 
   const form = h('form', { class: 'gen-form' }, h('label', { for: input.id }, 'Describe something to learn'), h('div', { class: 'gen-row' }, input, submit));
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
+    if (!text || needsKey) return;             // without its key the provider would only answer 401
     void busy(async () => {
+      const mode = await resolveMode(settings);
+      // An empty model (LM Studio's preset) is whatever chat model the server has loaded.
+      const model = settings.model || pickChatModel(await listModels(settings, fetch, mode));
+      if (!model) throw new Error(`${provider} lists no chat model: load one there, or name a model in Settings.`);
       const r = await generateConcept(text, {
-        chat: createChat(settings, fetch, await resolveMode(settings)),
+        chat: createChat({ ...settings, model }, fetch, mode),
         validate,
         onProgress: (e) => {
-          if (e.phase === 'prompting') step(`prompting ${settings.model}`);
+          if (e.phase === 'prompting') step(`prompting ${model}`);
           else if (e.phase === 'repairing') step(`repairing ${e.attempt}/${MAX_REPAIRS}`, e.errors);
           else step(e.phase);
         },
       });
-      if (r.ok) { await save(r.meta, r.source, text, settings.model); return; }
+      if (r.ok) { await save(r.meta, r.source, text, model); return; }
       showErrors(r.lastResponse ? 'The model did not produce a valid environment.' : 'The model could not be reached.', r.errors, r.lastResponse);
       showManual(true);
     });
@@ -119,6 +124,10 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
   const el = h('section', { class: 'card new-concept', testid: 'new-concept' },
     h('h3', null, 'New concept'),
     form,
+    needsKey && h('div', { class: 'note note-warn', testid: 'new-concept-needs-key', role: 'status' },
+      h('span', { class: 'warn-mark', 'aria-hidden': 'true' }, '!'),
+      h('span', null, `${provider} needs an API key before EvoLab can call it. `, h('a', { href: formatRoute({ page: 'settings' }) }, 'Add your key in Settings'),
+        ', or use "Paste a response" below.')),
     h('p', { class: 'field-help' }, 'Uses ', endpoint, '. ', h('a', { href: formatRoute({ page: 'settings' }) }, 'Settings')),
     log, errors,
     h('div', { class: 'preset-row' }, pasteToggle, h('label', { class: 'btn file-btn' }, 'Import concept file', file)),

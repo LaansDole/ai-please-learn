@@ -47,3 +47,6 @@ export async function listModels(settings: LlmSettings, fetchImpl: typeof fetch 
   const data = await res.json().catch(() => null) as { data?: { id?: unknown }[] } | null;
   return (data?.data ?? []).map((m) => String(m.id));
 }
+
+/** The model to use when the settings name none (LM Studio): the first listed id that is not an embedding model. */
+export const pickChatModel = (ids: string[]): string | undefined => ids.find((id) => !/embed/i.test(id));

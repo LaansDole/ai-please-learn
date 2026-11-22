@@ -86,13 +86,21 @@ Open the **Create** tab ([`/create`](https://laansdole.github.io/evolab/create))
 
 EvoLab is an experimental project and the sandbox this code runs in is best-effort, not a security boundary: only generate, import or load concepts from sources you trust.
 
-**Settings.** Open Settings and enter any OpenAI-compatible endpoint: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`) or a remote one with an API key. The only things sent are your concept text and EvoLab's fixed prompt, and only to that endpoint. A non-local address shows a warning.
+**Settings.** Open Settings and pick a provider:
 
-**On the live site** (or any static hosting) there is no proxy, so the page calls your LLM server straight from the browser and the server must allow the site's origin:
+| Provider | Base URL | Default model | API key |
+|---|---|---|---|
+| OpenAI (default) | `https://api.openai.com/v1` | `gpt-6-luna` | required; stored only in your browser and sent only to OpenAI |
+| LM Studio | `http://localhost:1234/v1` | the first chat model LM Studio lists | none |
+| Ollama | `http://localhost:11434/v1` | `qwen2.5-coder:14b` | none |
 
+The base URL and the model stay editable under each provider, so any other OpenAI-compatible endpoint works too; "Test connection" lists the models the server offers. The only things sent are your concept text and EvoLab's fixed prompt, and only to that endpoint. A non-local address shows a warning. With OpenAI selected and no key, the Create page asks for one instead of sending a request.
+
+**On the live site** (or any static hosting) there is no proxy, so the page calls the provider straight from the browser:
+
+- OpenAI: works as is. The API allows browser requests from any origin, so it needs no setup beyond your own API key.
+- LM Studio: Developer > Local Server > start the server and enable CORS
 - Ollama: `OLLAMA_ORIGINS=https://laansdole.github.io ollama serve`
-- LM Studio: Developer > Local Server > enable CORS
-- OpenAI (`https://api.openai.com/v1`): works as is. The API allows browser requests from any origin, so direct mode needs no setup beyond your own API key, which is stored only in your browser and sent only to OpenAI.
 
 **No LLM server at all?** Use "Paste a response": copy the prompt, paste it into any chat model, and paste the answer back. It goes through the same validator. This works everywhere, including the live site.
 
