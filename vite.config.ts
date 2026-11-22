@@ -1,6 +1,7 @@
 import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Connect, type Plugin } from 'vite';
+import { byteRange } from './tools/byteRange';
 import { llmProxy } from './tools/llmProxy';
 
 export const CSP =
@@ -46,8 +47,9 @@ const demoPage = (): Plugin => {
     const name = path.startsWith(`${base}demo/`) ? path.slice(base.length + 5) || 'demo.html' : '';
     const file = resolve(SRC, name), ext = name.split('.').pop()!;
     if (!/^[\w.-]+\.(html|mp4|png)$/.test(name) || !existsSync(file)) { next(); return; }
-    const size = statSync(file).size, range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
-    const start = range?.[1] ? Number(range[1]) : 0, end = range?.[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    const size = statSync(file).size, range = byteRange(req.headers.range, size);
+    if (range === 'unsatisfiable') { res.writeHead(416, { 'content-range': `bytes */${size}` }).end(); return; }
+    const start = range?.start ?? 0, end = range?.end ?? size - 1;
     res.writeHead(range ? 206 : 200, {
       'content-type': TYPES[ext]!, 'accept-ranges': 'bytes', 'content-length': end - start + 1,
       ...(range && { 'content-range': `bytes ${start}-${end}/${size}` }),
