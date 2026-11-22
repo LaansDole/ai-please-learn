@@ -43,6 +43,7 @@ jobs:
         run: |
           grep -q "<title>EvoLab" dist/index.html
           ls dist/assets/*.js >/dev/null
+          cmp dist/index.html dist/404.html   # deep links (/evolab/pong/2) boot through 404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

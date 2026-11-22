@@ -7,6 +7,7 @@ import { MAX_REPAIRS, generateConcept } from '../../gen/repair';
 import { loadSettings, resolveMode } from '../../gen/settings';
 import { spawnValidateWorker, validateInWorker } from '../../gen/validateClient';
 import { h } from '../dom';
+import { formatRoute } from '../router';
 
 const validate = (source: string, meta: unknown) => validateInWorker(spawnValidateWorker, source, meta);
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -118,7 +119,7 @@ export function createNewConceptPanel(onCreated: (id: string) => void): HTMLElem
   const el = h('section', { class: 'card new-concept', testid: 'new-concept' },
     h('h3', null, 'New concept'),
     form,
-    h('p', { class: 'field-help' }, 'Uses ', endpoint, '. ', h('a', { href: '#/settings' }, 'Settings')),
+    h('p', { class: 'field-help' }, 'Uses ', endpoint, '. ', h('a', { href: formatRoute({ page: 'settings' }) }, 'Settings')),
     log, errors,
     h('div', { class: 'preset-row' }, pasteToggle, h('label', { class: 'btn file-btn' }, 'Import concept file', file)),
     manual);

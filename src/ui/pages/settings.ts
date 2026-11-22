@@ -1,7 +1,7 @@
 import { listModels } from '../../gen/llm';
 import { PRESETS, isLocalUrl, loadSettings, resolveMode, saveSettings, validateSettings, type LlmSettings } from '../../gen/settings';
 import { h, topNav } from '../dom';
-import type { PageFn } from '../router';
+import { formatRoute, type PageFn } from '../router';
 
 export const settingsPage: PageFn = (root) => {
   const s = loadSettings();
@@ -19,7 +19,7 @@ export const settingsPage: PageFn = (root) => {
     h('ul', null,
       h('li', null, 'Ollama: start it with ', h('code', null, `OLLAMA_ORIGINS=${origin} ollama serve`)),
       h('li', null, 'LM Studio: Developer > Local Server > enable CORS')),
-    h('p', null, 'If the call is still blocked, use "Paste a response" on the ', h('a', { href: '#/create' }, 'Create'), ' page: copy the prompt into any chat model and paste its answer back.'));
+    h('p', null, 'If the call is still blocked, use "Paste a response" on the ', h('a', { href: formatRoute({ page: 'create' }) }, 'Create'), ' page: copy the prompt into any chat model and paste its answer back.'));
   const proxyNote = h('p', { class: 'field-help', testid: 'settings-direct-csp', hidden: true },
     'This server offers the proxy, and its security policy blocks direct calls from the page. Use Automatic or Proxy here.');
   const warning = h('div', { class: 'note note-warn', testid: 'settings-remote-warning', role: 'status', hidden: true },
@@ -65,7 +65,7 @@ export const settingsPage: PageFn = (root) => {
 
   root.append(h('div', { class: 'page', testid: 'settings' },
     h('header', { class: 'topbar' },
-      h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
+      h('a', { class: 'brand', href: formatRoute({ page: 'gallery' }) }, 'EvoLab'),
       topNav('settings')),
     h('main', { class: 'settings' },
       h('h1', null, 'Settings'),

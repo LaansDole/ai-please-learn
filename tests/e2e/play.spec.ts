@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { termValue, waitFrames } from './helpers';
 
 test('R restarts the game on step 1 after a game over and mid-game, and only there', async ({ page }) => {
-  await page.goto('/#/c/snake/1');
+  await page.goto('/snake/1');
   const restart = page.getByTestId('play-restart');
   await expect(restart.locator('kbd')).toHaveText('R');
   await expect(restart).toHaveAttribute('aria-keyshortcuts', 'R');
@@ -14,7 +14,7 @@ test('R restarts the game on step 1 after a game over and mid-game, and only the
   await expect.poll(() => termValue(page, 'survive'), { intervals: [20] }).toBeLessThan(dead);
 
   // Mid-game: Pong never ends on its own this fast, and its jitter counter only rises while the paddle moves.
-  await page.goto('/#/c/pong/1');
+  await page.goto('/pong/1');
   await waitFrames(page, 10);
   await page.keyboard.down('ArrowUp');
   await expect.poll(() => termValue(page, 'jitter')).toBeGreaterThan(0);
@@ -33,12 +33,12 @@ test('R restarts the game on step 1 after a game over and mid-game, and only the
 });
 
 test('the walker binds R to a knee, so its restart shortcut falls back to N', async ({ page }) => {
-  await page.goto('/#/c/walker/1');
+  await page.goto('/walker/1');
   await expect(page.getByTestId('play-restart').locator('kbd')).toHaveText('N');
 });
 
 test('the top bar links to the repository on every page', async ({ page }) => {
-  for (const url of ['/', '/#/c/snake/1', '/#/settings', '/#/create']) {
+  for (const url of ['/', '/snake/1', '/settings', '/create']) {
     await page.goto(url);
     const link = page.getByTestId('nav-repo');
     await expect(link).toHaveAttribute('href', 'https://github.com/LaansDole/evolab');

@@ -8,19 +8,19 @@ test('concept from text: repair once, then play, train, and find it in the galle
   const hold = Promise.withResolvers<void>();
   const llm = await startFakeLlm([toResponse(WRONG_SIZE), toResponse(GOOD)], hold.promise);
   try {
-    await page.goto('/#/settings');
+    await page.goto('/settings');
     await page.getByTestId('settings-base-url').fill(llm.baseUrl);
     await page.getByTestId('settings-model').fill('fake-model');
     await page.getByTestId('settings-model').blur();
     await expect(page.getByTestId('settings-mode-active')).toContainText('proxy');
     await page.getByTestId('settings-test').click();
     await expect(page.getByTestId('settings-test-result')).toContainText('Connected');
-    await page.goto('/#/create');
+    await page.goto('/create');
     await page.getByTestId('new-concept-input').fill('slide a dot onto a target');
     await page.getByTestId('new-concept-submit').click();
     await expect(page.getByTestId('new-concept-log')).toContainText('repairing 1/3', { timeout: 30000 });
     hold.resolve();
-    await expect(page).toHaveURL(/#\/c\/gen-reach-the-target-[0-9a-f]{4}/, { timeout: 30000 });
+    await expect(page).toHaveURL(/4173\/gen-reach-the-target-[0-9a-f]{4}\/1$/, { timeout: 30000 });
     const stage = page.getByTestId('stage');
     await expect.poll(async () => Number(await stage.getAttribute('data-frames'))).toBeGreaterThan(10);
     await page.keyboard.down('ArrowRight');
@@ -45,14 +45,14 @@ test('concept from text: repair once, then play, train, and find it in the galle
 });
 
 test('manual paste fallback, view source, export, delete; hung modules time out', async ({ page }) => {
-  await page.goto('/#/create');
+  await page.goto('/create');
   await page.getByTestId('new-concept-paste').click();
   await page.getByTestId('new-concept-paste-input').fill(toResponse(INFINITE_LOOP));
   await page.getByTestId('new-concept-paste-submit').click();
   await expect(page.getByTestId('new-concept-errors')).toContainText('timed out', { timeout: 15000 });
   await page.getByTestId('new-concept-paste-input').fill(toResponse(GOOD));
   await page.getByTestId('new-concept-paste-submit').click();
-  await expect(page).toHaveURL(/#\/c\/gen-/);
+  await expect(page).toHaveURL(/4173\/gen-/);
   await page.goto('/');
   const card = page.locator('[data-testid^="card-gen-"]').first();
   const id = (await card.getAttribute('data-testid'))!.slice('card-'.length);

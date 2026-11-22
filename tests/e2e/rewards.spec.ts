@@ -3,7 +3,7 @@ import { attr, startTraining, statValue, waitIterations } from './helpers';
 
 test('snake: a reward change mid-run marks the chart, survives a reload, and bad JSON changes nothing', async ({ page }) => {
   const chart = page.getByTestId('fitness-chart'), food = page.getByTestId('weight-num-food');
-  await page.goto('/#/c/snake/4');
+  await page.goto('/snake/4');
   await startTraining(page, { population: 150 });
   await waitIterations(page, 2);
   await page.getByTestId('btn-pause').click();

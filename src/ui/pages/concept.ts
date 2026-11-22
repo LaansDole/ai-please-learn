@@ -3,14 +3,14 @@ import { library, type StoredConcept } from '../../gen/library';
 import { iterationLabel } from '../../learner/types';
 import { resolveConfig } from '../../learner/config';
 import { loadRunPrefs, type RunPrefs } from '../../persist/storage';
-import { h, topNav } from '../dom';
+import { h, notFound, topNav } from '../dom';
 import { createPlayPanel } from '../panels/play';
 import { createLearnPanel } from '../panels/learn';
 import { createNetworkPanel } from '../panels/network';
 import { createRewardPanel } from '../panels/rewards';
 import { createStage } from '../panels/stage';
 import { showSource } from '../panels/sourceModal';
-import { formatRoute, type PageFn, type Step } from '../router';
+import { formatRoute, navigate, type PageFn, type Step } from '../router';
 import { openSession, type Session } from '../session';
 import type { EnvRef } from '../../trainer/protocol';
 
@@ -33,15 +33,8 @@ function buildStep(step: Step, session: Session, run: RunControl): StepView {
 
 type Unmount = (() => void) & { onStep(step: Step): void };
 
-function unknownConcept(root: HTMLElement): void {
-  root.append(h('div', { class: 'page' },
-    h('header', { class: 'topbar' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), topNav()),
-    h('main', { class: 'gallery' },
-      h('div', { class: 'empty-state' },
-        h('h1', null, 'This concept does not exist'),
-        h('p', null, 'It may have been deleted, or it was generated in another browser. Generated concepts live only in the browser that made them.'),
-        h('p', null, h('a', { class: 'btn btn-primary', href: '#/' }, 'Back to the gallery'))))));
-}
+const unknownConcept = (root: HTMLElement) => notFound(root, 'This concept does not exist',
+  'It may have been deleted, or it was generated in another browser. Generated concepts live only in the browser that made them.');
 
 export const conceptPage: PageFn = (root, route) => {
   if (route.page !== 'concept') return;
@@ -71,11 +64,11 @@ function mount(root: HTMLElement, name: string, ref: EnvRef, firstStep: Step, co
   const stepNav = h('div', { class: 'step-nav' }, next);
   const side = h('div', { class: 'side' }, stepNav), lower = h('div', { class: 'lower' });
   const buttons = STEPS.map(([n, label]) => h('button', {
-    class: 'step', testid: `step-${n}`, onclick: () => { location.hash = formatRoute({ page: 'concept', envId: ref.id, step: n }); },
+    class: 'step', testid: `step-${n}`, onclick: () => navigate(formatRoute({ page: 'concept', envId: ref.id, step: n })),
   }, h('span', { class: 'step-num num', 'aria-hidden': 'true' }, String(n)), h('span', { class: 'step-label' }, label)));
   root.append(h('div', { class: 'page' },
     h('header', { class: 'topbar' },
-      h('div', { class: 'crumb' }, h('a', { class: 'brand', href: '#/' }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, name),
+      h('div', { class: 'crumb' }, h('a', { class: 'brand', href: formatRoute({ page: 'gallery' }) }, 'EvoLab'), h('span', { class: 'sep' }, '/'), h('span', { class: 'here' }, name),
         concept && h('span', { class: 'badge badge-gen', testid: 'badge-generated' }, 'generated')),
       h('nav', { class: 'stepper', 'aria-label': 'Steps' }, h('ol', null, ...buttons.map((b) => h('li', null, b)))),
       concept && h('button', { type: 'button', testid: 'view-source', onclick: () => showSource(concept) }, 'View source'),

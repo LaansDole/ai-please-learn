@@ -57,6 +57,11 @@ export function collectErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   // The LLM-proxy probe answers 400 by design (src/gen/settings.ts detectMode) and Chromium logs every failed request.
-  page.on('console', (m) => { if (m.type() === 'error' && !m.location().url.includes('/api/llm/')) errors.push(`console: ${m.text()}`); });
+  // So does a deep link on a static host: the page itself arrives as 404.html with status 404. Page paths have no file
+  // extension, so a missing script, style or image still counts.
+  page.on('console', (m) => {
+    const url = m.location().url, deepLink = m.text().includes('status of 404') && !/\.\w+$/.test(new URL(url, 'http://x').pathname);
+    if (m.type() === 'error' && !url.includes('/api/llm/') && !deepLink) errors.push(`console: ${m.text()}`);
+  });
   return errors;
 }

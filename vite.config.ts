@@ -1,3 +1,5 @@
+import { copyFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { llmProxy } from './tools/llmProxy';
 
@@ -16,8 +18,22 @@ const staticCsp = (): Plugin => ({
   transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: STATIC_CSP }, injectTo: 'head-prepend' }],
 });
 
+/**
+ * GitHub Pages has no rewrite rules: a deep link such as /evolab/pong/2 is not a file, so Pages answers with 404.html.
+ * Shipping the app as that file boots it at the requested path (every asset URL in it is absolute). Dev and preview servers
+ * fall back to index.html on their own.
+ */
+const spaFallback = (): Plugin => {
+  let out = '';
+  return {
+    name: 'evolab-spa-fallback', apply: 'build',
+    configResolved(c) { out = resolve(c.root, c.build.outDir); },
+    closeBundle() { copyFileSync(resolve(out, 'index.html'), resolve(out, '404.html')); },
+  };
+};
+
 export default defineConfig({
-  plugins: [llmProxy(), staticCsp()],
+  plugins: [llmProxy(), staticCsp(), spaFallback()],
   // EVOLAB_BASE: sub-path hosting (GitHub Pages builds use /evolab/).
   base: process.env.EVOLAB_BASE ?? '/',
   // EVOLAB_STATIC=1: the build goes to a host that only serves files, so the app must not probe for the LLM proxy

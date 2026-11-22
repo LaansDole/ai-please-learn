@@ -1,3 +1,7 @@
+import { formatRoute } from './router';
+
+const HOME = formatRoute({ page: 'gallery' });
+
 type Child = Node | string | null | undefined | false;
 
 /** props: `class`, `dataset` object, `on<Event>` handlers, `testid` (= data-testid); anything else is set as an attribute (null/false skip it). */
@@ -30,7 +34,18 @@ export function topNav(active?: 'gallery' | 'create' | 'settings'): HTMLElement 
   const tab = (id: string, href: string, label: string) =>
     h('a', { class: id === 'gallery' ? 'btn nav-home' : 'btn', href, testid: `nav-${id}`, 'aria-current': active === id && 'page' }, label);
   return h('nav', { class: 'topnav', 'aria-label': 'Main' },
-    tab('gallery', '#/', 'Gallery'), tab('create', '#/create', 'Create'), tab('settings', '#/settings', 'Settings'), repoLink());
+    tab('gallery', HOME, 'Gallery'), tab('create', formatRoute({ page: 'create' }), 'Create'), tab('settings', formatRoute({ page: 'settings' }), 'Settings'), repoLink());
+}
+
+/** A whole page that says something is missing and links home. */
+export function notFound(root: HTMLElement, title: string, text: string): void {
+  root.append(h('div', { class: 'page', testid: 'not-found' },
+    h('header', { class: 'topbar' }, h('a', { class: 'brand', href: HOME }, 'EvoLab'), topNav()),
+    h('main', { class: 'gallery' },
+      h('div', { class: 'empty-state' },
+        h('h1', null, title),
+        h('p', null, text),
+        h('p', null, h('a', { class: 'btn btn-primary', href: HOME }, 'Back to the gallery'))))));
 }
 
 /** Compact number for readouts: 1 decimal below 100, none above, "4.1k" above 1000. */

@@ -80,7 +80,7 @@ The full table, the assertions, the throughput guards and every deviation from t
 
 ## Concept from text
 
-Open the **Create** tab ([`#/create`](https://laansdole.github.io/evolab/#/create)) and type a sentence such as "balance a pole on a cart" into the box. EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
+Open the **Create** tab ([`/create`](https://laansdole.github.io/evolab/create)) and type a sentence such as "balance a pole on a cart" into the box. EvoLab asks a language model for two things: a JSON description (observations, actions, reward terms, presets, keys) and one JavaScript function that implements the environment. The result is checked by a validator that actually runs it: sizes and ranges of observations, determinism under a seed, reward terms that actually move, episodes that do not end at once, a render that draws. If the check fails, the precise errors go back to the model, up to three times ("repairing 1/3"). Only a module that passes is added to your gallery.
 
 ![The Create page](docs/screenshots/17-create.png)
 

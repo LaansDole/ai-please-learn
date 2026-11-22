@@ -18,7 +18,7 @@ async function shot(page: Page, name: string): Promise<void> {
 
 /** NEAT at MAX for `iterations` generations, then x1 so the stage shows the live population. */
 async function learnLive(page: Page, id: string, iterations: number, timeout = 90000): Promise<void> {
-  await page.goto(`/#/c/${id}/4`);
+  await page.goto(`/${id}/4`);
   await startTraining(page);
   await waitIterations(page, iterations, timeout);
   await page.getByTestId('speed-1').click();
@@ -47,7 +47,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('02 pong play, 03 pong learn, 10 network, 14 replay', async ({ page }) => {
-    await page.goto('/#/c/pong/1');
+    await page.goto('/pong/1');
     await waitFrames(page, 60);
     await shot(page, '02-pong-play');
     await learnLive(page, 'pong', 20);
@@ -66,7 +66,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('09 reward panel, 04 snake learn', async ({ page }) => {
-    await page.goto('/#/c/snake/1');           // by way of step 1, so the stage shows the game instead of an empty canvas
+    await page.goto('/snake/1');               // by way of step 1, so the stage shows the game instead of an empty canvas
     await waitFrames(page, 20);
     await page.getByTestId('step-2').click();
     await page.getByTestId('preset-aggressive').click();
@@ -85,7 +85,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('11 method picker, 06 car learn', async ({ page }) => {
-    await page.goto('/#/c/car/1');
+    await page.goto('/car/1');
     await waitFrames(page, 20);
     await page.getByTestId('step-3').click();
     await expect(page.getByTestId('method-dqn')).toBeDisabled();
@@ -102,7 +102,7 @@ test.describe('visual acceptance screenshots', () => {
 
   test('08 walker learn', async ({ page }) => {
     test.setTimeout(300000);
-    await page.goto('/#/c/walker/4');
+    await page.goto('/walker/4');
     await startTraining(page, { population: 40 });
     await waitIterations(page, 12, 240000);
     // At MAX the stage replays champions: wait for one that has walked a few metres.
@@ -113,7 +113,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('12 dqn pong', async ({ page }) => {
-    await page.goto('/#/c/pong/3');
+    await page.goto('/pong/3');
     await startTraining(page, { method: 'dqn' });
     await expect.poll(() => attr(page.getByTestId('loss-chart'), 'data-points'), { timeout: 90000 }).toBeGreaterThanOrEqual(25);
     await expect(page.getByTestId('outputs-bar')).toBeVisible();
@@ -121,7 +121,7 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('13 ppo car', async ({ page }) => {
-    await page.goto('/#/c/car/3');
+    await page.goto('/car/3');
     await startTraining(page, { method: 'ppo' });
     await waitIterations(page, 40, 90000);
     await expect(page.getByTestId('explore-chart')).toBeVisible();
@@ -129,11 +129,11 @@ test.describe('visual acceptance screenshots', () => {
   });
 
   test('15 generated concept', async ({ page }) => {
-    await page.goto('/#/create');
+    await page.goto('/create');
     await page.getByTestId('new-concept-paste').click();
     await page.getByTestId('new-concept-paste-input').fill(toResponse(GOOD));
     await page.getByTestId('new-concept-paste-submit').click();
-    await expect(page).toHaveURL(/#\/c\/gen-/);
+    await expect(page).toHaveURL(/4173\/gen-/);
     await expect(page.getByTestId('badge-generated')).toBeVisible();
     await startTraining(page);
     await waitIterations(page, 10);

@@ -4,7 +4,7 @@ import type { ChampionExport } from '../../src/persist/exportImport';
 import { startTraining, waitFrames, waitIterations } from './helpers';
 
 test('pong: export a champion, import it in a fresh browser profile, refuse it for another concept', async ({ page, browser, baseURL }) => {
-  await page.goto('/#/c/pong/4');
+  await page.goto('/pong/4');
   await startTraining(page);
   await waitIterations(page, 3);
   await page.getByTestId('btn-pause').click();
@@ -21,7 +21,7 @@ test('pong: export a champion, import it in a fresh browser profile, refuse it f
   const context = await browser.newContext({ baseURL });
   try {
     const fresh = await context.newPage(), stage = fresh.getByTestId('stage');
-    await fresh.goto('/#/c/pong/4');
+    await fresh.goto('/pong/4');
     await expect(fresh.getByTestId('hof-item')).toHaveCount(0);
     await fresh.getByTestId('input-import').setInputFiles(file);
     await expect(fresh.getByTestId('hof-item')).toHaveText(/imported/);
@@ -29,7 +29,7 @@ test('pong: export a champion, import it in a fresh browser profile, refuse it f
     await expect(fresh.getByTestId('stage-header')).toHaveText('Replay: imported champion');
     await waitFrames(fresh, 5);
 
-    await fresh.goto('/#/c/snake/4');
+    await fresh.goto('/snake/4');
     await expect(fresh.locator('.crumb .here')).toHaveText('Snake');
     await fresh.getByTestId('input-import').setInputFiles(file);
     await expect(fresh.locator('.hof-panel .errors')).toContainText('This champion is for "pong", not "snake"');

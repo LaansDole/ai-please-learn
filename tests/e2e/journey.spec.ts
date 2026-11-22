@@ -13,7 +13,7 @@ for (const env of JOURNEY_ENVS) {
     // 1. Gallery -> concept page.
     await page.goto('/');
     await page.getByTestId(`card-${env.id}`).click();
-    await expect(page).toHaveURL(new RegExp(`#/c/${env.id}(/1)?$`));
+    await expect(page).toHaveURL(new RegExp(`4173/${env.id}(/1)?$`));
     await expect(page.locator('.crumb .here')).toHaveText(env.name);
     await expect(page.getByTestId('stage-header')).toHaveText('You are playing');
 

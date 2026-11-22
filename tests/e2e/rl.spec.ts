@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { attr, startTraining, statValue, vis, waitFrames, waitIterations } from './helpers';
 
 test('pong with DQN: picker, RL charts, replay', async ({ page }) => {
-  await page.goto('/#/c/pong/3');
+  await page.goto('/pong/3');
   await page.getByTestId('method-dqn').check();
   await expect(page.getByTestId('method-explainer')).toContainText('replay buffer');
   await startTraining(page);
@@ -17,7 +17,7 @@ test('pong with DQN: picker, RL charts, replay', async ({ page }) => {
 });
 
 test('car: DQN is disabled with a reason, PPO trains', async ({ page }) => {
-  await page.goto('/#/c/car/3');
+  await page.goto('/car/3');
   await expect(page.getByTestId('method-dqn')).toBeDisabled();
   await expect(page.getByTestId('method-reason-dqn')).toContainText('continuous');
   await startTraining(page, { method: 'ppo' });
@@ -26,7 +26,7 @@ test('car: DQN is disabled with a reason, PPO trains', async ({ page }) => {
 });
 
 test('snake with DQN: loss, epsilon, Q-values and the fixed 32-32 network', async ({ page }) => {
-  await page.goto('/#/c/snake/3');
+  await page.goto('/snake/3');
   await page.getByTestId('method-dqn').check();
   const [, inputs, outputs] = (await page.locator('.nn-foot').innerText()).match(/(\d+) inputs -> (\d+) outputs/)!;
   const nodes = Number(inputs) + 32 + 32 + Number(outputs);
@@ -43,7 +43,7 @@ test('snake with DQN: loss, epsilon, Q-values and the fixed 32-32 network', asyn
 });
 
 test('flappy with PPO: entropy chart, parameter count, champion replay', async ({ page }) => {
-  await page.goto('/#/c/flappy/3');
+  await page.goto('/flappy/3');
   await startTraining(page, { method: 'ppo' });
   await waitIterations(page, 2, 90000);
   await expect(page.getByTestId('explore-chart')).toBeVisible();
@@ -58,7 +58,7 @@ test('flappy with PPO: entropy chart, parameter count, champion replay', async (
 
 test('walker with PPO reaches two updates', async ({ page }) => {
   test.setTimeout(240000);
-  await page.goto('/#/c/walker/3');
+  await page.goto('/walker/3');
   await expect(page.getByTestId('method-dqn')).toBeDisabled();
   await startTraining(page, { method: 'ppo' });
   await waitIterations(page, 2, 180000);
@@ -67,7 +67,7 @@ test('walker with PPO reaches two updates', async ({ page }) => {
 });
 
 test('tetris: DQN and PPO are disabled with visible reasons', async ({ page }) => {
-  await page.goto('/#/c/tetris/3');
+  await page.goto('/tetris/3');
   for (const kind of ['dqn', 'ppo']) {
     await expect(page.getByTestId(`method-${kind}`)).toBeDisabled();
     await expect(page.getByTestId(`method-reason-${kind}`)).toBeVisible();
@@ -77,7 +77,7 @@ test('tetris: DQN and PPO are disabled with visible reasons', async ({ page }) =
 });
 
 test('switching method during a run offers a restart with the new method', async ({ page }) => {
-  await page.goto('/#/c/pong/4');
+  await page.goto('/pong/4');
   await startTraining(page);
   await waitIterations(page, 3);
   await expect(page.getByTestId('stat-iteration')).toContainText('Generation');

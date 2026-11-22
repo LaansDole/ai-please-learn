@@ -2,10 +2,18 @@ import type { EnvDefinition } from './types';
 
 const registry = new Map<string, EnvDefinition>();
 
+/**
+ * Concept pages live at the top level of the site ("/pong"), next to these: the app's own pages, what the build and the
+ * deployment put there (assets, demo), the dev server's own paths (api, src, public) and the old "/c/" prefix.
+ * Generated ids always start with "gen-", so only built-in ids can collide.
+ */
+export const RESERVED_IDS: ReadonlySet<string> = new Set(['create', 'settings', 'assets', 'demo', 'api', 'src', 'public', 'index', 'c']);
+
 function staticErrors(def: EnvDefinition): string[] {
   const errors: string[] = [];
   const { meta, action } = def;
   if (!/^[a-z][a-z0-9-]*$/.test(meta.id)) errors.push(`meta.id "${meta.id}" must match /^[a-z][a-z0-9-]*$/.`);
+  if (RESERVED_IDS.has(meta.id)) errors.push(`meta.id "${meta.id}" is reserved for a page or a folder of the site.`);
   if (def.observation.labels.length === 0) errors.push('observation.labels must not be empty.');
   if (action.type !== 'candidates' && action.labels.length === 0) errors.push('action.labels must not be empty.');
   if (meta.learners.length === 0) errors.push('meta.learners must not be empty.');

@@ -2,7 +2,7 @@ import { listEnvs } from '../../env/registry';
 import { library, toConceptFile, type StoredConcept } from '../../gen/library';
 import { h, topNav } from '../dom';
 import { showSource } from '../panels/sourceModal';
-import type { PageFn } from '../router';
+import { formatRoute, type PageFn } from '../router';
 import { drawInitials, drawThumbnail } from '../thumbnail';
 
 function download(name: string, text: string): void {
@@ -18,7 +18,7 @@ function generatedCard(c: StoredConcept, onDeleted: () => void): HTMLElement {
   drawInitials(canvas, c.name);
   const learners = c.meta.action.type === 'continuous' ? ['NEAT', 'PPO'] : ['NEAT', 'DQN', 'PPO'];
   return h('div', { class: 'card', testid: `card-${c.id}` },
-    h('a', { class: 'card-link', href: `#/c/${c.id}` },
+    h('a', { class: 'card-link', href: formatRoute({ page: 'gallery' }) + c.id },
       canvas,
       h('div', { class: 'card-body' },
         h('h2', null, c.name),
@@ -39,7 +39,7 @@ function generatedCard(c: StoredConcept, onDeleted: () => void): HTMLElement {
 function createCard(): HTMLElement {
   const thumb = h('div', { class: 'card-thumb card-create-thumb', 'aria-hidden': 'true' });
   thumb.innerHTML = '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-  return h('a', { class: 'card card-create', href: '#/create', testid: 'card-create' },
+  return h('a', { class: 'card card-create', href: formatRoute({ page: 'create' }), testid: 'card-create' },
     thumb,
     h('div', { class: 'card-body' },
       h('h2', null, 'Make your own'),
@@ -51,7 +51,7 @@ export const galleryPage: PageFn = (root) => {
   const cards = listEnvs().filter((d) => !d.meta.hidden).map((def) => {
     const canvas = h('canvas', { width: 640, height: 400, class: 'card-thumb', 'aria-hidden': 'true' });
     drawThumbnail(canvas, def);
-    return h('a', { class: 'card', href: `#/c/${def.meta.id}`, testid: `card-${def.meta.id}` },
+    return h('a', { class: 'card', href: formatRoute({ page: 'gallery' }) + def.meta.id, testid: `card-${def.meta.id}` },
       canvas,
       h('div', { class: 'card-body' },
         h('h2', null, def.meta.name),
@@ -75,7 +75,7 @@ export const galleryPage: PageFn = (root) => {
   const steps: [string, string][] = [['Play', 'Try the game yourself.'], ['Rewards', 'Decide what counts as good.'], ['Network', 'Choose how it learns.'], ['Learn', 'Watch it get there.']];
   root.append(h('div', { class: 'page', testid: 'gallery' },
     h('header', { class: 'topbar' },
-      h('a', { class: 'brand', href: '#/' }, 'EvoLab'),
+      h('a', { class: 'brand', href: formatRoute({ page: 'gallery' }) }, 'EvoLab'),
       topNav('gallery')),
     h('main', { class: 'gallery' },
       h('section', { class: 'hero' },

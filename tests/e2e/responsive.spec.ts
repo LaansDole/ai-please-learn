@@ -39,7 +39,7 @@ for (const [env, method] of [['pong', 'neat'], ['snake', 'neat'], ['pong', 'ppo'
 // A 3D frame costs tens of milliseconds on a software rasteriser while the worker offers one every 16 ms: frames nobody has
 // painted yet must be dropped, not queued. Before the stage did that, the page stopped answering within seconds at x1000.
 test('walker: controls keep answering while 3D frames arrive faster than they can be painted', async ({ page }) => {
-  await page.goto('/#/c/walker/4');
+  await page.goto('/walker/4');
   await page.getByTestId('speed-1000').click();
   await page.getByTestId('btn-start').click();
   await page.waitForTimeout(15000);
